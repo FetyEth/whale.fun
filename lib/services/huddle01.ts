@@ -391,22 +391,6 @@ export class Huddle01Service {
   }
 
   /**
-   * Generate a mock room ID for testing when Huddle01 API is unavailable
-   */
-  private generateMockRoomId(): string {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    const segments = [];
-    for (let i = 0; i < 3; i++) {
-      let segment = "";
-      for (let j = 0; j < 4; j++) {
-        segment += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      segments.push(segment);
-    }
-    return segments.join("-");
-  }
-
-  /**
    * Validate RTMP URL format
    */
   static isValidRTMPUrl(url: string): boolean {
