@@ -907,4 +907,217 @@ export class SecurityGovernanceService extends BaseContractService {
       chainId
     );
   }
+
+  /**
+   * Get Governance events
+   */
+  async getProposalCreatedEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    return this.getEvents("ProposalCreated", { fromBlock, toBlock }, chainId);
+  }
+
+  async getVoteCastEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    return this.getEvents("VoteCast", { fromBlock, toBlock }, chainId);
+  }
+
+  async getProposalExecutedEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    return this.getEvents("ProposalExecuted", { fromBlock, toBlock }, chainId);
+  }
+
+  /**
+   * Get Security events
+   */
+  async getRugPullDetectedEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    return this.getEvents("RugPullDetected", { fromBlock, toBlock }, chainId);
+  }
+
+  async getEmergencyPauseEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    const [activated, deactivated] = await Promise.all([
+      this.getEvents(
+        "EmergencyPauseActivated",
+        { fromBlock, toBlock },
+        chainId
+      ),
+      this.getEvents(
+        "EmergencyPauseDeactivated",
+        { fromBlock, toBlock },
+        chainId
+      ),
+    ]);
+
+    return { activated, deactivated };
+  }
+
+  async getTokenBlacklistedEvents(
+    fromBlock: number = -10000,
+    toBlock?: number,
+    chainId?: number
+  ) {
+    return this.getEvents("TokenBlacklisted", { fromBlock, toBlock }, chainId);
+  }
+
+  // ==================== EVENT LISTENERS ====================
+
+  /**
+   * Listen to MultiSig events
+   */
+  async onSubmitTransaction(
+    callback: (
+      owner: string,
+      txIndex: bigint,
+      to: string,
+      value: bigint,
+      data: string
+    ) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "SubmitTransaction",
+      (event: any) => {
+        callback(
+          event.args.owner,
+          event.args.txIndex,
+          event.args.to,
+          event.args.value,
+          event.args.data
+        );
+      },
+      chainId
+    );
+  }
+
+  async onConfirmTransaction(
+    callback: (owner: string, txIndex: bigint) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "ConfirmTransaction",
+      (event: any) => {
+        callback(event.args.owner, event.args.txIndex);
+      },
+      chainId
+    );
+  }
+
+  /**
+   * Listen to Governance events
+   */
+  async onProposalCreated(
+    callback: (
+      id: bigint,
+      proposer: string,
+      targets: string[],
+      values: bigint[],
+      signatures: string[],
+      calldatas: string[],
+      startBlock: bigint,
+      endBlock: bigint,
+      description: string
+    ) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "ProposalCreated",
+      (event: any) => {
+        callback(
+          event.args.id,
+          event.args.proposer,
+          event.args.targets,
+          event.args.values,
+          event.args.signatures,
+          event.args.calldatas,
+          event.args.startBlock,
+          event.args.endBlock,
+          event.args.description
+        );
+      },
+      chainId
+    );
+  }
+
+  async onVoteCast(
+    callback: (
+      voter: string,
+      proposalId: bigint,
+      support: number,
+      votes: bigint,
+      reason: string
+    ) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "VoteCast",
+      (event: any) => {
+        callback(
+          event.args.voter,
+          event.args.proposalId,
+          event.args.support,
+          event.args.votes,
+          event.args.reason
+        );
+      },
+      chainId
+    );
+  }
+
+  /**
+   * Listen to Security events
+   */
+  async onRugPullDetected(
+    callback: (token: string, reason: string) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "RugPullDetected",
+      (event: any) => {
+        callback(event.args.token, event.args.reason);
+      },
+      chainId
+    );
+  }
+
+  async onEmergencyPauseActivated(
+    callback: (activator: string) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "EmergencyPauseActivated",
+      (event: any) => {
+        callback(event.args.activator);
+      },
+      chainId
+    );
+  }
+
+  async onTokenBlacklisted(
+    callback: (token: string, reason: string) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "TokenBlacklisted",
+      (event: any) => {
+        callback(event.args.token, event.args.reason);
+      },
+      chainId
+    );
+  }
 }
