@@ -6,7 +6,7 @@ import TradingEngineModule from "./TradingEngine.js";
  * BossBattleArena Deployment Module
  * Deploys the gamification system with community battles and rewards
  */
-const BossBattleArenaModule = buildModule("BossBattleArenaModule", (m) => {
+const BossBattleArenaModule = buildModule("BossBattleArenaModule", (m: any) => {
   // Get dependencies
   const { whaleToken } = m.useModule(WhaleTokenModule);
   const { tradingEngine } = m.useModule(TradingEngineModule);
