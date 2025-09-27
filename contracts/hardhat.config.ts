@@ -1,10 +1,10 @@
 import type { HardhatUserConfig } from "hardhat/config";
-
-import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
+import "@nomicfoundation/hardhat-toolbox-viem"; // side-effect import registers hre.viem
 import { configVariable } from "hardhat/config";
+import dotenv from "dotenv";
+dotenv.config();
 
 const config: HardhatUserConfig = {
-  plugins: [hardhatToolboxViemPlugin],
   solidity: {
     profiles: {
       default: {
@@ -43,6 +43,12 @@ const config: HardhatUserConfig = {
       chainType: "l1",
       url: configVariable("SEPOLIA_RPC_URL"),
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+    },
+    baseTestnet: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("BASE_TESTNET_RPC_URL"),
+      accounts: [configVariable("BASE_TESTNET_PRIVATE_KEY")],
     },
   },
 };
