@@ -3,6 +3,7 @@ import {
   Zer0dexV3Service,
   SupportedChainId,
 } from "@/config/services/core/zer0dexV3Service";
+import { TradingEngineService } from "./TradingEngineService";
 import {
   DEXConfig,
   DEXType,
@@ -29,6 +30,14 @@ export class DEXIntegrationManager {
     // 0G Network configurations
     const zg0MainnetDEXs: DEXConfig[] = [
       {
+        name: "TradingEngine",
+        factoryAddress: "0x...", // TradingEngine contract address
+        routerAddress: "0x...", // TradingEngine contract address (same as factory)
+        supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+        isV3: false, // Custom AMM implementation
+        chainId: 16661,
+      },
+      {
         name: "Zer0dex V3",
         factoryAddress: "0x7453582657F056ce5CfcEeE9E31E4BC390fa2b3c",
         routerAddress: "0xb95B5953FF8ee5D5d9818CdbEfE363ff2191318c",
@@ -42,6 +51,14 @@ export class DEXIntegrationManager {
     ];
 
     const zg0TestnetDEXs: DEXConfig[] = [
+      {
+        name: "TradingEngine",
+        factoryAddress: "0x...", // TradingEngine contract address
+        routerAddress: "0x...", // TradingEngine contract address (same as factory)
+        supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+        isV3: false, // Custom AMM implementation
+        chainId: 16600,
+      },
       {
         name: "Zer0dex V3",
         factoryAddress: "0x7453582657F056ce5CfcEeE9E31E4BC390fa2b3c",
@@ -57,6 +74,14 @@ export class DEXIntegrationManager {
 
     // Base network configurations
     const baseDEXs: DEXConfig[] = [
+      {
+        name: "TradingEngine",
+        factoryAddress: "0x...", // TradingEngine contract address
+        routerAddress: "0x...", // TradingEngine contract address (same as factory)
+        supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+        isV3: false, // Custom AMM implementation
+        chainId: 8453,
+      },
       {
         name: "Uniswap V3",
         factoryAddress: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
@@ -78,6 +103,14 @@ export class DEXIntegrationManager {
     ];
 
     const baseSepoliaDEXs: DEXConfig[] = [
+      {
+        name: "TradingEngine",
+        factoryAddress: "0x...", // TradingEngine contract address
+        routerAddress: "0x...", // TradingEngine contract address (same as factory)
+        supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+        isV3: false, // Custom AMM implementation
+        chainId: 84532,
+      },
       {
         name: "Uniswap V3",
         factoryAddress: "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24",
@@ -103,6 +136,12 @@ export class DEXIntegrationManager {
     // Initialize Zer0dex services
     this.dexServices.set("ZER0DEX_V3_16661", new Zer0dexV3Service(16661));
     this.dexServices.set("ZER0DEX_V3_16600", new Zer0dexV3Service(16600));
+
+    // Initialize TradingEngine services
+    this.dexServices.set("TRADING_ENGINE_16661", new TradingEngineService());
+    this.dexServices.set("TRADING_ENGINE_16600", new TradingEngineService());
+    this.dexServices.set("TRADING_ENGINE_8453", new TradingEngineService());
+    this.dexServices.set("TRADING_ENGINE_84532", new TradingEngineService());
 
     // Initialize other DEX services as needed
     // this.dexServices.set("UNISWAP_V3_8453", new UniswapV3Service(8453));
@@ -138,6 +177,9 @@ export class DEXIntegrationManager {
     const dexType = this.identifyDEXType(dexConfig);
 
     switch (dexType) {
+      case DEXType.TRADING_ENGINE:
+        return new TradingEngineService();
+
       case DEXType.ZER0DEX_V3:
         if (dexConfig.chainId === 16661 || dexConfig.chainId === 16600) {
           return new Zer0dexV3Service(dexConfig.chainId as SupportedChainId);
@@ -165,6 +207,10 @@ export class DEXIntegrationManager {
    */
   private identifyDEXType(dexConfig: DEXConfig): DEXType {
     const name = dexConfig.name.toLowerCase();
+
+    if (name.includes("tradingengine")) {
+      return DEXType.TRADING_ENGINE;
+    }
 
     if (name.includes("zer0dex") && dexConfig.isV3) {
       return DEXType.ZER0DEX_V3;
@@ -573,10 +619,12 @@ export class DEXIntegrationManager {
     dexsByChain: Record<number, number>;
     v3DEXs: number;
     v2DEXs: number;
+    tradingEngines: number;
   } {
     let totalDEXs = 0;
     let v3DEXs = 0;
     let v2DEXs = 0;
+    let tradingEngines = 0;
     const dexsByChain: Record<number, number> = {};
 
     this.supportedDEXs.forEach((dexConfigs, chainId) => {
@@ -584,7 +632,9 @@ export class DEXIntegrationManager {
       totalDEXs += dexConfigs.length;
 
       dexConfigs.forEach((config) => {
-        if (config.isV3) {
+        if (config.name.toLowerCase().includes("tradingengine")) {
+          tradingEngines++;
+        } else if (config.isV3) {
           v3DEXs++;
         } else {
           v2DEXs++;
@@ -597,7 +647,159 @@ export class DEXIntegrationManager {
       dexsByChain,
       v3DEXs,
       v2DEXs,
+      tradingEngines,
     };
+  }
+
+  // ==================== TradingEngine-Specific Methods ====================
+
+  /**
+   * Get TradingEngine service for a specific chain
+   */
+  getTradingEngineService(chainId: number): TradingEngineService | null {
+    const key = `TRADING_ENGINE_${chainId}`;
+    return this.dexServices.get(key) || null;
+  }
+
+  /**
+   * Check if TradingEngine is available on a chain
+   */
+  isTradingEngineAvailable(chainId: number): boolean {
+    const dexConfigs = this.getAvailableDEXs(chainId);
+    return dexConfigs.some((config) =>
+      config.name.toLowerCase().includes("tradingengine")
+    );
+  }
+
+  /**
+   * Get TradingEngine configuration for a chain
+   */
+  getTradingEngineConfig(chainId: number): DEXConfig | null {
+    const dexConfigs = this.getAvailableDEXs(chainId);
+    return (
+      dexConfigs.find((config) =>
+        config.name.toLowerCase().includes("tradingengine")
+      ) || null
+    );
+  }
+
+  /**
+   * Create trading pair using TradingEngine
+   */
+  async createTradingEnginePair(
+    tokenA: string,
+    tokenB: string,
+    chainId: number
+  ): Promise<{ pairId: string; txHash: string }> {
+    const tradingEngineService = this.getTradingEngineService(chainId);
+
+    if (!tradingEngineService) {
+      throw new Error(`TradingEngine not available on chain ${chainId}`);
+    }
+
+    return await tradingEngineService.createPair(tokenA, tokenB);
+  }
+
+  /**
+   * Get TradingEngine pair info
+   */
+  async getTradingEnginePairInfo(
+    tokenA: string,
+    tokenB: string,
+    chainId: number
+  ): Promise<any> {
+    const tradingEngineService = this.getTradingEngineService(chainId);
+
+    if (!tradingEngineService) {
+      throw new Error(`TradingEngine not available on chain ${chainId}`);
+    }
+
+    const pairId = tradingEngineService.calculatePairId(tokenA, tokenB);
+    return await tradingEngineService.getPairInfo(pairId);
+  }
+
+  /**
+   * Get optimal DEX for token graduation (prioritizes TradingEngine for supported chains)
+   */
+  getOptimalDEXForTokenGraduation(
+    chainId: number,
+    preferences?: {
+      preferTradingEngine?: boolean;
+      preferV3?: boolean;
+      preferLowFees?: boolean;
+    }
+  ): DEXConfig | null {
+    const availableDEXs = this.getAvailableDEXs(chainId);
+
+    if (availableDEXs.length === 0) return null;
+
+    // If TradingEngine is preferred and available, return it first
+    if (preferences?.preferTradingEngine !== false) {
+      const tradingEngineConfig = availableDEXs.find((config) =>
+        config.name.toLowerCase().includes("tradingengine")
+      );
+
+      if (tradingEngineConfig) {
+        return tradingEngineConfig;
+      }
+    }
+
+    // Fallback to other DEXs based on preferences
+    let filteredDEXs = availableDEXs.filter(
+      (config) => !config.name.toLowerCase().includes("tradingengine")
+    );
+
+    if (preferences?.preferV3) {
+      const v3DEXs = filteredDEXs.filter((dex) => dex.isV3);
+      if (v3DEXs.length > 0) {
+        filteredDEXs = v3DEXs;
+      }
+    }
+
+    if (preferences?.preferLowFees) {
+      filteredDEXs.sort((a, b) => {
+        const minFeeA = Math.min(...a.supportedFeeTiers);
+        const minFeeB = Math.min(...b.supportedFeeTiers);
+        return minFeeA - minFeeB;
+      });
+    }
+
+    return filteredDEXs[0] || availableDEXs[0];
+  }
+
+  /**
+   * Get TradingEngine analytics for all supported chains
+   */
+  async getTradingEngineAnalytics(): Promise<Record<number, any>> {
+    const analytics: Record<number, any> = {};
+
+    for (const chainId of this.getSupportedChains()) {
+      if (this.isTradingEngineAvailable(chainId)) {
+        try {
+          const tradingEngineService = this.getTradingEngineService(chainId);
+          if (tradingEngineService) {
+            analytics[chainId] = {
+              isAvailable: true,
+              feeStructure: await tradingEngineService.getFeeStructure(),
+              platformRevenue: await tradingEngineService.getPlatformRevenue(),
+              stakingRewards: await tradingEngineService.getStakingRewards(),
+            };
+          }
+        } catch (error) {
+          analytics[chainId] = {
+            isAvailable: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      } else {
+        analytics[chainId] = {
+          isAvailable: false,
+          error: "TradingEngine not deployed on this chain",
+        };
+      }
+    }
+
+    return analytics;
   }
 }
 
