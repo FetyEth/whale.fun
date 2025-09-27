@@ -1,5 +1,6 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem"; // side-effect import registers hre.viem
+import "@nomicfoundation/hardhat-ignition-viem"; // side-effect import registers ignition tasks
 import { configVariable } from "hardhat/config";
 import dotenv from "dotenv";
 dotenv.config();
