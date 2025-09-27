@@ -9,7 +9,7 @@ function Header() {
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (
-    <div className="flex items-center justify-between px-20 py-3 bg-white border-b border-white/10">
+    <div className="flex items-center justify-between px-20 py-4 border-[#ebe3e8] bg-white border-b ">
       <div className="flex gap-x-2 items-center">
         <img src="/logo.svg" alt="Logo" className="h-7 w-14" />
         <p className="font-satoshi text-3xl font-bold">Whale.fun</p>
@@ -67,40 +67,15 @@ function Header() {
                       );
                     }
                     return (
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <button
-                          onClick={openChainModal}
-                          style={{ display: "flex", alignItems: "center" }}
-                          type="button"
-                        >
-                          {chain.hasIcon && (
-                            <div
-                              style={{
-                                background: chain.iconBackground,
-                                width: 12,
-                                height: 12,
-                                borderRadius: 999,
-                                overflow: "hidden",
-                                marginRight: 4,
-                              }}
-                            >
-                              {chain.iconUrl && (
-                                <img
-                                  alt={chain.name ?? "Chain icon"}
-                                  src={chain.iconUrl}
-                                  style={{ width: 12, height: 12 }}
-                                />
-                              )}
-                            </div>
-                          )}
-                          {chain.name}
-                        </button>
+                      <div className="bg-black flex gap-3 items-center text-white px-5 py-2 rounded-xl">
                         <button onClick={openAccountModal} type="button">
                           {account.displayName}
-                          {account.displayBalance
-                            ? ` (${account.displayBalance})`
-                            : ""}
                         </button>
+                        <img
+                          src="/icons/wallet.svg"
+                          alt="Profile"
+                          className="h-6 w-6 rounded-full "
+                        />
                       </div>
                     );
                   })()}
