@@ -1,11 +1,14 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from "react";
 import Header from "@/components/layout/Header";
 import SearchAndFilter from "@/components/explore/SearchAndFilter";
 import CreateTokenButton from "@/components/explore/CreateTokenButton";
 import TokenGrid from "@/components/explore/TokenGrid";
-import { tokenDataService, type TokenData } from "@/lib/services/TokenDataService";
+import {
+  tokenDataService,
+  type TokenData,
+} from "@/lib/services/TokenDataService";
 import { getBlockchainConnection } from "@/utils/Blockchain";
 
 const ExplorePage = () => {
@@ -26,32 +29,39 @@ const ExplorePage = () => {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(token => 
-        token.name.toLowerCase().includes(query) ||
-        token.symbol.toLowerCase().includes(query) ||
-        token.description.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (token) =>
+          token.name.toLowerCase().includes(query) ||
+          token.symbol.toLowerCase().includes(query) ||
+          token.description.toLowerCase().includes(query)
       );
     }
 
     // Apply category filter
     switch (selectedFilter) {
-      case 'recent':
+      case "recent":
         // Sort by launch time (most recent first)
         filtered = filtered.sort((a, b) => Number(b.launchTime - a.launchTime));
         break;
-      case 'high-volume':
+      case "high-volume":
         // Sort by daily volume (highest first)
-        filtered = filtered.sort((a, b) => Number(b.dailyVolume - a.dailyVolume));
+        filtered = filtered.sort((a, b) =>
+          Number(b.dailyVolume - a.dailyVolume)
+        );
         break;
-      case 'low-price':
+      case "low-price":
         // Sort by current price (lowest first)
-        filtered = filtered.sort((a, b) => Number(a.currentPrice - b.currentPrice));
+        filtered = filtered.sort((a, b) =>
+          Number(a.currentPrice - b.currentPrice)
+        );
         break;
-      case 'high-price':
+      case "high-price":
         // Sort by current price (highest first)
-        filtered = filtered.sort((a, b) => Number(b.currentPrice - a.currentPrice));
+        filtered = filtered.sort((a, b) =>
+          Number(b.currentPrice - a.currentPrice)
+        );
         break;
-      case 'all':
+      case "all":
       default:
         // No additional sorting, keep original order
         break;
@@ -64,18 +74,18 @@ const ExplorePage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log("Starting to fetch tokens...");
-      
+
       // Get current network
       const connection = await getBlockchainConnection();
       const chainId = Number(connection.network.chainId);
       console.log("Current network chain ID:", chainId);
-      
+
       // Fetch tokens data
       const tokensData = await tokenDataService.getAllTokensData(chainId);
       console.log("Fetched tokens data:", tokensData);
-      
+
       setTokens(tokensData);
     } catch (err: any) {
       console.error("Error fetching tokens:", err);
@@ -100,21 +110,21 @@ const ExplorePage = () => {
   return (
     <div className="min-h-screen bg-white relative">
       <Header />
-      
+
       {/* Main content with dotted background */}
       <div className="px-20 py-8 relative">
         {/* Dotted grid background */}
-        <div 
+        <div
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage: `radial-gradient(circle, #d1d5db 1px, transparent 1px)`,
-            backgroundSize: '20px 20px'
+            backgroundSize: "20px 20px",
           }}
         />
-        
+
         {/* Search and Filter Section */}
         <div className="flex items-center justify-between mb-8 relative z-10">
-          <SearchAndFilter 
+          <SearchAndFilter
             onSearchChange={handleSearchChange}
             onFilterChange={handleFilterChange}
             searchQuery={searchQuery}
@@ -122,7 +132,7 @@ const ExplorePage = () => {
           />
           <CreateTokenButton />
         </div>
-        
+
         {/* Error State */}
         {error && (
           <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg relative z-10">
@@ -135,7 +145,7 @@ const ExplorePage = () => {
             </button>
           </div>
         )}
-        
+
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12 relative z-10">
@@ -143,27 +153,23 @@ const ExplorePage = () => {
             <p className="mt-2 text-gray-600">Loading tokens...</p>
           </div>
         )}
-        
+
         {/* Results Count */}
         {!loading && !error && tokens.length > 0 && (
           <div className="mb-4 relative z-10">
             <p className="text-sm text-gray-600">
               Showing {filteredTokens.length} of {tokens.length} tokens
-              {searchQuery && (
-                <span> for "{searchQuery}"</span>
-              )}
-              {selectedFilter !== 'all' && (
-                <span> • {selectedFilter.replace('-', ' ')}</span>
+              {searchQuery && <span> for &quot;{searchQuery}&quot;</span>}
+              {selectedFilter !== "all" && (
+                <span> • {selectedFilter.replace("-", " ")}</span>
               )}
             </p>
           </div>
         )}
-        
+
         {/* Token Grid */}
-        {!loading && !error && (
-          <TokenGrid tokens={filteredTokens} />
-        )}
-        
+        {!loading && !error && <TokenGrid tokens={filteredTokens} />}
+
         {/* Empty State */}
         {!loading && !error && tokens.length === 0 && (
           <div className="text-center py-12 relative z-10">
@@ -176,27 +182,30 @@ const ExplorePage = () => {
             </button>
           </div>
         )}
-        
+
         {/* No Results State */}
-        {!loading && !error && tokens.length > 0 && filteredTokens.length === 0 && (
-          <div className="text-center py-12 relative z-10">
-            <p className="text-gray-600 mb-4">
-              No tokens match your search criteria
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedFilter('all');
-              }}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-            >
-              Clear filters
-            </button>
-          </div>
-        )}
+        {!loading &&
+          !error &&
+          tokens.length > 0 &&
+          filteredTokens.length === 0 && (
+            <div className="text-center py-12 relative z-10">
+              <p className="text-gray-600 mb-4">
+                No tokens match your search criteria
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedFilter("all");
+                }}
+                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ExplorePage
+export default ExplorePage;
