@@ -1,9 +1,14 @@
-import Header from "@/components/layout/Header";
+"use client";
+import HeroSection from "@/components/HeroSection";
+import Howitworks from "@/components/Howitworks";
+import PoolSection from "@/components/PoolSection";
 
 export default function Home() {
   return (
     <main>
-      <Header />
+      <HeroSection />
+      <Howitworks />
+      <PoolSection />
     </main>
   );
 }
