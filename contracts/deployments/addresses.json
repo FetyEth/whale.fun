@@ -1,0 +1,7 @@
+{
+  "WhaleToken.sol": "0x496468bc6ffd9839bd5ab05f54142ed4883f7745",
+  "SecurityGovernance.sol": "0xd261122e129fe863bc0895f558622aa270bc4925",
+  "TokenFactory.sol": "0xaa8bafd3a2a05cd93f551818c97531bb4a15031c",
+  "TradingEngine.sol": "0x37fabbc03ffb620c7ea9ff9f533d7d422ea95cd0",
+  "BossBattleArena.sol": "0x99e415c8bad033440dada8db61e32e1b7f039cea"
+}
