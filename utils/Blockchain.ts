@@ -49,6 +49,15 @@ export interface ContractInstance<T = Contract> {
  * Supported networks configuration
  */
 export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
+  // Polygon Amoy Testnet
+  80002: {
+    chainId: 80002,
+    name: "Polygon Amoy",
+    rpcUrl:
+      (process.env.NEXT_PUBLIC_POLYGON_AMOY_RPC_URL as string) ||
+      "https://rpc-amoy.polygon.technology", // fallback public RPC
+    blockExplorerUrl: "https://amoy.polygonscan.com",
+  },
   // Base Testnet (Base Sepolia)
   84532: {
     chainId: 84532,

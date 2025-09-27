@@ -67,10 +67,10 @@ export function useUser(): UseUserReturn {
         setIsNewUser(true);
         setShowOnboarding(true);
       } else if (response.status === 409) {
-        // User already exists
+        // User already exists - don't show onboarding
         setUser(data.user);
         setIsNewUser(false);
-        setShowOnboarding(!data.user.isOnboarded);
+        setShowOnboarding(false);
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -80,10 +80,15 @@ export function useUser(): UseUserReturn {
   }, [address]);
 
   const checkUser = useCallback(async () => {
-    if (!address || !isConnected) {
+    if (!address) {
       setUser(null);
       setIsNewUser(false);
       setShowOnboarding(false);
+      return;
+    }
+
+    // Only proceed if wallet is actually connected, not just detected
+    if (!isConnected) {
       return;
     }
 
@@ -104,8 +109,8 @@ export function useUser(): UseUserReturn {
       if (data.exists) {
         setUser(data.user);
         setIsNewUser(false);
-        // Show onboarding if user exists but hasn't completed onboarding
-        setShowOnboarding(!data.user.isOnboarded);
+        // Don't show onboarding for existing users
+        setShowOnboarding(false);
       } else {
         setUser(null);
         setIsNewUser(true);

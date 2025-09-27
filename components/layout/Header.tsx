@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 
 function Header() {
-  const { user, showOnboarding, completeOnboarding, dismissOnboarding } = useUser();
-  
+  const { user, showOnboarding, completeOnboarding, dismissOnboarding } =
+    useUser();
+
   const navItems = [
     { name: "Explore", href: "/explore" },
     { name: "Launch", href: "/launch" },
@@ -46,6 +47,7 @@ function Header() {
                 chain &&
                 (!authenticationStatus ||
                   authenticationStatus === "authenticated");
+
               return (
                 <div
                   {...(!ready && {
@@ -65,6 +67,7 @@ function Header() {
                         </button>
                       );
                     }
+
                     if (chain.unsupported) {
                       return (
                         <button onClick={openChainModal} type="button">
@@ -72,24 +75,43 @@ function Header() {
                         </button>
                       );
                     }
+
                     return (
-                      <div className="bg-black flex gap-3 items-center text-white px-5 py-2 rounded-xl relative">
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <button
+                          onClick={openChainModal}
+                          style={{ display: "flex", alignItems: "center" }}
+                          type="button"
+                        >
+                          {chain.hasIcon && (
+                            <div
+                              style={{
+                                background: chain.iconBackground,
+                                width: 12,
+                                height: 12,
+                                borderRadius: 999,
+                                overflow: "hidden",
+                                marginRight: 4,
+                              }}
+                            >
+                              {chain.iconUrl && (
+                                <img
+                                  alt={chain.name ?? "Chain icon"}
+                                  src={chain.iconUrl}
+                                  style={{ width: 12, height: 12 }}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {chain.name}
+                        </button>
+
                         <button onClick={openAccountModal} type="button">
                           {account.displayName}
+                          {account.displayBalance
+                            ? ` (${account.displayBalance})`
+                            : ""}
                         </button>
-                        <img
-                          src="/icons/wallet.svg"
-                          alt="Profile"
-                          className="h-6 w-6 rounded-full "
-                        />
-                        {user && !user.isOnboarded && (
-                          <Badge 
-                            variant="destructive" 
-                            className="absolute -top-2 -right-2 text-xs px-1 py-0 h-5"
-                          >
-                            New
-                          </Badge>
-                        )}
                       </div>
                     );
                   })()}
@@ -99,7 +121,7 @@ function Header() {
           </ConnectButton.Custom>
         </div>
       </div>
-      
+
       {/* Onboarding Modal */}
       <OnboardingModal
         isOpen={showOnboarding}

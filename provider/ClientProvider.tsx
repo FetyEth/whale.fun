@@ -8,6 +8,7 @@ import {
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode } from "react";
+import { polygonAmoy } from "viem/chains";
 
 // 0G Mainnet
 const zeroGMainnet = {
@@ -121,6 +122,7 @@ const config = getDefaultConfig({
     rootstockTestnet,
     citreaTestnet,
     citreaDevnet,
+    polygonAmoy,
   ],
   ssr: true,
 });

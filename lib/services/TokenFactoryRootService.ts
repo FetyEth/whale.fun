@@ -74,6 +74,12 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
       deployedAt: 0, // Replace with deployment block number
       verified: false,
     },
+    80002: {
+      // Polygon Amoy
+      address: "0x577e856e1a793ae91062443a84772165bc6d18eb",
+      deployedAt: 26957976,
+      verified: false,
+    },
     // Add other networks as needed
   },
 };
