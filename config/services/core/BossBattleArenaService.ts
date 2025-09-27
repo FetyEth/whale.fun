@@ -2,7 +2,7 @@ import { ContractTransactionResponse } from "ethers";
 import {
   BaseContractService,
   TransactionOptions,
-} from "../BaseContractService";
+} from "@/lib/services/BaseContractService";
 import BossBattleArenaABI from "../../abi/BossBattleArena.json";
 
 /**
