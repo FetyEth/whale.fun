@@ -58,6 +58,14 @@ export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
       "https://rpc-amoy.polygon.technology", // fallback public RPC
     blockExplorerUrl: "https://amoy.polygonscan.com",
   },
+  44787: {
+    chainId: 44787,
+    name: "Celo Alfajores",
+    rpcUrl:
+      (process.env.NEXT_PUBLIC_CELO_ALFAJORES_RPC_URL as string) ||
+      "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb", // Alchemy RPC
+    blockExplorerUrl: "https://alfajores.celoscan.io",
+  },
   // Base Testnet (Base Sepolia)
   84532: {
     chainId: 84532,

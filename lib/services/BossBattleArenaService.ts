@@ -111,6 +111,7 @@ const BOSS_BATTLE_ARENA_CONFIG: ContractConfig = {
       deployedAt: 0,
       verified: false,
     },
+
     84532: {
       // Base Sepolia
       address: "0x...", // Replace with actual deployment address
