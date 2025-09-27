@@ -5,10 +5,10 @@ import { tokenGraduationService } from "@/config/services/core/tokenGraduation";
 // Get graduation info and progress for a specific token
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tokenAddress: string } }
+  { params }: { params: Promise<{ tokenAddress: string }> }
 ) {
   try {
-    const { tokenAddress } = params;
+    const { tokenAddress } = await params;
 
     if (!tokenAddress) {
       return NextResponse.json(

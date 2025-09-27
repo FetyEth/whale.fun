@@ -3,11 +3,11 @@ import { createHuddle01Service } from "@/lib/services/huddle01";
 
 // GET /api/huddle01/live-sessions/participants/:roomId
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: { roomId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const roomId = params.roomId;
+    const { roomId } = await params;
     if (!roomId) {
       return NextResponse.json(
         { success: false, error: "roomId is required" },
