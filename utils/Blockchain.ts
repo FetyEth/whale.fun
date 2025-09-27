@@ -49,20 +49,15 @@ export interface ContractInstance<T = Contract> {
  * Supported networks configuration
  */
 export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
-  // Add your supported networks here
-  // Example:
-  // 1: {
-  //   chainId: 1,
-  //   name: "Ethereum Mainnet",
-  //   rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
-  //   blockExplorerUrl: "https://etherscan.io"
-  // },
-  // 137: {
-  //   chainId: 137,
-  //   name: "Polygon Mainnet",
-  //   rpcUrl: "https://polygon-mainnet.g.alchemy.com/v2/YOUR_KEY",
-  //   blockExplorerUrl: "https://polygonscan.com"
-  // }
+  // Base Testnet (Base Sepolia)
+  84532: {
+    chainId: 84532,
+    name: "Base Sepolia",
+    rpcUrl:
+      (process.env.NEXT_PUBLIC_BASE_TESTNET_RPC_URL as string) ||
+      "https://sepolia.base.org", // fallback public RPC (lower reliability)
+    blockExplorerUrl: "https://sepolia.basescan.org",
+  },
 };
 
 /**

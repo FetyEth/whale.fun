@@ -104,12 +104,11 @@ export class TokenFactoryService extends BaseContractService {
       name: "TokenFactory",
       abi: TokenFactoryABI,
       deployments: {
-        // Add your deployment addresses here
-        // 1: { // Ethereum Mainnet
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // },
+        84532: {
+          address: "0xaa8bafd3a2a05cd93f551818c97531bb4a15031c",
+          deployedAt: 0,
+          verified: false,
+        },
       },
     });
   }

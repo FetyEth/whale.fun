@@ -84,17 +84,11 @@ export class BossBattleArenaService extends BaseContractService {
       name: "BossBattleArena",
       abi: BossBattleArenaABI,
       deployments: {
-        // Add your deployment addresses here
-        // 1: { // Ethereum Mainnet
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // },
-        // 137: { // Polygon
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // }
+        84532: {
+          address: "0x99e415c8bad033440dada8db61e32e1b7f039cea",
+          deployedAt: 0,
+          verified: false,
+        },
       },
     });
   }
