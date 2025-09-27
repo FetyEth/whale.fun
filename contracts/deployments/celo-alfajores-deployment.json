@@ -1,0 +1,25 @@
+{
+  "network": "celo-alfajores",
+  "chainId": 44787,
+  "timestamp": "2025-09-27T18:46:26.524Z",
+  "deployer": "0x941Bdd008abeD439b1CEe02090c0D7574C27d23F",
+  "contracts": {
+    "WhaleToken": {
+      "address": "0x6f48b3244d2a9cf6eb4eeace6be00ccf38306e9f",
+      "transactionHash": "0x1d187def2fa714ec6659468f8363967b1fd7ddcd1c8988d70a0d0cdfba652760",
+      "gasUsed": "3096552",
+      "explorerUrl": "https://alfajores.celoscan.io/tx/0x1d187def2fa714ec6659468f8363967b1fd7ddcd1c8988d70a0d0cdfba652760"
+    },
+    "TokenFactory": {
+      "address": "0x5755574a0d453729568f068026ef03078e8ea87c",
+      "transactionHash": "0x929b51ab65b8c492713353896af86cb42f4db00960314ec19ceac63ebb613a7c",
+      "gasUsed": "5036884",
+      "explorerUrl": "https://alfajores.celoscan.io/tx/0x929b51ab65b8c492713353896af86cb42f4db00960314ec19ceac63ebb613a7c"
+    }
+  },
+  "summary": {
+    "totalContracts": 2,
+    "totalGasUsed": "8133436",
+    "platformStatus": "DEPLOYED TO CELO ALFAJORES"
+  }
+}

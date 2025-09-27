@@ -11,7 +11,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100, // Even lower runs for better size optimization
+        runs: 1, // Minimum runs for maximum size optimization
       },
       metadata: {
         bytecodeHash: "none",
@@ -22,7 +22,7 @@ const config: HardhatUserConfig = {
         },
       },
       // Additional size optimizations
-      viaIR: false, // Keep false for better compatibility
+      viaIR: true, // Enable IR for better optimization
     },
   },
   networks: {
@@ -45,6 +45,13 @@ const config: HardhatUserConfig = {
       chainType: "l1",
       url: configVariable("BASE_TESTNET_RPC_URL"),
       accounts: [configVariable("BASE_TESTNET_PRIVATE_KEY")],
+    },
+    celoAlfajores: {
+      type: "http",
+      chainType: "l1",
+      url: "https://alfajores-forno.celo-testnet.org",
+      accounts: ["0x9f55a656f73b257dc970624b558e56c2c78bc07a793edf95fa614f4f4a7f22ae"],
+      chainId: 44787,
     },
   },
 };

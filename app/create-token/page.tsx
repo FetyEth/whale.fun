@@ -1,10 +1,16 @@
 "use client";
 import Header from "@/components/layout/Header";
-import { useState, useEffect } from "react";
-import type { FC, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, useCallback } from "react";
+import type { FC, ChangeEvent, FormEvent, DragEvent } from "react";
 import { tokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";
 import type { TokenCreationParams } from "@/lib/services/TokenFactoryRootService";
 import { parseEther, formatEther } from "ethers";
+import {
+  getBlockchainConnection,
+  validateNetwork,
+  switchNetwork,
+  SUPPORTED_NETWORKS,
+} from "@/utils/Blockchain";
 
 interface InputFieldProps {
   label: string;
@@ -65,11 +71,7 @@ const CreatePage: FC = () => {
     tokenName: "",
     tokenSymbol: "",
     description: "",
-    totalSupply: "",
-    targetMarketCap: "",
-    creatorFee: "",
     logoUrl: "",
-    communitySize: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +83,10 @@ const CreatePage: FC = () => {
     launchFee: bigint;
     liquidity: bigint;
     total: bigint;
+  } | null>(null);
+  const [currentNetwork, setCurrentNetwork] = useState<{
+    chainId: number;
+    name: string;
   } | null>(null);
 
   const handleChange = (
@@ -97,58 +103,139 @@ const CreatePage: FC = () => {
     setSuccess(null);
 
     try {
-      // Validate form data and parse numbers appropriately
-      // Use much smaller default values to avoid overflow
-      const totalSupplyInput = formData.totalSupply || "1000";
-      const marketCapInput = formData.targetMarketCap || "1";
-      
-      const tokenParams: TokenCreationParams = {
-        name: formData.tokenName,
-        symbol: formData.tokenSymbol.toUpperCase(),
-        // Use smaller numbers - parse as raw BigInt first
-        totalSupply: BigInt(parseInt(totalSupplyInput.replace(/,/g, ''))),
-        // Use smaller market cap
-        targetMarketCap: parseEther(marketCapInput),
-        creatorFeePercent: BigInt(parseInt(formData.creatorFee) || 50),
-        description: formData.description,
-        logoUrl: formData.logoUrl,
-      };
+      // Check network connection and validate
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
 
-      console.log("Token params:", {
-        name: tokenParams.name,
-        symbol: tokenParams.symbol,
-        totalSupply: tokenParams.totalSupply.toString(),
-        targetMarketCap: tokenParams.targetMarketCap.toString(),
-        creatorFeePercent: tokenParams.creatorFeePercent.toString(),
+      try {
+        validateNetwork(chainId);
+      } catch (networkError) {
+        const supportedNetworksList = Object.values(SUPPORTED_NETWORKS)
+          .map((network) => `${network.name} (${network.chainId})`)
+          .join(", ");
+
+        throw new Error(
+          `Unsupported network (Chain ID: ${chainId}). Please switch to one of the supported networks: ${supportedNetworksList}`
+        );
+      }
+
+      // Check if contracts are deployed on this network
+      console.log("Checking contract deployment for network:", chainId);
+      console.log("Current network config:", currentNetwork);
+      console.log(
+        "Expected contract address for chain",
+        chainId,
+        ":",
+        chainId === 44787
+          ? "0x5755574a0d453729568f068026ef03078e8ea87c"
+          : "not configured"
+      );
+
+      try {
+        console.log("Attempting to call getFactoryStats...");
+        const factoryStats = await tokenFactoryRootService.getFactoryStats();
+        console.log("✅ Factory stats:", factoryStats);
+      } catch (contractError: any) {
+        console.error("❌ Contract check failed:", contractError);
+        console.error("Error details:", {
+          message: contractError.message,
+          code: contractError.code,
+          chainId: chainId,
+          networkName: currentNetwork?.name,
+        });
+
+        if (contractError.message.includes("could not decode result data")) {
+          throw new Error(
+            `Contract call failed on ${
+              currentNetwork?.name || "current network"
+            }. This might be due to RPC issues or wallet provider problems. Try refreshing the page or switching wallet networks.`
+          );
+        }
+        throw contractError;
+      }
+
+      // Direct Viem call - use wallet provider for signing
+      console.log("Making direct Viem call...");
+
+      const { createWalletClient, createPublicClient, http, custom } =
+        await import("viem");
+      const { celoAlfajores } = await import("viem/chains");
+
+      // Use wallet provider for signing (MetaMask)
+      const walletClient = createWalletClient({
+        chain: celoAlfajores,
+        transport: custom(window.ethereum),
       });
 
-      // Validate parameters using service validation
-      const validation = tokenFactoryRootService.validateTokenParams(tokenParams);
-      if (!validation.isValid) {
-        throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
+      // Get the connected wallet accounts
+      const accounts = await walletClient.getAddresses();
+      if (!accounts || accounts.length === 0) {
+        throw new Error(
+          "No wallet accounts found. Please connect your wallet."
+        );
       }
+      const account = accounts[0]; // Use the first connected account
 
-      // Check if user can create token
-      const currentAccount = await tokenFactoryRootService.getCurrentAccount();
-      const canCreate = await tokenFactoryRootService.canCreatorCreateToken(currentAccount);
-      if (!canCreate) {
-        const creatorStats = await tokenFactoryRootService.getCreatorStats(currentAccount);
-        if (creatorStats.cooldownRemaining > BigInt(0)) {
-          throw new Error(`Creation cooldown active. Please wait ${creatorStats.cooldownRemaining} seconds.`);
-        } else {
-          throw new Error("Maximum tokens per creator limit reached.");
-        }
-      }
+      // Load contract ABI
+      const TokenFactoryABI = (
+        await import("@/config/abi/TokenFactoryRoot.json")
+      ).default;
 
-      // Create the token
-      const tx = await tokenFactoryRootService.createToken(tokenParams);
-      
-      // Wait for transaction confirmation
-      const receipt = await tx.wait();
-      
-      if (receipt?.status === 1) {
-        setSuccess(`Token created successfully! Transaction hash: ${tx.hash}`);
-        setCreatedTokenHash(tx.hash);
+      const contractAddress = "0x5755574a0d453729568f068026ef03078e8ea87c";
+      const launchFee = parseEther("0.01"); // 0.01 CELO
+      const minLiquidity = parseEther("0.1"); // 0.1 CELO
+      const totalCost = launchFee + minLiquidity; // 0.11 CELO
+
+      console.log("Direct contract call with params:", {
+        account: account,
+        name: formData.tokenName,
+        symbol: formData.tokenSymbol.toUpperCase(),
+        totalSupply: BigInt(1000000),
+        targetMarketCap: parseEther("0.1"),
+        creatorFeePercent: BigInt(30),
+        description: formData.description || "Token created via Whale.fun",
+        logoUrl: formData.logoUrl || "https://example.com/logo.png",
+        value: totalCost.toString(),
+      });
+
+      // Direct contract call using Viem
+      const txHash = await walletClient.writeContract({
+        account: account,
+        address: contractAddress,
+        abi: TokenFactoryABI,
+        functionName: "createToken",
+        args: [
+          formData.tokenName,
+          formData.tokenSymbol.toUpperCase(),
+          BigInt(1000000), // 1M tokens
+          parseEther("0.1"), // 0.1 CELO
+          BigInt(30), // 30%
+          formData.description || "Token created via Whale.fun",
+          formData.logoUrl || "https://example.com/logo.png",
+        ],
+        value: totalCost,
+      });
+
+      console.log("Transaction hash:", txHash);
+
+      // Wait for confirmation using public client
+      const publicClient = createPublicClient({
+        chain: celoAlfajores,
+        transport: http(
+          "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb"
+        ),
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+        timeout: 60000,
+      });
+
+      console.log("Transaction confirmed:", receipt);
+
+      if (receipt?.status === "success") {
+        setSuccess(`Token created successfully! Transaction hash: ${txHash}`);
+        setCreatedTokenHash(txHash);
         setIsTokenCreated(true);
         // Reset form data but keep it for potential reuse
         // setFormData({ ... }) - removed to keep data for success display
@@ -173,22 +260,39 @@ const CreatePage: FC = () => {
     }
   };
 
-  // Load cost when component mounts
+  // Check current network
+  const checkNetwork = async () => {
+    try {
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+      const networkConfig = validateNetwork(chainId);
+      setCurrentNetwork({ chainId, name: networkConfig.name });
+    } catch (err) {
+      console.log("Network check failed:", err);
+      setCurrentNetwork(null);
+    }
+  };
+
+  // Load cost and check network when component mounts
   useEffect(() => {
     loadCreationCost();
+    checkNetwork();
   }, []);
 
   // Success message component
   const TokenCreatedMessage = () => (
     <div className="text-center p-8 border-2 border-dashed border-purple-200 rounded-2xl">
-      <div className="mx-auto mb-6 h-24 w-24 bg-green-100 rounded-full flex items-center justify-center">
-        <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Token created</h2>
+      <img
+        src="/img/congrats.svg"
+        alt="Token creation successful"
+        className="mx-auto mb-6 h-24 w-24"
+      />
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
+        Token created
+      </h2>
       <p className="text-gray-500 mt-2 max-w-sm mx-auto">
-        Your token is live on-chain. Review the details and open your Launch Room.
+        Your token is live on-chain. Review the details and open your Launch
+        Room.
       </p>
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <p className="text-sm text-gray-600">
@@ -196,7 +300,8 @@ const CreatePage: FC = () => {
         </p>
         {createdTokenHash && (
           <p className="text-xs text-gray-500 mt-1">
-            <strong>TX Hash:</strong> {createdTokenHash.slice(0, 10)}...{createdTokenHash.slice(-8)}
+            <strong>TX Hash:</strong> {createdTokenHash.slice(0, 10)}...
+            {createdTokenHash.slice(-8)}
           </p>
         )}
       </div>
@@ -206,7 +311,7 @@ const CreatePage: FC = () => {
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
           onClick={() => {
             // Navigate to token page - you can implement this
-            console.log('Navigate to token page');
+            console.log("Navigate to token page");
           }}
         >
           View token page
@@ -215,8 +320,14 @@ const CreatePage: FC = () => {
           type="button"
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
           onClick={() => {
-            if (createdTokenHash) {
-              window.open(`https://amoy.polygonscan.com/tx/${createdTokenHash}`, '_blank');
+            if (createdTokenHash && currentNetwork) {
+              const networkConfig = SUPPORTED_NETWORKS[currentNetwork.chainId];
+              if (networkConfig) {
+                window.open(
+                  `${networkConfig.blockExplorerUrl}/tx/${createdTokenHash}`,
+                  "_blank"
+                );
+              }
             }
           }}
         >
@@ -234,11 +345,7 @@ const CreatePage: FC = () => {
             tokenName: "",
             tokenSymbol: "",
             description: "",
-            totalSupply: "",
-            targetMarketCap: "",
-            creatorFee: "",
             logoUrl: "",
-            communitySize: "",
           });
         }}
       >
@@ -250,7 +357,7 @@ const CreatePage: FC = () => {
   return (
     <main>
       <Header />
-      <div className="flex items-center justify-center min-h-screen w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4">
+      <div className="flex items-center justify-center  w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4">
         <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm max-w-4xl w-full mx-auto">
           {isTokenCreated ? (
             <TokenCreatedMessage />
@@ -264,14 +371,19 @@ const CreatePage: FC = () => {
                   Set the basics, lock the rules, and preview your curve before
                   mint.
                 </p>
+
                 {creationCost && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700">
-                      <strong>Creation Cost:</strong> {formatEther(creationCost.total)} ETH
+                      <strong>Creation Cost:</strong>{" "}
+                      {formatEther(creationCost.total)}{" "}
+                      {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"}
                       <br />
                       <span className="text-xs">
-                        (Launch Fee: {formatEther(creationCost.launchFee)} ETH + 
-                        Min Liquidity: {formatEther(creationCost.liquidity)} ETH)
+                        (Launch Fee: {formatEther(creationCost.launchFee)}{" "}
+                        {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"} +
+                        Min Liquidity: {formatEther(creationCost.liquidity)}{" "}
+                        {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"})
                       </span>
                     </p>
                   </div>
@@ -279,105 +391,190 @@ const CreatePage: FC = () => {
                 {error && (
                   <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-700">{error}</p>
+                    {(error.includes("Unsupported network") ||
+                      error.includes("Contract call failed") ||
+                      error.includes("contract not deployed")) && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-gray-600">
+                          Available networks with deployed contracts:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {/* Only show networks that have contracts deployed */}
+                          <button
+                            type="button"
+                            className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            onClick={async () => {
+                              try {
+                                await switchNetwork(44787); // Celo Alfajores
+                                setError(null);
+                                checkNetwork();
+                              } catch (switchError) {
+                                console.error(
+                                  "Failed to switch network:",
+                                  switchError
+                                );
+                                setError(
+                                  "Failed to switch to Celo Alfajores. Please manually switch in your wallet."
+                                );
+                              }
+                            }}
+                          >
+                            Celo Alfajores ✅
+                          </button>
+                          {/* Add other networks when contracts are deployed */}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-gray-500">
+                            💡 Get test CELO from:{" "}
+                            <a
+                              href="https://faucet.celo.org/"
+                              target="_blank"
+                              className="text-blue-600 underline"
+                            >
+                              https://faucet.celo.org/
+                            </a>
+                          </p>
+                          {error.includes("OVERFLOW") && (
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                              <p className="text-yellow-800 font-medium">
+                                ⚠️ RPC Endpoint Issue
+                              </p>
+                              <p className="text-yellow-700 mt-1">
+                                Your wallet might be using a different RPC. Try
+                                adding our Alchemy RPC to MetaMask:
+                              </p>
+                              <div className="mt-1 p-1 bg-yellow-100 rounded font-mono text-xs">
+                                https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb
+                              </div>
+                              <button
+                                type="button"
+                                className="mt-1 px-2 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
+                                onClick={async () => {
+                                  try {
+                                    await window.ethereum?.request({
+                                      method: "wallet_addEthereumChain",
+                                      params: [
+                                        {
+                                          chainId: "0xaef3",
+                                          chainName: "Celo Alfajores (Alchemy)",
+                                          rpcUrls: [
+                                            "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb",
+                                          ],
+                                          blockExplorerUrls: [
+                                            "https://alfajores.celoscan.io",
+                                          ],
+                                          nativeCurrency: {
+                                            name: "CELO",
+                                            symbol: "CELO",
+                                            decimals: 18,
+                                          },
+                                        },
+                                      ],
+                                    });
+                                  } catch (e) {
+                                    console.error("Failed to add network:", e);
+                                  }
+                                }}
+                              >
+                                Add Alchemy RPC to Wallet
+                              </button>
+                            </div>
+                          )}
+                          {error.includes("Contract call failed") && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                                onClick={() => window.location.reload()}
+                              >
+                                🔄 Refresh Page
+                              </button>
+                              <button
+                                type="button"
+                                className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
+                                onClick={() => {
+                                  setError(null);
+                                  checkNetwork();
+                                }}
+                              >
+                                🔍 Retry Connection
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <InputField
-                label="Token name"
-                id="tokenName"
-                placeholder="e.g., Whale Wars"
-                value={formData.tokenName}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Token symbol"
-                id="tokenSymbol"
-                placeholder="e.g., WHALE"
-                value={formData.tokenSymbol}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Description"
-                id="description"
-                placeholder="What's the thesis, utility, or story?"
-                value={formData.description}
-                onChange={handleChange}
-                isTextArea
-                maxLength={280}
-                infoText="max 280 chars"
-              />
-              <InputField
-                label="Total supply"
-                id="totalSupply"
-                placeholder="e.g., 1000"
-                value={formData.totalSupply}
-                onChange={handleChange}
-                infoText="Number of tokens (start small, e.g., 1000)"
-              />
-              <InputField
-                label="Target market cap (ETH)"
-                id="targetMarketCap"
-                placeholder="e.g., 1"
-                value={formData.targetMarketCap}
-                onChange={handleChange}
-                infoText="Target market cap in ETH (start small, e.g., 1 ETH)"
-              />
-              <InputField
-                label="Creator fee percent"
-                id="creatorFee"
-                placeholder="e.g., 50"
-                value={formData.creatorFee}
-                onChange={handleChange}
-                infoText="Fee percentage (30-95%)"
-              />
-              <InputField
-                label="Logo URL"
-                id="logoUrl"
-                placeholder="https://.../logo.png"
-                value={formData.logoUrl}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Community size (optional)"
-                id="communitySize"
-                placeholder="e.g., 12,500"
-                value={formData.communitySize}
-                onChange={handleChange}
-              />
-            </div>
+                <div className="space-y-6">
+                  {/* Logo Upload Section */}
 
-            <div className="flex items-center justify-center gap-4 mt-10">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Creating Token..." : "Create token"}
-              </button>
-              <button
-                type="button"
-                disabled={isLoading}
-                className="px-8 py-3 bg-white text-gray-800 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => {
-                  setFormData({
-                    tokenName: "",
-                    tokenSymbol: "",
-                    description: "",
-                    totalSupply: "",
-                    targetMarketCap: "",
-                    creatorFee: "",
-                    logoUrl: "",
-                    communitySize: "",
-                  });
-                  setError(null);
-                  setSuccess(null);
-                }}
-              >
-                {isLoading ? "Processing..." : "Reset"}
-              </button>
+                  {/* Basic Token Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InputField
+                      label="Token name"
+                      id="tokenName"
+                      placeholder="e.g., Whale Wars"
+                      value={formData.tokenName}
+                      onChange={handleChange}
+                    />
+                    <InputField
+                      label="Token symbol"
+                      id="tokenSymbol"
+                      placeholder="e.g., WHALE"
+                      value={formData.tokenSymbol}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <InputField
+                    label="Description"
+                    id="description"
+                    placeholder="What's the thesis, utility, or story?"
+                    value={formData.description}
+                    onChange={handleChange}
+                    isTextArea
+                    maxLength={280}
+                    infoText="max 280 chars"
+                  />
+                  <InputField
+                    label="Logo URL"
+                    id="logoUrl"
+                    placeholder="https://example.com/logo.png"
+                    value={formData.logoUrl}
+                    onChange={handleChange}
+                    infoText="Direct link to your token logo image"
+                  />
+                </div>
+
+                <div className="flex items-center justify-center gap-4 mt-8">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? "Creating Token..." : "Create token"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    className="px-8 py-3 bg-white text-gray-800 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setFormData({
+                        tokenName: "",
+                        tokenSymbol: "",
+                        description: "",
+                        logoUrl: "",
+                      });
+                      setError(null);
+                      setSuccess(null);
+                    }}
+                  >
+                    {isLoading ? "Processing..." : "Reset"}
+                  </button>
                 </div>
               </form>
             </>
