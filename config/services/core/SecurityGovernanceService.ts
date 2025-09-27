@@ -2,7 +2,7 @@ import { ContractTransactionResponse } from "ethers";
 import {
   BaseContractService,
   TransactionOptions,
-} from "../BaseContractService";
+} from "@/lib/services/BaseContractService";
 // Using the consolidated SecurityGovernance ABI that includes all 4 contracts
 import SecurityGovernanceABI from "../../abi/SecurityGovernance.json";
 

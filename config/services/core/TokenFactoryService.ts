@@ -3,6 +3,7 @@ import {
   BaseContractService,
   TransactionOptions,
 } from "@/lib/services/BaseContractService";
+import { SupportedChainId } from "./zer0dexV3Service";
 import TokenFactoryABI from "../../abi/TokenFactory.json";
 
 /**
@@ -67,6 +68,30 @@ export interface CreatorMetrics {
   successRate: bigint;
   averageMarketCap: bigint;
   lastTokenCreated: bigint;
+}
+
+/**
+ * Token graduation information interface
+ */
+export interface GraduationInfo {
+  isGraduated: boolean;
+  isEligible: boolean;
+  currentMarketCap: bigint;
+  currentHolders: bigint;
+  currentVolume: bigint;
+  thresholdMarketCap: bigint;
+  thresholdHolders: bigint;
+  thresholdVolume: bigint;
+  liquidityPair: string;
+}
+
+/**
+ * Graduation thresholds interface
+ */
+export interface GraduationThresholds {
+  defaultMarketCapThreshold: bigint;
+  defaultVolumeThreshold: bigint;
+  defaultHolderThreshold: bigint;
 }
 
 /**
@@ -415,6 +440,209 @@ export class TokenFactoryService extends BaseContractService {
     return canCreateByCount && canCreateByCooldown;
   }
 
+  // ==================== TOKEN GRADUATION ====================
+
+  /**
+   * Check if a token is eligible for graduation
+   */
+  async isEligibleForGraduation(
+    token: string,
+    chainId?: number
+  ): Promise<boolean> {
+    return this.callMethod<boolean>(
+      "isEligibleForGraduation",
+      [token],
+      chainId
+    );
+  }
+
+  /**
+   * Graduate token to Zer0dex V3 DEX
+   */
+  async graduateToken(
+    token: string,
+    zer0dexRouter: string,
+    options: TransactionOptions = {},
+    chainId?: SupportedChainId
+  ): Promise<ContractTransactionResponse> {
+    return this.executeMethod(
+      "graduateToken",
+      [token, zer0dexRouter],
+      options,
+      chainId
+    );
+  }
+
+  /**
+   * Set custom graduation threshold for a token
+   */
+  async setGraduationThreshold(
+    token: string,
+    threshold: bigint,
+    options: TransactionOptions = {},
+    chainId?: number
+  ): Promise<ContractTransactionResponse> {
+    return this.executeMethod(
+      "setGraduationThreshold",
+      [token, threshold],
+      options,
+      chainId
+    );
+  }
+
+  /**
+   * Set default graduation thresholds (admin only)
+   */
+  async setDefaultGraduationThresholds(
+    marketCapThreshold: bigint,
+    volumeThreshold: bigint,
+    holderThreshold: bigint,
+    options: TransactionOptions = {},
+    chainId?: number
+  ): Promise<ContractTransactionResponse> {
+    return this.executeMethod(
+      "setDefaultGraduationThresholds",
+      [marketCapThreshold, volumeThreshold, holderThreshold],
+      options,
+      chainId
+    );
+  }
+
+  /**
+   * Get graduation information for a token
+   */
+  async getGraduationInfo(
+    token: string,
+    chainId?: number
+  ): Promise<GraduationInfo> {
+    const result = await this.callMethod("getGraduationInfo", [token], chainId);
+    return {
+      isGraduated: result[0],
+      isEligible: result[1],
+      currentMarketCap: result[2],
+      currentHolders: result[3],
+      currentVolume: result[4],
+      thresholdMarketCap: result[5],
+      thresholdHolders: result[6],
+      thresholdVolume: result[7],
+      liquidityPair: result[8],
+    };
+  }
+
+  /**
+   * Check if a token is graduated
+   */
+  async isTokenGraduated(token: string, chainId?: number): Promise<boolean> {
+    return this.callMethod<boolean>("graduatedTokens", [token], chainId);
+  }
+
+  /**
+   * Get the liquidity pair for a graduated token
+   */
+  async getGraduatedPair(token: string, chainId?: number): Promise<string> {
+    return this.callMethod<string>("graduatedPairs", [token], chainId);
+  }
+
+  /**
+   * Get default graduation thresholds
+   */
+  async getDefaultGraduationThresholds(
+    chainId?: number
+  ): Promise<GraduationThresholds> {
+    const [marketCap, volume, holder] = await Promise.all([
+      this.callMethod<bigint>("defaultMarketCapThreshold", [], chainId),
+      this.callMethod<bigint>("defaultVolumeThreshold", [], chainId),
+      this.callMethod<bigint>("defaultHolderThreshold", [], chainId),
+    ]);
+
+    return {
+      defaultMarketCapThreshold: marketCap,
+      defaultVolumeThreshold: volume,
+      defaultHolderThreshold: holder,
+    };
+  }
+
+  /**
+   * Get custom graduation threshold for a token
+   */
+  async getTokenGraduationThreshold(
+    token: string,
+    chainId?: number
+  ): Promise<bigint> {
+    return this.callMethod<bigint>("graduationThreshold", [token], chainId);
+  }
+
+  /**
+   * Get all graduated tokens (helper function)
+   */
+  async getGraduatedTokens(chainId?: number): Promise<string[]> {
+    const allTokens = await this.getAllTokens(chainId);
+    const graduatedTokens: string[] = [];
+
+    for (const token of allTokens) {
+      const isGraduated = await this.isTokenGraduated(token, chainId);
+      if (isGraduated) {
+        graduatedTokens.push(token);
+      }
+    }
+
+    return graduatedTokens;
+  }
+
+  /**
+   * Get graduation progress for a token (percentage towards graduation)
+   */
+  async getGraduationProgress(
+    token: string,
+    chainId?: number
+  ): Promise<{
+    marketCapProgress: number;
+    holderProgress: number;
+    volumeProgress: number;
+    overallProgress: number;
+  }> {
+    const info = await this.getGraduationInfo(token, chainId);
+
+    if (info.isGraduated) {
+      return {
+        marketCapProgress: 100,
+        holderProgress: 100,
+        volumeProgress: 100,
+        overallProgress: 100,
+      };
+    }
+
+    const marketCapProgress = Math.min(
+      100,
+      Number((info.currentMarketCap * BigInt(100)) / info.thresholdMarketCap)
+    );
+
+    const holderProgress = Math.min(
+      100,
+      Number((info.currentHolders * BigInt(100)) / info.thresholdHolders)
+    );
+
+    const volumeProgress = Math.min(
+      100,
+      Number((info.currentVolume * BigInt(100)) / info.thresholdVolume)
+    );
+
+    const overallProgress = Math.min(
+      marketCapProgress,
+      holderProgress,
+      volumeProgress
+    );
+
+    return {
+      marketCapProgress,
+      holderProgress,
+      volumeProgress,
+      overallProgress,
+    };
+  }
+
+  // ==================== HELPER FUNCTIONS ====================
+
   /**
    * Calculate total cost to create a token (including fees and minimum liquidity)
    */
@@ -453,6 +681,74 @@ export class TokenFactoryService extends BaseContractService {
           event.args.symbol,
           event.args.totalSupply,
           event.args.timestamp
+        );
+      },
+      chainId
+    );
+  }
+
+  /**
+   * Listen to TokenGraduated events
+   */
+  async onTokenGraduated(
+    callback: (
+      token: string,
+      creator: string,
+      finalMarketCap: bigint,
+      liquidityPair: string,
+      timestamp: bigint
+    ) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "TokenGraduated",
+      (event: any) => {
+        callback(
+          event.args.token,
+          event.args.creator,
+          event.args.finalMarketCap,
+          event.args.liquidityPair,
+          event.args.timestamp
+        );
+      },
+      chainId
+    );
+  }
+
+  /**
+   * Listen to GraduationThresholdUpdated events
+   */
+  async onGraduationThresholdUpdated(
+    callback: (token: string, threshold: bigint) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "GraduationThresholdUpdated",
+      (event: any) => {
+        callback(event.args.token, event.args.threshold);
+      },
+      chainId
+    );
+  }
+
+  /**
+   * Listen to DefaultGraduationThresholdsUpdated events
+   */
+  async onDefaultGraduationThresholdsUpdated(
+    callback: (
+      marketCapThreshold: bigint,
+      volumeThreshold: bigint,
+      holderThreshold: bigint
+    ) => void,
+    chainId?: number
+  ) {
+    return this.listenToEvent(
+      "DefaultGraduationThresholdsUpdated",
+      (event: any) => {
+        callback(
+          event.args.marketCapThreshold,
+          event.args.volumeThreshold,
+          event.args.holderThreshold
         );
       },
       chainId
