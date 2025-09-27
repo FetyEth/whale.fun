@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import StreamPlayer from "@/components/StreamPlayer";
+import TradingViewChart from "@/components/TradingViewChart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Copy } from "lucide-react";
 
@@ -164,6 +165,7 @@ const Livestream = () => {
 
             {/* Video player (shown after permissions) */}
             {permissionsGranted ? (
+              <>
               <StreamPlayer
                 camEnabled={glCam}
                 micEnabled={glMic}
@@ -188,6 +190,7 @@ const Livestream = () => {
                 roomId={roomId}
                 token={huddleToken}
               />
+              </>
             ) : (
               <Card className="overflow-hidden border-gray-200">
                 <CardContent className="p-8 text-center text-gray-500">
@@ -195,6 +198,21 @@ const Livestream = () => {
                 </CardContent>
               </Card>
             )}
+            {/* Token chart (always visible) */}
+            <div className="mt-4">
+              <Card className="border-gray-200">
+                <CardContent className="p-3 md:p-4">
+                  {(() => {
+                    const map: Record<string, string> = {
+                      WHALE: "BINANCE:ETHUSDT",
+                      ARROW: "BINANCE:BTCUSDT",
+                    };
+                    const symbol = map[selectedToken] || "BINANCE:ETHUSDT";
+                    return <TradingViewChart symbol={symbol} height={420} theme="light" />;
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Right: Sidebar */}
