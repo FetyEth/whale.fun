@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Mic, MicOff, Video as VideoIcon, VideoOff } from "lucide-react";
+import { Mic, MicOff, Video as VideoIcon, VideoOff, CircleDot, Square } from "lucide-react";
 
 export default function RoomLivePage() {
   const params = useParams<{ id: string }>();
@@ -27,6 +27,13 @@ export default function RoomLivePage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [tokenHoldersOnly, setTokenHoldersOnly] = useState(true);
+  const [mirror, setMirror] = useState(false);
+  const [needsUserPlay, setNeedsUserPlay] = useState(false);
+  const playAttemptsRef = useRef<number>(0);
+  const [recording, setRecording] = useState(false);
+  const [recordingBusy, setRecordingBusy] = useState(false);
+  const [recordingWarning, setRecordingWarning] = useState<string>("");
+  // Livestream removed per latest request
   // Treat this page user as host so they can always chat
   const isHost = true;
 
@@ -40,7 +47,6 @@ export default function RoomLivePage() {
   const [selectedAudioId, setSelectedAudioId] = useState<string>("");
   const [micOn, setMicOn] = useState(false);
   const [camOn, setCamOn] = useState(true);
-  const [mirror, setMirror] = useState(false);
 
   // Enumerate devices once
   useEffect(() => {
@@ -135,6 +141,23 @@ export default function RoomLivePage() {
   return (
     <div className="relative min-h-screen bg-black">
       {(() => { /* computed helpers inside JSX scope */ return null })()}
+      {/* Recording indicator */}
+      {recording && (
+        <div
+          className="absolute top-3 left-3 z-30 flex items-center gap-2 bg-red-700/80 border border-red-500/60 rounded-full px-3 py-1 text-white text-xs shadow-lg"
+          aria-live="polite"
+          aria-label="Recording in progress"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-red-300 animate-pulse" />
+          <span className="tracking-wide font-semibold">REC</span>
+        </div>
+      )}
+
+      {recordingWarning && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 px-3 py-2 rounded bg-amber-900/70 border border-amber-600/50 text-amber-100 text-xs">
+          {recordingWarning}
+        </div>
+      )}
       {/* Background: prefer local camera stream; fallback to Huddle iframe */}
       <div className="absolute inset-0 z-0">
         {stream && stream.getVideoTracks().length > 0 ? (
@@ -179,12 +202,6 @@ export default function RoomLivePage() {
         <div className="pointer-events-none absolute inset-0 bg-black/40" />
       )}
 
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-4 py-3">
-        <button onClick={() => router.push("/studio")} className="text-sm px-3 py-1 rounded bg-gray-900/70 text-white">Back</button>
-        <div className="text-white text-sm">Room: <span className="opacity-80">{roomId}</span></div>
-        <div className="w-[120px]" />
-      </div>
       {mediaError && (
         <div className="mx-4 mt-2 rounded border border-amber-600/30 bg-amber-900/40 px-3 py-2 text-amber-100 text-xs">
           {mediaError}. Check browser camera permissions for localhost.
@@ -194,8 +211,8 @@ export default function RoomLivePage() {
       {/* Simple chat panel overlay (right) */}
       <ChatPanel roomId={roomId} token={token} tokenHoldersOnly={tokenHoldersOnly} canChat={isHost || !tokenHoldersOnly} />
 
-      {/* Bottom-center controls */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-gray-900/70 border border-gray-700 rounded-full px-3 py-2">
+      {/* Bottom-center controls (primary) */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-wrap items-center justify-center gap-2 bg-gray-900/80 border border-gray-700 rounded-full px-3 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-gray-900/60">
         <button
           className={`px-3 py-2 rounded-full text-white ${micOn ? "bg-emerald-600" : "bg-gray-800"}`}
           onClick={async () => {
@@ -244,6 +261,81 @@ export default function RoomLivePage() {
         >
           {/* simple icon substitute */}
           <span className="text-xs">Mirror</span>
+        </button>
+
+        {/* Recording controls */}
+        {!recording ? (
+          <button
+            className={`px-3 py-2 rounded-full text-white ${recordingBusy ? "bg-gray-700 cursor-wait" : "bg-red-600 hover:bg-red-500"}`}
+            disabled={recordingBusy}
+            onClick={async () => {
+              if (!roomId) return;
+              setRecordingBusy(true);
+              try {
+                const res = await fetch("/api/huddle01/recordings/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ roomId }) });
+                const data = await res.json();
+                if (res.ok && data?.success) { setRecording(true); setRecordingWarning(""); }
+                else { setRecordingWarning(data?.error || "Failed to start recording"); }
+              } catch (e) {
+                console.warn("Start recording error", e);
+                setRecordingWarning("Failed to start recording");
+              } finally {
+                setRecordingBusy(false);
+              }
+            }}
+            title="Start recording"
+          >
+            <span className="text-xs flex items-center gap-1"><CircleDot size={14} /> Start Rec</span>
+          </button>
+        ) : (
+          <button
+            className={`px-3 py-2 rounded-full text-white ${recordingBusy ? "bg-gray-700 cursor-wait" : "bg-orange-600 hover:bg-orange-500"}`}
+            disabled={recordingBusy}
+            onClick={async () => {
+              if (!roomId) return;
+              setRecordingBusy(true);
+              try {
+                const res = await fetch("/api/huddle01/recordings/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ roomId }) });
+                const data = await res.json();
+                if (res.ok) { setRecording(false); setRecordingWarning(""); }
+                else { setRecordingWarning(data?.error || "Failed to stop recording"); }
+              } catch (e) {
+                console.warn("Stop recording error", e);
+                setRecordingWarning("Failed to stop recording");
+              } finally {
+                setRecordingBusy(false);
+              }
+            }}
+            title="Stop recording"
+          >
+            <span className="text-xs flex items-center gap-1"><Square size={14} /> Stop Rec</span>
+          </button>
+        )}
+
+        {/* End Stream */}
+        <button
+          className="px-3 py-2 rounded-full text-white bg-gray-700 hover:bg-gray-600"
+          onClick={async () => {
+            try {
+              if (recording && roomId) {
+                try { await fetch("/api/huddle01/recordings/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ roomId }) }); } catch {}
+                setRecording(false);
+              }
+              try { stream?.getTracks().forEach((t) => t.stop()); } catch {}
+              if (videoRef.current) {
+                try { (videoRef.current as any).srcObject = null; } catch {}
+                try { (videoRef.current as HTMLVideoElement).pause(); } catch {}
+              }
+              setMicOn(false);
+              setCamOn(false);
+              setStream(null);
+            } finally {
+              router.push("/studio/history");
+            }
+          }}
+          title="End live stream"
+        >
+          <span className="text-xs">End</span>
         </button>
       </div>
 
