@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
 import StreamPlayer from "@/components/StreamPlayer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Copy } from "lucide-react";
 
 const TokenStat = ({
   name,
@@ -110,29 +111,52 @@ const Livestream = () => {
   // Huddle identifiers for inline publish/recording
   const [roomId, setRoomId] = useState<string>("");
   const [huddleToken, setHuddleToken] = useState<string>("");
+  // UI: copy feedback
+  const [copied, setCopied] = useState(false);
+  const displayAddress = "0xe62...09A0";
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(displayAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <main className="px-6 md:px-10 lg:px-16 xl:px-24 py-6 mt-16">
+      <main className="px-6 md:px-10 lg:px-16 xl:px-24 py-6 mt-5">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Profile card + Video */}
           <div className="lg:col-span-2 space-y-4">
             {/* Streamer header */}
             <Card className="border-gray-200">
-              <CardContent className="p-4 md:p-6 flex items-center gap-4">
-                <Avatar className="h-14 w-14 rounded-xl">
-                  <AvatarImage src="/placeholder-user.jpg" alt="Streamer" />
-                  <AvatarFallback>TN</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h2 className="text-xl md:text-2xl font-bold">{glTitle}</h2>
+              <CardContent className="p-5 md:p-6 flex gap-4 items-center">
+                <div className="h-12 w-12 rounded-xl bg-gray-100 border border-[#0000001A] overflow-hidden">
+                  <Avatar className="h-full w-full rounded-xl">
+                    <AvatarImage src="/placeholder-user.jpg" alt="Streamer" />
+                    <AvatarFallback>TN</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900 truncate">{glTitle}</h1>
+                  <div className="mt-2 flex items-center gap-3 flex-wrap text-sm">
+                    <span className="font-bold text-gray-900">TN</span>
+                    <span className="px-2 py-0.5 rounded-full border border-[#0000001A] text-gray-800 bg-white">offchain</span>
                   </div>
-                  <div className="mt-1 text-sm text-gray-600">{glDesc}</div>
-                  <div className="mt-2 flex items-center gap-2 flex-wrap text-sm">
-                    <Badge variant="secondary" className="rounded-full">CM</Badge>
-                    <Badge variant="outline" className="rounded-full">offchain</Badge>
-                    <Badge variant="outline" className="rounded-md font-mono">0xe62...09A0</Badge>
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFEFEF] text-gray-800 border cursor-pointer"
+                      style={{ borderColor: '#0000001A' }}
+                      onClick={handleCopy}
+                      title="Copy address"
+                    >
+                      <Copy className="h-4 w-4" />
+                      <span className="font-mono text-sm">{displayAddress}</span>
+                    </button>
+                    {copied && (
+                      <span className="text-xs text-emerald-700 bg-emerald-100 border border-emerald-200 rounded-full px-2 py-0.5">Copied!</span>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -178,7 +202,7 @@ const Livestream = () => {
             {/* Terms Gate as modal handled below */}
             {/* Boss Battle card */}
             {acceptedTerms && (
-            <Card className="border-gray-200 mt-6">
+            <Card className="border-gray-200 mt-0">
               <CardHeader className="">
                 <CardTitle className="flex items-center justify-between text-base">
                   <div className="flex items-center gap-2">

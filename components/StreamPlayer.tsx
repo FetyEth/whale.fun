@@ -37,6 +37,28 @@ export default function StreamPlayer({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const playTickRef = useRef<number | null>(null);
   const huddleRef = useRef<any>(null);
+  const endedRef = useRef<boolean>(false);
+
+  const stopHuddle = () => {
+    const c: any = huddleRef.current;
+    if (!c) return;
+    try { c.micOff?.(); } catch {}
+    try { c.camOff?.(); } catch {}
+    try { c.disableMic?.(); } catch {}
+    try { c.disableCam?.(); } catch {}
+    try { c.stopProducing?.(); } catch {}
+    try {
+      const producers = c.producers || c._producers || [];
+      if (producers && typeof producers.forEach === 'function') {
+        producers.forEach((p: any) => { try { p?.close?.(); } catch {} });
+      }
+    } catch {}
+    try { c.unpublishTrack?.("audio"); } catch {}
+    try { c.unpublishTrack?.("video"); } catch {}
+    try { c.removeTrack?.("audio"); } catch {}
+    try { c.removeTrack?.("video"); } catch {}
+    try { c.leaveRoom?.(); } catch {}
+  };
 
   const stopStream = () => {
     if (streamRef.current) {
@@ -84,19 +106,9 @@ export default function StreamPlayer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, token]);
 
-  const attachTrackListeners = (stream: MediaStream) => {
-    stream.getTracks().forEach((t) => {
-      t.onended = () => {
-        // Attempt restart on track end
-        void startStream();
-      };
-      const anyTrack = t as any;
-      if (typeof anyTrack.oninactive !== "undefined") anyTrack.oninactive = () => { void startStream(); };
-    });
-  };
-
   const startStream = useCallback(async () => {
     try {
+      if (endedRef.current) return;
       stopStream();
       if (!camEnabled && !micEnabled) return;
       // Prefer decent FPS/size, but allow browser to adapt
@@ -106,7 +118,12 @@ export default function StreamPlayer({
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      attachTrackListeners(stream);
+      // Attach track listeners that can restart if toggles are still on
+      stream.getTracks().forEach((t) => {
+        t.onended = () => { if (!endedRef.current && (camEnabled || micEnabled)) void startStream(); };
+        const anyTrack = t as any;
+        if (typeof anyTrack.oninactive !== "undefined") anyTrack.oninactive = () => { if (!endedRef.current && (camEnabled || micEnabled)) void startStream(); };
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream as any;
         await videoRef.current.play().catch(() => {});
@@ -166,10 +183,29 @@ export default function StreamPlayer({
     return () => {
       navigator.mediaDevices?.removeEventListener?.('devicechange', handler);
     };
+  }, [startStream]);
+
+  // Ensure hard cleanup on unmount as well
+  useEffect(() => {
+    const v = videoRef.current as (HTMLVideoElement & { srcObject?: any }) | null;
+    return () => {
+      endedRef.current = true;
+      try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+      try { stopHuddle(); } catch {}
+      huddleRef.current = null;
+      try {
+        if (v) {
+          v.pause();
+          (v as any).srcObject = null;
+        }
+      } catch {}
+      if (playTickRef.current) cancelAnimationFrame(playTickRef.current);
+    };
   }, []);
 
   // End stream helper: stop tracks then call parent end
   const handleEnd = () => {
+    endedRef.current = true;
     if (recorderRef.current && recorderRef.current.state === "recording") {
       recorderRef.current.stop();
     }
@@ -178,7 +214,7 @@ export default function StreamPlayer({
       streamRef.current = null;
     }
     // Leave Huddle room if joined
-    try { huddleRef.current?.leaveRoom?.(); } catch {}
+    try { stopHuddle(); } catch {}
     huddleRef.current = null;
     // Clear video element
     try {
