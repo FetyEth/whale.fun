@@ -6,27 +6,22 @@ import { configVariable } from "hardhat/config";
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin],
   solidity: {
-    profiles: {
-      default: {
-        version: "0.8.28",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 1, // Minimize size over gas optimization
-          },
-          viaIR: true,
+    version: "0.8.28",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 100, // Even lower runs for better size optimization
+      },
+      metadata: {
+        bytecodeHash: "none",
+      },
+      outputSelection: {
+        "*": {
+          "*": ["evm.bytecode", "evm.deployedBytecode", "abi"],
         },
       },
-      production: {
-        version: "0.8.28",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 1,
-          },
-          viaIR: true,
-        },
-      },
+      // Additional size optimizations
+      viaIR: false, // Keep false for better compatibility
     },
   },
   networks: {

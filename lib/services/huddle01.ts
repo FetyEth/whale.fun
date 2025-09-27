@@ -122,35 +122,6 @@ export class Huddle01Service {
   }
 
   /**
-   * Generate a mock JWT for testing when Huddle01 API is unavailable
-   */
-  private generateMockJWT(roomId: string, userId?: string): string {
-    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-    const payload = btoa(
-      JSON.stringify({
-        roomId,
-        userId: userId || "mock-user",
-        role: "HOST",
-        permissions: {
-          admin: false,
-          canConsume: true,
-          canProduce: true,
-          canProduceSources: { cam: true, mic: true, screen: false },
-          canRecvData: true,
-          canSendData: true,
-          canUpdateMetadata: false,
-        },
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
-      })
-    );
-    const signature = btoa(
-      "mock-signature-" + Math.random().toString(36).substring(2)
-    );
-    return `${header}.${payload}.${signature}`;
-  }
-
-  /**
    * Start recording a meeting
    */
   async startRecording(roomId: string): Promise<RecordingResult> {
