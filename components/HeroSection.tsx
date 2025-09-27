@@ -19,15 +19,15 @@ export class HeroSection extends Component {
               <p className=" text-lg pt-32">
                 shaped by votes, secured by locks.
               </p>
-              <p className="font-britisans text-[59px]  font-bold mt-6 max-w-3xl text-center">
+              <p className="font-britisans text-[62px]   font-bold mt-6 max-w-3xl leading-18 text-center">
                 Launch tokens on-stream. co-created and safe.
               </p>
-              <p className="flex gap-2 mt-8 text-lg items-center">
+              <p className="flex gap-2 mt-3 text-lg text-center justify-center  items-center">
                 built on{" "}
                 <img src="/icons/0g.svg" alt="Logo" className="w-10 h-10" />
               </p>
             </div>
-            <div className="flex justify-between items-center px-10">
+            <div className="flex justify-between pt-5 items-center px-10">
               <div className="text-black flex flex-col gap-3">
                 <p className="font-bradley font-bold text-[22px]">
                   For Viewers
@@ -48,7 +48,7 @@ export class HeroSection extends Component {
               </div>
               <div className="text-black flex flex-col gap-3">
                 <p className="font-bradley font-bold text-[22px]">
-                  For Viewers
+                  For Creators
                 </p>
                 <p className="text-[38px] font-britisans max-w-xs -line-clamp-6 leading-10">
                   Launch tokens live with your audience.{" "}
