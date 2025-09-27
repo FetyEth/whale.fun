@@ -11,8 +11,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@huddle01/server-sdk": "^2.6.2",
-    "@huddle01/web-core": "^2.6.2",
-    "@huddle01/react": "^2.6.2",
     "@monaco-editor/react": "^4.7.0",
     "@openzeppelin/contracts": "^5.4.0",
     "@radix-ui/react-accordion": "^1.2.12",

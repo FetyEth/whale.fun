@@ -1,23 +1,24 @@
-function Howitworks() {
+import React from "react";
+
+function PodSection() {
   return (
     <div className="px-32">
       <div className="flex flex-col py-10 justify-center border-[#ebe3e8] border-l border-r items-center">
         <div>
           <p className="bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
-            HOW IT WORKS
+            BUILT FOR THE POD
           </p>
         </div>
-        <p className="font-britisans font-semibold pt-3 text-[52px] max-w-[400px] text-center leading-12 ">
-          From stream to
-          <span className="flex gap-3">
+        <p className="font-britisans font-semibold pt-3 text-[52px] max-w-[720px] text-center leading-12 ">
+          <span className="flex">
             {" "}
-            <span> token </span>
-            <span className="text-[#B65FFF]">in minutes.</span>
+            <span> Built for creators.</span>
+            <span className="text-[#B65FFF]">Safe for fans.</span>
           </span>
+          <span> Fun for everyone.</span>
         </p>
         <p className="max-w-xs text-lg text-center pt-2">
-          Go live, co-create with your audience, and mint safely—no code, less
-          risk.
+          Co-create live, mint in one click, and launch with safety rails on.
         </p>
         <div className="flex mt-10 gap-10 items-stretch">
           {/* Card 1 */}
@@ -88,4 +89,4 @@ function Howitworks() {
   );
 }
 
-export default Howitworks;
+export default PodSection;
