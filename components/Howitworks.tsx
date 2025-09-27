@@ -1,7 +1,7 @@
 function Howitworks() {
   return (
-    <div className="px-32">
-      <div className="flex flex-col py-10 justify-center border-[#ebe3e8] border-l border-r items-center">
+    <div className="px-32 ">
+      <div className="flex flex-col pb-20 py-10 justify-center border-[#ebe3e8] border-l border-r items-center">
         <div>
           <p className="bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
             HOW IT WORKS
