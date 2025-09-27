@@ -1,49 +1,49 @@
 {
   "network": "amoy",
   "chainId": 80002,
-  "timestamp": "2025-09-27T10:26:39.589Z",
+  "timestamp": "2025-09-27T11:46:19.276Z",
   "deployer": "0x941Bdd008abeD439b1CEe02090c0D7574C27d23F",
   "contracts": {
     "WhaleToken": {
-      "address": "0x2491f07b01bac615298034105a3c7f3ac0660059",
-      "transactionHash": "0xefeca3aea497fb86b7620cacb0a6904ce0d465e094f9d40c004918ffdfe8c89d",
-      "gasUsed": "3770625",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0xefeca3aea497fb86b7620cacb0a6904ce0d465e094f9d40c004918ffdfe8c89d"
+      "address": "0x5df7fdee0e99c652cf45e0fdf548eb73f9b3e001",
+      "transactionHash": "0xb8140841ded2ed285d26e1b7fb54aa6f67c8d0462fcfb837571cdd70cfb27de2",
+      "gasUsed": "3593111",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xb8140841ded2ed285d26e1b7fb54aa6f67c8d0462fcfb837571cdd70cfb27de2"
     },
     "TokenFactory": {
-      "address": "0xfde5b19cd2624361c93f666744b215d235b53ff1",
-      "transactionHash": "0x2e4050804b918064068c86a3f9e62d703dbafea8fdfe5f1de85b470448dc8c7d",
-      "gasUsed": "5386147",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0x2e4050804b918064068c86a3f9e62d703dbafea8fdfe5f1de85b470448dc8c7d"
+      "address": "0x577e856e1a793ae91062443a84772165bc6d18eb",
+      "transactionHash": "0xea2dd0558f493419f0eda131fadce336d8c764622736dc644637b00e06df1786",
+      "gasUsed": "5386159",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xea2dd0558f493419f0eda131fadce336d8c764622736dc644637b00e06df1786"
     },
     "TradingEngine": {
-      "address": "0x580d38314e4d8a5cb733072d1bc47c3e1650d4ce",
-      "transactionHash": "0xc5a6fbb279bc71757ce76a40b650b2a8b406cd3c3096280d63f8c2784b7b5170",
-      "gasUsed": "1923105",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0xc5a6fbb279bc71757ce76a40b650b2a8b406cd3c3096280d63f8c2784b7b5170"
+      "address": "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15",
+      "transactionHash": "0x647d8a6fa8aa3229de33b235bcd5436420e3009859ca50a1d073e01fa49771a3",
+      "gasUsed": "1923117",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x647d8a6fa8aa3229de33b235bcd5436420e3009859ca50a1d073e01fa49771a3"
     },
     "BossBattleArena": {
-      "address": "0x7ba7f2cd24f10425ae9686871f91056eefc0d3b8",
-      "transactionHash": "0x6eb7849a8fe216646d687e4152abddc285ca79a13d7c5c872e25fe974c6c607a",
-      "gasUsed": "3361763",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0x6eb7849a8fe216646d687e4152abddc285ca79a13d7c5c872e25fe974c6c607a"
+      "address": "0x5fc1ebb7e12d02d15af064dc389aeb9ce4974992",
+      "transactionHash": "0xf432818ca95fceeeca4be81ba41fc956c0af42304f7a4f3e0c2c5f840146eb71",
+      "gasUsed": "3361775",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xf432818ca95fceeeca4be81ba41fc956c0af42304f7a4f3e0c2c5f840146eb71"
     },
     "TokenGraduation": {
-      "address": "0x15853eef2bd62a933f81d1b8fd33f18993a77f9f",
-      "transactionHash": "0xa7ec3a7fda2d4ef7fedead81bbfc6e0856d6e444e8405857d98b3df7d011ac56",
-      "gasUsed": "1125674",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0xa7ec3a7fda2d4ef7fedead81bbfc6e0856d6e444e8405857d98b3df7d011ac56"
+      "address": "0xe6a781dad60b82d8de06ca85a24b6694569a51fb",
+      "transactionHash": "0xdb9e3172661a33382280900029313794cee34f083b581bb043ca26d32ac8269c",
+      "gasUsed": "1594109",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xdb9e3172661a33382280900029313794cee34f083b581bb043ca26d32ac8269c"
     },
     "TokenAnalytics": {
-      "address": "0x33c47457f426c42955b3c1937d9161089f6659be",
-      "transactionHash": "0xe2a823d1298227854a71a89703b6eecd2a468f4f04dbf0814e48786cf95f106a",
+      "address": "0x554cd9ad6b3c3be1f8cd122496609d2defb12629",
+      "transactionHash": "0x98c948660ac02ff9ce5c33b2593a38191b0c4fa49a6e3e3210127bf1393a4a9f",
       "gasUsed": "808492",
-      "explorerUrl": "https://amoy.polygonscan.com/tx/0xe2a823d1298227854a71a89703b6eecd2a468f4f04dbf0814e48786cf95f106a"
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x98c948660ac02ff9ce5c33b2593a38191b0c4fa49a6e3e3210127bf1393a4a9f"
     }
   },
   "summary": {
     "totalContracts": 6,
-    "totalGasUsed": "16375806",
+    "totalGasUsed": "16666763",
     "platformStatus": "FULLY DEPLOYED AND TESTED"
   }
 }
