@@ -128,11 +128,17 @@ library BondingCurveLibrary {
         uint256 communitySize,
         uint256 liquidityDepth
     ) internal pure returns (CurveParams memory params) {
+        // Enforce minimum safe values to prevent overflow
+        require(totalSupply >= 1000, "Total supply too small");
+        require(targetMarketCap >= 1e15, "Target market cap too small"); // Min 0.001 ETH
+        require(totalSupply <= MAX_SUPPLY, "Total supply too large");
+        require(targetMarketCap <= 1e24, "Target market cap too large"); // Max 1M ETH
+        
         // Dynamic curve selection based on characteristics
         if (communitySize < 100 && targetMarketCap < 100 ether) {
-            // Small community tokens - steeper exponential curve
-            params.curveType = CurveType.EXPONENTIAL;
-            params.steepness = 2 * PRECISION; // 2x steepness
+            // Small community tokens - use linear curve for safety
+            params.curveType = CurveType.LINEAR;
+            params.steepness = PRECISION / 1000; // Very gentle slope
         } else if (communitySize > 1000 && targetMarketCap > 1000 ether) {
             // Large community tokens - gentler sigmoid curve
             params.curveType = CurveType.SIGMOID;
@@ -140,11 +146,20 @@ library BondingCurveLibrary {
         } else {
             // Medium tokens - logarithmic curve for stability
             params.curveType = CurveType.LOGARITHMIC;
+            params.steepness = PRECISION / 1000; // Even gentler steepness
         }
         
-        // Calculate initial and final prices
-        params.initialPrice = (targetMarketCap * PRECISION) / (totalSupply * 1000); // Start at 0.1% of target
-        params.finalPrice = (targetMarketCap * PRECISION) / totalSupply; // End at target price
+        // Calculate initial and final prices with safety bounds
+        uint256 priceRatio = 100; // Start at 1% of target instead of 0.1%
+        params.initialPrice = targetMarketCap / (totalSupply * priceRatio);
+        params.finalPrice = targetMarketCap / totalSupply;
+        
+        // Ensure prices are within safe bounds
+        if (params.initialPrice < MIN_PRICE) params.initialPrice = MIN_PRICE;
+        if (params.finalPrice > MAX_PRICE) params.finalPrice = MAX_PRICE;
+        if (params.finalPrice <= params.initialPrice) {
+            params.finalPrice = params.initialPrice * 2; // Ensure some price growth
+        }
         
         // Set virtual balance based on liquidity depth
         params.virtualBalance = liquidityDepth;
@@ -168,8 +183,10 @@ library BondingCurveLibrary {
         pure 
         returns (uint256) 
     {
-        // P(s) = initialPrice * e^(steepness * s / PRECISION)
+        // P(s) = initialPrice * e^(steepness * s / PRECISION) - prevent overflow
+        if (params.steepness == 0 || supply == 0) return params.initialPrice;
         uint256 exponent = (params.steepness * supply) / PRECISION;
+        if (exponent > 50 * PRECISION) exponent = 50 * PRECISION; // Cap exponent to prevent overflow
         return (params.initialPrice * _exp(exponent)) / PRECISION;
     }
     
@@ -204,7 +221,7 @@ library BondingCurveLibrary {
         }
         
         uint256 sigmoid = PRECISION + expValue;
-        return (params.finalPrice * PRECISION) / sigmoid;
+        return params.finalPrice / sigmoid * PRECISION; // Reorder to prevent overflow
     }
     
     function _calculatePolynomialPrice(uint256 supply, CurveParams memory params) 
@@ -212,7 +229,8 @@ library BondingCurveLibrary {
         pure 
         returns (uint256) 
     {
-        // P(s) = initialPrice + steepness * s^2 / PRECISION
+        // P(s) = initialPrice + steepness * s^2 / PRECISION - prevent overflow
+        if (supply > 1e12) supply = 1e12; // Cap supply to prevent overflow
         uint256 squared = (supply * supply) / PRECISION;
         return params.initialPrice + (params.steepness * squared) / PRECISION;
     }
@@ -223,7 +241,7 @@ library BondingCurveLibrary {
         pure 
         returns (uint256) 
     {
-        // ∫(initialPrice + steepness * s)ds = initialPrice * s + steepness * s^2 / 2
+        // ∫(initialPrice + steepness * s)ds = initialPrice * s + steepness * s^2 / 2 - prevent overflow
         uint256 fromValue = params.initialPrice * from + (params.steepness * from * from) / (2 * PRECISION);
         uint256 toValue = params.initialPrice * to + (params.steepness * to * to) / (2 * PRECISION);
         return toValue - fromValue;

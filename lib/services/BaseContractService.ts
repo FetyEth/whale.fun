@@ -95,9 +95,39 @@ export abstract class BaseContractService<T extends Contract = Contract> {
     chainId?: number
   ): Promise<R> {
     try {
-      const contract = await this.getContract(chainId);
-      return await contract[methodName](...args);
+      // For read-only calls, try direct RPC first to avoid wallet provider issues
+      if (!chainId) {
+        const connection = await import("@/utils/Blockchain").then(m => m.getBlockchainConnection());
+        chainId = Number((await connection).network.chainId);
+      }
+
+      // Use direct RPC provider for read calls to avoid wallet issues
+      const { ethers } = await import("ethers");
+      const { SUPPORTED_NETWORKS } = await import("@/utils/Blockchain");
+      
+      const networkConfig = SUPPORTED_NETWORKS[chainId!];
+      if (!networkConfig) {
+        throw new Error(`Network ${chainId} not supported`);
+      }
+
+      const deployment = this.config.deployments[chainId!];
+      if (!deployment) {
+        throw new Error(`Contract not deployed on network ${chainId}`);
+      }
+
+      // Create direct RPC provider (not wallet provider)
+      const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+      const contract = new ethers.Contract(deployment.address, this.config.abi, provider);
+
+      console.log(`Calling ${this.config.name}.${methodName} with args:`, args);
+      console.log(`Contract address:`, deployment.address);
+      console.log(`Using RPC:`, networkConfig.rpcUrl);
+      
+      const result = await contract[methodName](...args);
+      console.log(`${methodName} result:`, result);
+      return result;
     } catch (error) {
+      console.error(`Contract call ${this.config.name}.${methodName} failed:`, error);
       throw new Error(
         `Failed to call ${this.config.name}.${methodName}: ${error}`
       );
@@ -114,15 +144,53 @@ export abstract class BaseContractService<T extends Contract = Contract> {
     chainId?: number
   ): Promise<ContractTransactionResponse> {
     try {
-      const contract = await this.getContract(chainId);
-
-      // Estimate gas if not provided
-      if (!options.gasLimit) {
-        options.gasLimit = await estimateGas(contract, methodName, args);
+      // Get current network if not provided
+      if (!chainId) {
+        const connection = await import("@/utils/Blockchain").then(m => m.getBlockchainConnection());
+        chainId = Number((await connection).network.chainId);
       }
 
-      return await contract[methodName](...args, options);
+      // Ensure we're using the correct contract deployment
+      const deployment = this.config.deployments[chainId!];
+      if (!deployment) {
+        throw new Error(`Contract not deployed on network ${chainId}`);
+      }
+
+      // Force fresh contract instance with wallet provider for signing
+      this.contractInstance = null;
+      const contract = await this.getContract(chainId);
+
+      console.log(`Executing ${this.config.name}.${methodName} with args:`, args);
+      console.log(`Contract address:`, deployment.address);
+      console.log(`Network:`, chainId);
+
+      // Estimate gas if not provided - use direct RPC for estimation
+      if (!options.gasLimit) {
+        console.log(`Estimating gas for ${methodName}...`);
+        try {
+          // Use direct RPC provider for gas estimation (more reliable)
+          const { ethers } = await import("ethers");
+          const { SUPPORTED_NETWORKS } = await import("@/utils/Blockchain");
+          
+          const networkConfig = SUPPORTED_NETWORKS[chainId!];
+          const directProvider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+          const directContract = new ethers.Contract(deployment.address, this.config.abi, directProvider);
+          
+          options.gasLimit = await directContract[methodName].estimateGas(...args);
+          console.log(`Estimated gas:`, options.gasLimit.toString());
+        } catch (gasError) {
+          console.warn(`Direct gas estimation failed, trying with wallet provider:`, gasError);
+          // Fallback to wallet provider estimation
+          options.gasLimit = await estimateGas(contract, methodName, args);
+          console.log(`Fallback estimated gas:`, options.gasLimit.toString());
+        }
+      }
+
+      const tx = await contract[methodName](...args, options);
+      console.log(`Transaction submitted:`, tx.hash);
+      return tx;
     } catch (error) {
+      console.error(`Execute method ${this.config.name}.${methodName} failed:`, error);
       throw new Error(
         `Failed to execute ${this.config.name}.${methodName}: ${error}`
       );

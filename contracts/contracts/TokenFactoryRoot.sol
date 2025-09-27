@@ -35,7 +35,6 @@ contract TokenFactory is ReentrancyGuard, Ownable, ITokenFactory {
     // Token creation limits
     mapping(address => uint256) public creatorTokenCount;
     mapping(address => uint256) public lastTokenCreation;
-    uint256 public constant CREATION_COOLDOWN = 1 hours;
     
     // Enhanced creator tracking
     mapping(address => address) public tokenToCreator;
@@ -99,7 +98,6 @@ contract TokenFactory is ReentrancyGuard, Ownable, ITokenFactory {
         require(bytes(name).length > 0 && bytes(name).length <= 32, "Invalid name");
         require(bytes(symbol).length > 0 && bytes(symbol).length <= 10, "Invalid symbol");
         require(creatorTokenCount[msg.sender] < maxTokensPerCreator, "Max tokens reached");
-        require(block.timestamp >= lastTokenCreation[msg.sender] + CREATION_COOLDOWN, "Cooldown active");
         
         // Deploy new enhanced token contract
         CreatorToken newToken = new CreatorToken(

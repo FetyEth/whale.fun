@@ -26,8 +26,8 @@ export interface TokenCreationParams {
   totalSupply: bigint;
   targetMarketCap: bigint;
   creatorFeePercent: bigint;
-  description: string;
-  logoUrl: string;
+  description?: string;
+  logoUrl?: string;
   liquidityAmount?: bigint; // ETH amount for initial liquidity
 }
 
@@ -57,7 +57,6 @@ export interface CreatorStats {
   lastCreationTime: bigint;
   tokens: string[];
   canCreateNow: boolean;
-  cooldownRemaining: bigint;
 }
 
 /**
@@ -72,6 +71,18 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
       // Base Sepolia
       address: "0x...", // Replace with actual deployment address
       deployedAt: 0, // Replace with deployment block number
+      verified: false,
+    },
+    80002: {
+      // Polygon Amoy
+      address: "0xBdfD745164Cd42Af9F00803a40405b01f019621d",
+      deployedAt: 26957976,
+      verified: false,
+    },
+    44787: {
+      // Celo Alfajores
+      address: "0x5755574a0d453729568f068026ef03078e8ea87c",
+      deployedAt: 0, // Update with actual block number if needed
       verified: false,
     },
     // Add other networks as needed
@@ -276,13 +287,7 @@ export class TokenFactoryRootService extends BaseContractService {
       this.getCreatorTokens(creator, chainId),
     ]);
 
-    const cooldown = await this.getCreationCooldown(chainId);
-    const currentTime = BigInt(Math.floor(Date.now() / 1000));
-    const nextAllowedTime = lastCreation + cooldown;
-    const canCreateNow = currentTime >= nextAllowedTime;
-    const cooldownRemaining = canCreateNow
-      ? BigInt(0)
-      : nextAllowedTime - currentTime;
+    const canCreateNow = true; // No cooldown restrictions
 
     return {
       tokenCount,
@@ -290,7 +295,6 @@ export class TokenFactoryRootService extends BaseContractService {
       lastCreationTime: lastCreation,
       tokens,
       canCreateNow,
-      cooldownRemaining,
     };
   }
 
@@ -301,27 +305,32 @@ export class TokenFactoryRootService extends BaseContractService {
     creator: string,
     chainId?: number
   ): Promise<boolean> {
-    const [tokenCount, lastCreation, maxTokens, cooldown] = await Promise.all([
+    const [tokenCount, maxTokens] = await Promise.all([
       this.getCreatorTokenCount(creator, chainId),
-      this.getLastTokenCreation(creator, chainId),
       this.getMaxTokensPerCreator(chainId),
-      this.getCreationCooldown(chainId),
     ]);
 
-    const currentTime = BigInt(Math.floor(Date.now() / 1000));
     const hasCapacity = tokenCount < maxTokens;
-    const cooldownPassed = currentTime >= lastCreation + cooldown;
 
-    return hasCapacity && cooldownPassed;
+    return hasCapacity;
   }
 
   // ==================== Factory Statistics ====================
 
   /**
-   * Get comprehensive factory statistics
+   * Get factory statistics
    */
   async getFactoryStats(chainId?: number): Promise<FactoryStats> {
+    // If no chainId provided, get current network from MetaMask
+    if (!chainId) {
+      const connection = await import("@/utils/Blockchain").then((m) =>
+        m.getBlockchainConnection()
+      );
+      chainId = Number((await connection).network.chainId);
+    }
+
     const result = await this.callMethod("getFactoryStats", [], chainId);
+
     return {
       totalTokensCreated: result[0],
       totalVolumeTraded: result[1],
@@ -332,6 +341,7 @@ export class TokenFactoryRootService extends BaseContractService {
 
   /**
    * Get total tokens created
+{{ ... }}
    */
   async getTotalTokensCreated(chainId?: number): Promise<bigint> {
     return await this.callMethod("totalTokensCreated", [], chainId);
@@ -372,13 +382,6 @@ export class TokenFactoryRootService extends BaseContractService {
    */
   async getMaxTokensPerCreator(chainId?: number): Promise<bigint> {
     return await this.callMethod("maxTokensPerCreator", [], chainId);
-  }
-
-  /**
-   * Get creation cooldown period
-   */
-  async getCreationCooldown(chainId?: number): Promise<bigint> {
-    return await this.callMethod("CREATION_COOLDOWN", [], chainId);
   }
 
   /**
