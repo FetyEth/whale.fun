@@ -48,12 +48,12 @@ const TokenCard = ({
 
 function PoolSection() {
   return (
-    <div className="px-32 pt-10">
+    <div className="px-32">
       <div className="flex py-10 px-10 justify-between border-t border-[#ebe3e8] border-l border-r items-center">
         <div>
           <div>
             <span className="inline-block bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
-              HOW IT WORKS
+              TODAY&apos;S ARENA
             </span>
           </div>
           <p className="font-britisans font-semibold pt-3 text-[52px] max-w-[465px] text-left leading-12 ">
