@@ -51,7 +51,16 @@ export function useUser(): UseUserReturn {
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      
+      if (data.usingFallback) {
+        console.info('Using fallback storage for user creation');
+      }
 
       if (response.ok) {
         setUser(data.user);
@@ -65,6 +74,8 @@ export function useUser(): UseUserReturn {
       }
     } catch (error) {
       console.error('Error creating user:', error);
+      // Don't show onboarding if there's a connection error
+      setShowOnboarding(false);
     }
   }, [address]);
 
@@ -79,7 +90,16 @@ export function useUser(): UseUserReturn {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/users?walletAddress=${address}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      
+      if (data.usingFallback) {
+        console.info('Using fallback storage for user data');
+      }
 
       if (data.exists) {
         setUser(data.user);
@@ -94,6 +114,8 @@ export function useUser(): UseUserReturn {
       }
     } catch (error) {
       console.error('Error checking user:', error);
+      // Don't show onboarding if there's a connection error
+      setShowOnboarding(false);
     } finally {
       setIsLoading(false);
     }

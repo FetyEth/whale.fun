@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongoose';
 import User from '@/lib/models/User';
+import { FallbackStorage } from '@/lib/fallback-storage';
 
 // PATCH /api/users/onboard - Mark user as onboarded
 export async function PATCH(request: NextRequest) {
@@ -15,13 +16,21 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    let user;
+    let usingFallback = false;
 
-    const user = await User.findOneAndUpdate(
-      { walletAddress: walletAddress.toLowerCase() },
-      { isOnboarded: true },
-      { new: true }
-    );
+    try {
+      await connectToDatabase();
+      user = await User.findOneAndUpdate(
+        { walletAddress: walletAddress.toLowerCase() },
+        { isOnboarded: true },
+        { new: true }
+      );
+    } catch (dbError) {
+      console.warn('MongoDB unavailable, using fallback storage:', dbError);
+      usingFallback = true;
+      user = FallbackStorage.markOnboarded(walletAddress);
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -33,12 +42,13 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(
       { 
         message: 'User onboarding completed',
+        usingFallback,
         user: {
           walletAddress: user.walletAddress,
           isOnboarded: user.isOnboarded,
           profile: user.profile,
           preferences: user.preferences,
-          updatedAt: user.updatedAt,
+          updatedAt: user.updatedAt || user.createdAt,
         }
       },
       { status: 200 }

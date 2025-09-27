@@ -1,21 +1,32 @@
 "use client";
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Rocket, 
-  Coins, 
-  Trophy, 
-  Briefcase, 
-  ChevronRight, 
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Rocket,
+  Coins,
+  Trophy,
+  Briefcase,
+  ChevronRight,
   ChevronLeft,
   X,
-  Sparkles
-} from 'lucide-react';
+  Sparkles,
+} from "lucide-react";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -36,70 +47,79 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: 1,
     title: "Welcome to Whale.fun! 🐋",
-    description: "Your gateway to the most exciting meme token ecosystem. Let's get you started on your journey to becoming a crypto whale!",
+    description:
+      "Your gateway to the most exciting meme token ecosystem. Let's get you started on your journey to becoming a crypto whale!",
     icon: <Sparkles className="w-8 h-8 text-blue-500" />,
     features: [
       "Launch your own meme tokens",
       "Trade with the community",
       "Battle in the arena",
-      "Build your portfolio"
-    ]
+      "Build your portfolio",
+    ],
   },
   {
     id: 2,
     title: "Explore Tokens",
-    description: "Discover trending meme tokens, analyze their performance, and find the next big thing before it moons!",
+    description:
+      "Discover trending meme tokens, analyze their performance, and find the next big thing before it moons!",
     icon: <Rocket className="w-8 h-8 text-green-500" />,
     features: [
       "Browse trending tokens",
       "View real-time charts",
       "Check community sentiment",
-      "Filter by categories"
+      "Filter by categories",
     ],
-    action: "Visit Explore page"
+    action: "Visit Explore page",
   },
   {
     id: 3,
     title: "Launch Your Token",
-    description: "Create your own meme token in minutes! Set up tokenomics, add liquidity, and watch your community grow.",
+    description:
+      "Create your own meme token in minutes! Set up tokenomics, add liquidity, and watch your community grow.",
     icon: <Coins className="w-8 h-8 text-yellow-500" />,
     features: [
       "Easy token creation",
       "Custom tokenomics",
       "Built-in liquidity pools",
-      "Community tools"
+      "Community tools",
     ],
-    action: "Start launching"
+    action: "Start launching",
   },
   {
     id: 4,
     title: "Battle Arena",
-    description: "Compete with other traders in epic battles! Show off your trading skills and climb the leaderboards.",
+    description:
+      "Compete with other traders in epic battles! Show off your trading skills and climb the leaderboards.",
     icon: <Trophy className="w-8 h-8 text-red-500" />,
     features: [
       "PvP trading battles",
       "Real-time competitions",
       "Skill-based matchmaking",
-      "Exclusive rewards"
+      "Exclusive rewards",
     ],
-    action: "Enter Arena"
+    action: "Enter Arena",
   },
   {
     id: 5,
     title: "Your Portfolio",
-    description: "Track your investments, monitor performance, and manage your growing crypto empire all in one place.",
+    description:
+      "Track your investments, monitor performance, and manage your growing crypto empire all in one place.",
     icon: <Briefcase className="w-8 h-8 text-purple-500" />,
     features: [
       "Real-time portfolio tracking",
       "P&L analytics",
       "Transaction history",
-      "Performance insights"
+      "Performance insights",
     ],
-    action: "View Portfolio"
-  }
+    action: "View Portfolio",
+  },
 ];
 
-export function OnboardingModal({ isOpen, onClose, onComplete }: OnboardingModalProps) {
+export function OnboardingModal({
+  isOpen,
+  onClose,
+  onComplete,
+}: OnboardingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleNext = () => {
@@ -142,8 +162,10 @@ export function OnboardingModal({ isOpen, onClose, onComplete }: OnboardingModal
           </Button>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-bold">Getting Started</DialogTitle>
-              <Badge variant="secondary">
+              <DialogTitle className="text-2xl font-bold">
+                Getting Started
+              </DialogTitle>
+              <Badge variant="secondary" className="mr-8">
                 {currentStep + 1} of {tutorialSteps.length}
               </Badge>
             </div>
@@ -153,9 +175,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete }: OnboardingModal
 
         <Card className="border-0 shadow-none">
           <CardHeader className="text-center pb-4">
-            <div className="flex justify-center mb-4">
-              {step.icon}
-            </div>
+            <div className="flex justify-center mb-4">{step.icon}</div>
             <CardTitle className="text-xl">{step.title}</CardTitle>
             <CardDescription className="text-base">
               {step.description}
@@ -200,12 +220,11 @@ export function OnboardingModal({ isOpen, onClose, onComplete }: OnboardingModal
             Skip Tutorial
           </Button>
 
-          <Button
-            onClick={handleNext}
-            className="flex items-center space-x-2"
-          >
+          <Button onClick={handleNext} className="flex items-center  space-x-2">
             <span>
-              {currentStep === tutorialSteps.length - 1 ? 'Get Started' : 'Next'}
+              {currentStep === tutorialSteps.length - 1
+                ? "Get Started"
+                : "Next"}
             </span>
             <ChevronRight className="w-4 h-4" />
           </Button>
