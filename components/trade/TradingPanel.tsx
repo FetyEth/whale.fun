@@ -5,18 +5,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createCreatorTokenViemService } from "@/lib/services/CreatorTokenViemService";
 
-// Helper functions for Wei/Ether conversions
+// Helper functions for Wei/Ether conversions (BigInt safe)
 const parseEther = (value: string): bigint => {
-  const num = parseFloat(value);
-  if (isNaN(num)) return BigInt(0);
-  // Convert to Wei (multiply by 10^18)
-  return BigInt(Math.floor(num * 1e18));
+  if (!value) return 0n;
+  const [whole, frac = ""] = value.split(".");
+  const wholeWei = BigInt(whole || "0") * 10n ** 18n;
+  const fracPadded = (frac + "0".repeat(18)).slice(0, 18);
+  const fracWei = BigInt(fracPadded || "0");
+  return wholeWei + fracWei;
 };
 
 const formatEther = (value: bigint): string => {
-  // Convert from Wei to Ether (divide by 10^18)
-  const num = Number(value) / 1e18;
-  return num.toFixed(6); // Show 6 decimal places
+  const negative = value < 0n;
+  const v = negative ? -value : value;
+  const whole = v / 10n ** 18n;
+  const frac = v % 10n ** 18n;
+  // Show up to 6 decimals, trimmed
+  const fracStr = frac.toString().padStart(18, "0").slice(0, 6).replace(/0+$/, "");
+  return `${negative ? "-" : ""}${whole.toString()}${fracStr ? "." + fracStr : ""}`;
 };
 
 interface TradingPanelProps {
@@ -37,6 +43,8 @@ const TradingPanel = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState<string>("0");
   const [estimatedProceeds, setEstimatedProceeds] = useState<string>("0");
+  const [estimatedCostWei, setEstimatedCostWei] = useState<bigint>(0n);
+  const [estimatedProceedsWei, setEstimatedProceedsWei] = useState<bigint>(0n);
 
   // Update estimates when amount changes
   useEffect(() => {
@@ -45,6 +53,8 @@ const TradingPanel = ({
     } else {
       setEstimatedCost("0");
       setEstimatedProceeds("0");
+      setEstimatedCostWei(0n);
+      setEstimatedProceedsWei(0n);
     }
   }, [amount, tradeMode]);
 
@@ -65,22 +75,26 @@ const TradingPanel = ({
         // calculateBuyCost returns the cost in Wei (ETH)
         const costInWei = await service.calculateBuyCost(tokenAmount);
         console.log("costInWei:", costInWei.toString());
-        const costInEth = formatEther(costInWei);
+        const costInEth = formatEther(costInWei as unknown as bigint);
         console.log("costInEth:", costInEth);
         setEstimatedCost(costInEth);
+        setEstimatedCostWei(costInWei as unknown as bigint);
       } else {
         console.log("calculating sell price");
         // calculateSellPrice returns the proceeds in Wei (ETH)
         const proceedsInWei = await service.calculateSellPrice(tokenAmount);
         console.log("proceedsInWei:", proceedsInWei.toString());
-        const proceedsInEth = formatEther(proceedsInWei);
+        const proceedsInEth = formatEther(proceedsInWei as unknown as bigint);
         console.log("proceedsInEth:", proceedsInEth);
         setEstimatedProceeds(proceedsInEth);
+        setEstimatedProceedsWei(proceedsInWei as unknown as bigint);
       }
     } catch (err) {
       console.error("Error calculating estimates:", err);
       setEstimatedCost("0");
       setEstimatedProceeds("0");
+      setEstimatedCostWei(0n);
+      setEstimatedProceedsWei(0n);
     }
   };
 
@@ -94,8 +108,8 @@ const TradingPanel = ({
       const service = createCreatorTokenViemService(tokenAddress);
 
       if (tradeMode === "Buy") {
-        // Convert estimated cost from ETH string to Wei
-        const costInWei = parseEther(estimatedCost);
+        // Use cached wei estimate to avoid precision loss
+        const costInWei = estimatedCostWei > 0n ? estimatedCostWei : parseEther(estimatedCost);
         console.log("Executing buy:");
         console.log("- Token amount (Wei):", tokenAmount.toString());
         console.log("- Cost (Wei):", costInWei.toString());

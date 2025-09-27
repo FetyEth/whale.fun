@@ -15,6 +15,7 @@ import { tokenDataViemService, type TokenData } from "@/lib/services/TokenDataVi
 import { getBlockchainConnection } from "@/utils/Blockchain";
 import { formatEther } from "ethers";
 import TradingPanel from "@/components/trade/TradingPanel";
+import tokenDataService from "@/lib/services/TokenDataService";
 
 const TradePage = () => {
   const params = useParams<{ address: string }>();

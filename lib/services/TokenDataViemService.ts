@@ -161,13 +161,13 @@ export class TokenDataViemService {
         publicClient.readContract({
           address: chainConfig.factoryAddress as `0x${string}`,
           abi: factoryABI,
-          functionName: "getTokenCreator",
+          functionName: "tokenToCreator",
           args: [tokenAddress],
         }) as Promise<string>,
         publicClient.readContract({
           address: chainConfig.factoryAddress as `0x${string}`,
           abi: factoryABI,
-          functionName: "getTokenLaunchTime",
+          functionName: "tokenToLaunchTime",
           args: [tokenAddress],
         }) as Promise<bigint>,
       ]);
