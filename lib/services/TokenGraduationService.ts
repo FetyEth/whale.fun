@@ -7,6 +7,7 @@ import {
 } from "./BaseContractService";
 import TokenGraduationABI from "@/config/abi/TokenGraduation.json";
 import { CreatorTokenService } from "./CreatorTokenService";
+import { TradingEngineService } from "./TradingEngineService";
 import {
   Zer0dexV3Service,
   SupportedChainId,
@@ -70,6 +71,7 @@ export enum DEXType {
   SUSHISWAP = "SUSHISWAP",
   PANCAKESWAP = "PANCAKESWAP",
   ZER0DEX_V3 = "ZER0DEX_V3",
+  TRADING_ENGINE = "TRADING_ENGINE",
   CUSTOM = "CUSTOM",
 }
 
@@ -107,6 +109,14 @@ export const DEFAULT_DEX_CONFIGS: Record<number, DEXConfig[]> = {
   // 0G Mainnet
   16661: [
     {
+      name: "TradingEngine",
+      factoryAddress: "0x...", // TradingEngine contract address
+      routerAddress: "0x...", // TradingEngine contract address (same as factory)
+      supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+      isV3: false, // Custom AMM implementation
+      chainId: 16661,
+    },
+    {
       name: "Zer0dex V3",
       factoryAddress: "0x7453582657F056ce5CfcEeE9E31E4BC390fa2b3c",
       routerAddress: "0xb95B5953FF8ee5D5d9818CdbEfE363ff2191318c",
@@ -121,6 +131,14 @@ export const DEFAULT_DEX_CONFIGS: Record<number, DEXConfig[]> = {
   // 0G Testnet
   16600: [
     {
+      name: "TradingEngine",
+      factoryAddress: "0x...", // TradingEngine contract address
+      routerAddress: "0x...", // TradingEngine contract address (same as factory)
+      supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+      isV3: false, // Custom AMM implementation
+      chainId: 16600,
+    },
+    {
       name: "Zer0dex V3",
       factoryAddress: "0x7453582657F056ce5CfcEeE9E31E4BC390fa2b3c",
       routerAddress: "0xb95B5953FF8ee5D5d9818CdbEfE363ff2191318c",
@@ -134,6 +152,14 @@ export const DEFAULT_DEX_CONFIGS: Record<number, DEXConfig[]> = {
   ],
   // Base Sepolia (example)
   84532: [
+    {
+      name: "TradingEngine",
+      factoryAddress: "0x...", // TradingEngine contract address
+      routerAddress: "0x...", // TradingEngine contract address (same as factory)
+      supportedFeeTiers: [5, 30, 95], // baseFee, typical fee, maxFee (in basis points)
+      isV3: false, // Custom AMM implementation
+      chainId: 84532,
+    },
     {
       name: "Uniswap V3",
       factoryAddress: "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24",
@@ -165,6 +191,11 @@ export class TokenGraduationService extends BaseContractService {
     // Initialize Zer0dex V3 services
     this.dexServices.set("ZER0DEX_V3_16661", new Zer0dexV3Service(16661));
     this.dexServices.set("ZER0DEX_V3_16600", new Zer0dexV3Service(16600));
+
+    // Initialize TradingEngine services
+    this.dexServices.set("TRADING_ENGINE_16661", new TradingEngineService());
+    this.dexServices.set("TRADING_ENGINE_16600", new TradingEngineService());
+    this.dexServices.set("TRADING_ENGINE_84532", new TradingEngineService());
   }
 
   /**
@@ -184,6 +215,10 @@ export class TokenGraduationService extends BaseContractService {
       const service = new Zer0dexV3Service(
         dexConfig.chainId as SupportedChainId
       );
+      this.dexServices.set(key, service);
+      return service;
+    } else if (dexConfig.name.toLowerCase().includes("tradingengine")) {
+      const service = new TradingEngineService();
       this.dexServices.set(key, service);
       return service;
     }
@@ -308,6 +343,19 @@ export class TokenGraduationService extends BaseContractService {
   ): Promise<PoolCreationResult> {
     const dexService = this.getDEXService(dexConfig);
 
+    // Handle TradingEngine specifically
+    if (dexConfig.name.toLowerCase().includes("tradingengine")) {
+      return await this.createTradingEnginePool(
+        token,
+        dexService,
+        dexConfig,
+        tokenAmount,
+        ethAmount,
+        params,
+        chainId
+      );
+    }
+
     if (dexConfig.isV3) {
       return await this.createV3Pool(
         token,
@@ -404,6 +452,95 @@ export class TokenGraduationService extends BaseContractService {
   ): Promise<PoolCreationResult> {
     // Implementation for V2 style DEXs
     throw new Error("V2 style DEX integration not implemented yet");
+  }
+
+  /**
+   * Create TradingEngine pool for graduation
+   */
+  private async createTradingEnginePool(
+    token: string,
+    tradingEngineService: TradingEngineService,
+    dexConfig: DEXConfig,
+    tokenAmount: bigint,
+    ethAmount: bigint,
+    params: GraduationParams,
+    chainId: number
+  ): Promise<PoolCreationResult> {
+    try {
+      // Get base token (ETH/WETH equivalent for the chain)
+      const baseToken = this.getBaseTokenForChain(chainId);
+
+      // Create trading pair using TradingEngine
+      const pairCreation = await tradingEngineService.createPair(
+        token,
+        baseToken,
+        { gasLimit: BigInt(500000) } // Reasonable gas limit
+      );
+
+      let liquidityResult: any = null;
+
+      // Add initial liquidity if amounts are provided
+      if (tokenAmount > 0 && ethAmount > 0) {
+        // Calculate minimum amounts with 5% slippage tolerance
+        const slippageTolerance = params.slippageTolerance || 5;
+        const amountAMin =
+          (tokenAmount * BigInt(100 - slippageTolerance)) / BigInt(100);
+        const amountBMin =
+          (ethAmount * BigInt(100 - slippageTolerance)) / BigInt(100);
+
+        liquidityResult = await tradingEngineService.addLiquidity(
+          {
+            pairId: pairCreation.pairId,
+            amountADesired: tokenAmount,
+            amountBDesired: ethAmount,
+            amountAMin,
+            amountBMin,
+            deadline: params.deadline || Math.floor(Date.now() / 1000) + 3600, // 1 hour deadline
+          },
+          {
+            gasLimit: BigInt(800000), // Higher gas limit for liquidity
+            value: ethAmount, // Send ETH value
+          }
+        );
+      }
+
+      // Get the pair information to retrieve the pool address
+      const pairInfo = await tradingEngineService.getPairInfo(
+        pairCreation.pairId
+      );
+
+      return {
+        poolAddress: pairCreation.pairId, // TradingEngine uses pairId as pool identifier
+        txHash: liquidityResult?.txHash || pairCreation.txHash,
+        tokenAmount: liquidityResult?.amountA || tokenAmount,
+        ethAmount: liquidityResult?.amountB || ethAmount,
+        liquidityTokens: liquidityResult?.liquidity,
+      };
+    } catch (error) {
+      throw new Error(`Failed to create TradingEngine pool: ${error}`);
+    }
+  }
+
+  /**
+   * Get base token address for a specific chain
+   */
+  private getBaseTokenForChain(chainId: number): string {
+    const baseTokens: Record<number, string> = {
+      16661: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on 0G Mainnet
+      16600: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on 0G Testnet
+      84532: "0x4200000000000000000000000000000000000006", // WETH on Base Sepolia
+      8453: "0x4200000000000000000000000000000000000006", // WETH on Base Mainnet
+      30: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on Rootstock Mainnet
+      31: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on Rootstock Testnet
+      1: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH on Ethereum Mainnet
+    };
+
+    const baseToken = baseTokens[chainId];
+    if (!baseToken) {
+      throw new Error(`No base token configured for chain ${chainId}`);
+    }
+
+    return baseToken;
   }
 
   // ==================== Graduation Information ====================
@@ -699,6 +836,184 @@ export class TokenGraduationService extends BaseContractService {
     );
 
     return status;
+  }
+
+  // ==================== TradingEngine-Specific Methods ====================
+
+  /**
+   * Graduate token directly to TradingEngine
+   */
+  async graduateTokenToTradingEngine(
+    token: string,
+    tokenAmount: bigint,
+    ethAmount: bigint,
+    options: TransactionOptions = {},
+    chainId: number = 16661
+  ): Promise<PoolCreationResult> {
+    // Get TradingEngine configuration for the chain
+    const dexConfigs = this.getAvailableDEXConfigs(chainId);
+    const tradingEngineConfig = dexConfigs.find((config) =>
+      config.name.toLowerCase().includes("tradingengine")
+    );
+
+    if (!tradingEngineConfig) {
+      throw new Error(`TradingEngine not available on chain ${chainId}`);
+    }
+
+    // Create graduation parameters
+    const graduationParams: GraduationParams = {
+      dexConfig: tradingEngineConfig,
+      slippageTolerance: 5, // 5% slippage tolerance
+      deadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour deadline
+    };
+
+    return await this.graduateTokenToDEX(
+      token,
+      graduationParams,
+      options,
+      chainId
+    );
+  }
+
+  /**
+   * Get TradingEngine pool information for a graduated token
+   */
+  async getTradingEnginePoolInfo(
+    token: string,
+    chainId: number = 16661
+  ): Promise<any> {
+    const tradingEngineService = this.getDEXService({
+      name: "TradingEngine",
+      factoryAddress: "",
+      routerAddress: "",
+      supportedFeeTiers: [],
+      isV3: false,
+      chainId,
+    }) as TradingEngineService;
+
+    const baseToken = this.getBaseTokenForChain(chainId);
+    const pairId = tradingEngineService.calculatePairId(token, baseToken);
+
+    return await tradingEngineService.getPairInfo(pairId);
+  }
+
+  /**
+   * Monitor TradingEngine pool health after graduation
+   */
+  async monitorTradingEnginePool(
+    token: string,
+    chainId: number = 16661,
+    callback: (status: {
+      pairId: string;
+      reserves: { tokenA: bigint; tokenB: bigint };
+      volume24h: bigint;
+      lastTradeTime: bigint;
+      isHealthy: boolean;
+    }) => void
+  ): Promise<void> {
+    const tradingEngineService = this.getDEXService({
+      name: "TradingEngine",
+      factoryAddress: "",
+      routerAddress: "",
+      supportedFeeTiers: [],
+      isV3: false,
+      chainId,
+    }) as TradingEngineService;
+
+    const baseToken = this.getBaseTokenForChain(chainId);
+    const pairId = tradingEngineService.calculatePairId(token, baseToken);
+
+    // Set up monitoring interval
+    const checkHealth = async () => {
+      try {
+        const pairInfo = await tradingEngineService.getPairInfo(pairId);
+        const tokenStats = await tradingEngineService.getTokenStats(token);
+
+        const timeSinceLastTrade =
+          BigInt(Date.now() / 1000) - pairInfo.lastTradeTime;
+        const isHealthy =
+          pairInfo.reserveA > 0 &&
+          pairInfo.reserveB > 0 &&
+          timeSinceLastTrade < BigInt(86400); // Active within 24 hours
+
+        callback({
+          pairId,
+          reserves: {
+            tokenA: pairInfo.reserveA,
+            tokenB: pairInfo.reserveB,
+          },
+          volume24h: tokenStats.dailyVolume,
+          lastTradeTime: pairInfo.lastTradeTime,
+          isHealthy,
+        });
+      } catch (error) {
+        console.error("Pool health check failed:", error);
+      }
+    };
+
+    // Initial check
+    await checkHealth();
+
+    // Set up periodic monitoring (every 5 minutes)
+    setInterval(checkHealth, 5 * 60 * 1000);
+  }
+
+  /**
+   * Get TradingEngine graduation analytics
+   */
+  async getTradingEngineAnalytics(
+    token: string,
+    chainId: number = 16661
+  ): Promise<{
+    totalFeesGenerated: bigint;
+    creatorEarnings: bigint;
+    tradingVolume: bigint;
+    priceHistory: { timestamp: number; price: bigint }[];
+    liquidityProviders: number;
+  }> {
+    const tradingEngineService = this.getDEXService({
+      name: "TradingEngine",
+      factoryAddress: "",
+      routerAddress: "",
+      supportedFeeTiers: [],
+      isV3: false,
+      chainId,
+    }) as TradingEngineService;
+
+    // Get token creator from token factory
+    const creatorTokenService = new CreatorTokenService(token);
+    const creator = await creatorTokenService.getCreator(chainId);
+
+    const [totalFeesGenerated, creatorEarnings, tokenStats] = await Promise.all(
+      [
+        tradingEngineService.getTotalFeesGenerated(token),
+        tradingEngineService.getCreatorEarnings(creator),
+        tradingEngineService.getTokenStats(token),
+      ]
+    );
+
+    return {
+      totalFeesGenerated,
+      creatorEarnings,
+      tradingVolume: tokenStats.totalVolume,
+      priceHistory: [], // Would need to implement price history tracking
+      liquidityProviders: 0, // Would need to track LP count
+    };
+  }
+
+  /**
+   * Emergency pause TradingEngine pool (admin only)
+   */
+  async emergencyPauseTradingEnginePool(
+    pairId: string,
+    options: TransactionOptions = {},
+    chainId: number = 16661
+  ): Promise<string> {
+    // This would require additional admin functions in TradingEngine contract
+    // For now, throw an error indicating the feature needs implementation
+    throw new Error(
+      "Emergency pause functionality not implemented in TradingEngine contract"
+    );
   }
 }
 
