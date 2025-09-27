@@ -1,9 +1,8 @@
 "use client";
 import Header from "@/components/layout/Header";
-import { useState, useEffect, useCallback } from "react";
-import type { FC, ChangeEvent, FormEvent, DragEvent } from "react";
+import { useState, useEffect } from "react";
+import type { FC, ChangeEvent, FormEvent } from "react";
 import { tokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";
-import type { TokenCreationParams } from "@/lib/services/TokenFactoryRootService";
 import { parseEther, formatEther } from "ethers";
 import {
   getBlockchainConnection,
@@ -159,11 +158,41 @@ const CreatePage: FC = () => {
 
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
-      const { celoAlfajores } = await import("viem/chains");
+      const { celoAlfajores, rootstock, rootstockTestnet, zeroG, zeroGGalileoTestnet } = await import("viem/chains");
 
-      // Use wallet provider for signing (MetaMask)
+      // Create wallet client to get current chain dynamically
+      const tempWalletClient = createWalletClient({
+        transport: custom(window.ethereum),
+      });
+      
+      const currentChainId = await tempWalletClient.getChainId();
+      console.log("Current chain ID:", currentChainId);
+      
+      // Map chain ID to chain object and contract address
+      const chainMap: Record<number, { chain: any; contractAddress: string }> = {
+        44787: { 
+          chain: celoAlfajores, 
+          contractAddress: "0x5755574a0d453729568f068026ef03078e8ea87c" 
+        },
+        30: { 
+          chain: rootstock, 
+          contractAddress: "0x0000000000000000000000000000000000000000" // Update with actual address
+        },
+        31: { 
+          chain: rootstockTestnet, 
+          contractAddress: "0x0000000000000000000000000000000000000000" // Update with actual address
+        },
+        // Add more chains as needed
+      };
+      
+      const chainConfig = chainMap[currentChainId];
+      if (!chainConfig) {
+        throw new Error(`Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`);
+      }
+
+      // Use wallet provider for signing with dynamic chain
       const walletClient = createWalletClient({
-        chain: celoAlfajores,
+        chain: chainConfig.chain,
         transport: custom(window.ethereum),
       });
 
@@ -181,7 +210,7 @@ const CreatePage: FC = () => {
         await import("@/config/abi/TokenFactoryRoot.json")
       ).default;
 
-      const contractAddress = "0x5755574a0d453729568f068026ef03078e8ea87c";
+      const contractAddress = chainConfig.contractAddress as `0x${string}`;
       const launchFee = parseEther("0.01"); // 0.01 CELO
       const minLiquidity = parseEther("0.1"); // 0.1 CELO
       const totalCost = launchFee + minLiquidity; // 0.11 CELO
@@ -214,16 +243,15 @@ const CreatePage: FC = () => {
           formData.logoUrl || "https://example.com/logo.png",
         ],
         value: totalCost,
+        chain: chainConfig.chain,
       });
 
       console.log("Transaction hash:", txHash);
 
       // Wait for confirmation using public client
       const publicClient = createPublicClient({
-        chain: celoAlfajores,
-        transport: http(
-          "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb"
-        ),
+        chain: chainConfig.chain,
+        transport: http(),
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({
