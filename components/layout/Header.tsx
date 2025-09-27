@@ -1,7 +1,13 @@
 "use client";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useUser } from "@/hooks/useUser";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 
 function Header() {
+  const { user, showOnboarding, completeOnboarding, dismissOnboarding } = useUser();
+  
   const navItems = [
     { name: "Explore", href: "/explore" },
     { name: "Launch", href: "/launch" },
@@ -67,7 +73,7 @@ function Header() {
                       );
                     }
                     return (
-                      <div className="bg-black flex gap-3 items-center text-white px-5 py-2 rounded-xl">
+                      <div className="bg-black flex gap-3 items-center text-white px-5 py-2 rounded-xl relative">
                         <button onClick={openAccountModal} type="button">
                           {account.displayName}
                         </button>
@@ -76,6 +82,14 @@ function Header() {
                           alt="Profile"
                           className="h-6 w-6 rounded-full "
                         />
+                        {user && !user.isOnboarded && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 text-xs px-1 py-0 h-5"
+                          >
+                            New
+                          </Badge>
+                        )}
                       </div>
                     );
                   })()}
@@ -85,6 +99,13 @@ function Header() {
           </ConnectButton.Custom>
         </div>
       </div>
+      
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={dismissOnboarding}
+        onComplete={completeOnboarding}
+      />
     </div>
   );
 }

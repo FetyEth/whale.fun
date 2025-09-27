@@ -1,13 +1,29 @@
+"use client";
 import { Component } from "react";
 import { Button } from "./ui/button";
 import Header from "./layout/Header";
 import Link from "next/link";
+import { WelcomeBanner } from "./onboarding/WelcomeBanner";
+import { useUser } from "@/hooks/useUser";
 
-export class HeroSection extends Component {
-  render() {
-    return (
-      <div>
-        <Header />
+function HeroSection() {
+  const { user, isNewUser, showOnboarding, dismissOnboarding } = useUser();
+
+  const handleStartTutorial = () => {
+    // The onboarding modal will be triggered by the useUser hook
+    // when showOnboarding is true
+  };
+
+  return (
+    <div>
+      <Header />
+      {user && isNewUser && !user.isOnboarded && (
+        <WelcomeBanner
+          userName={user.profile?.displayName}
+          onStartTutorial={handleStartTutorial}
+          onDismiss={dismissOnboarding}
+        />
+      )}
         <div className="px-10 border w-full">
           <div
             className="min-h-[90vh] flex flex-col  justify-start text-white
@@ -69,7 +85,6 @@ export class HeroSection extends Component {
         </div>
       </div>
     );
-  }
 }
 
 export default HeroSection;
