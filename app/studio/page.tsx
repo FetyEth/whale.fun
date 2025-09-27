@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TokenFactoryService } from "@/config/services/core/TokenFactoryService";
-import { TradingEngineService } from "@/config/services/core/TradingEngineService";
+import { TokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";;
+// import { TradingEngineService } from "@/config/services/core/TradingEngineService";
 import { uploadFileToPinata } from "@/lib/services/pintoIPFS";
 // Terms dialog is handled on the live room page
 
@@ -227,7 +227,7 @@ export default function StudioPage() {
   const startRecording = useCallback(async () => {
     try {
       if (!roomId) return alert("No roomId");
-      const res = await fetch("/api/recording/start", {
+      const res = await fetch("/api/huddle01/recordings/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId }),
@@ -244,7 +244,7 @@ export default function StudioPage() {
   const stopRecording = useCallback(async () => {
     try {
       if (!roomId) return alert("No roomId");
-      const res = await fetch("/api/recording/stop", {
+      const res = await fetch("/api/huddle01/recordings/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId }),
@@ -302,10 +302,10 @@ export default function StudioPage() {
   // =============== On-chain panels ===============
   const loadCreatorMetrics = useCallback(async () => {
     try {
-      if (!creatorAddress) return alert("Enter a creator address");
-      const svc = new TokenFactoryService();
-      const data = await svc.getCreatorMetrics(creatorAddress, 84532);
-      setCreatorMetrics(data);
+        // if (!creatorAddress) return alert("Enter a creator address");
+        // const svc = new TokenFactoryService();
+        // const data = await svc.getCreatorMetrics(creatorAddress, 84532);
+        // setCreatorMetrics(data);
     } catch (e: any) {
       alert(e?.message || "Failed to load creator metrics");
     }
@@ -313,9 +313,9 @@ export default function StudioPage() {
 
   const loadPlatformMetrics = useCallback(async () => {
     try {
-      const svc = new TokenFactoryService();
-      const data = await svc.getPlatformMetrics(84532);
-      setPlatformMetrics(data);
+      // const svc = new TokenFactoryService();
+      // const data = await svc.getPlatformMetrics(84532);
+      // setPlatformMetrics(data);
     } catch (e: any) {
       alert(e?.message || "Failed to load platform metrics");
     }
@@ -323,9 +323,9 @@ export default function StudioPage() {
 
   const loadFees = useCallback(async () => {
     try {
-      const svc = new TradingEngineService();
-      const data = await svc.getFees(84532);
-      setFees(data);
+      // const svc = new TradingEngineService();
+      // const data = await svc.getFees(84532);
+      setFees({ message: "TradingEngineService is currently disabled" });
     } catch (e: any) {
       alert(e?.message || "Failed to load fees");
     }
@@ -334,9 +334,10 @@ export default function StudioPage() {
   const calcDynamicFee = useCallback(async () => {
     try {
       if (!tokenAddress) return alert("Enter token address");
-      const svc = new TradingEngineService();
-      const feeWei = await svc.calculateDynamicFee(tokenAddress, 84532);
-      setDynamicFeeBp(((Number(feeWei) / 100).toFixed(2)).toString());
+      // const svc = new TradingEngineService();
+      // const feeWei = await svc.calculateDynamicFee(tokenAddress, 84532);
+      setDynamicFeeBp("0.00");
+      alert("Dynamic fee calculation is currently disabled");
     } catch (e: any) {
       alert(e?.message || "Failed to calculate fee");
     }
@@ -346,17 +347,9 @@ export default function StudioPage() {
     try {
       if (!tokenAddress || !buyAmount) return alert("Token address and amount required");
       setTradeStatus("Buying...");
-      const svc = new TradingEngineService();
-      // simplified: trade tokenIn (WHALE) -> tokenOut (tokenAddress) or vice-versa; here assume buying token with WHALE
-      const tx = await svc.trade(
-        "0x496468bc6ffd9839bd5ab05f54142ed4883f7745",
-        tokenAddress,
-        BigInt(Math.floor(Number(buyAmount) * 1e18)),
-        BigInt(0),
-        {},
-        84532
-      );
-      setTradeStatus(`Submitted: ${tx.hash}`);
+      // Trading is currently disabled
+      setTradeStatus("Trading is currently disabled");
+      alert("Trading functionality is temporarily disabled");
     } catch (e: any) {
       setTradeStatus("");
       alert(e?.message || "Trade failed");
@@ -367,16 +360,9 @@ export default function StudioPage() {
     try {
       if (!tokenAddress || !sellAmount) return alert("Token address and amount required");
       setTradeStatus("Selling...");
-      const svc = new TradingEngineService();
-      const tx = await svc.trade(
-        tokenAddress,
-        "0x496468bc6ffd9839bd5ab05f54142ed4883f7745",
-        BigInt(Math.floor(Number(sellAmount) * 1e18)),
-        BigInt(0),
-        {},
-        84532
-      );
-      setTradeStatus(`Submitted: ${tx.hash}`);
+      // Trading is currently disabled
+      setTradeStatus("Trading is currently disabled");
+      alert("Trading functionality is temporarily disabled");
     } catch (e: any) {
       setTradeStatus("");
       alert(e?.message || "Trade failed");
@@ -761,9 +747,7 @@ export default function StudioPage() {
               Stop Recording
             </button>
           </div>
-          <p className="text-xs text-gray-500">
-            Recorder bot will join your room and record the session.
-          </p>
+          <p className="text-xs text-gray-500">Recorder bot will join your room and record the session. You can also control recording in the live room.</p>
           {/* Recording history */}
           {recordings.length > 0 && (
             <div className="mt-3">
