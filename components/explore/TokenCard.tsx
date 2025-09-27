@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 
 interface TokenCardProps {
   token: {
@@ -18,8 +19,22 @@ interface TokenCardProps {
 }
 
 const TokenCard = ({ token }: TokenCardProps) => {
+  const router = useRouter()
+
+  const handleCardClick = () => {
+    router.push(`/trade/${token.id}`)
+  }
+
+  const handleViewTokenClick = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click when clicking the button
+    router.push(`/trade/${token.id}`)
+  }
+
   return (
-    <div className="border-2 border-dashed border-purple-200 rounded-xl p-5 bg-stone-50 hover:border-purple-300 transition-colors cursor-pointer shadow-sm">
+    <div 
+      onClick={handleCardClick}
+      className="border-2 border-dashed border-purple-200 rounded-xl p-5 bg-stone-50 hover:border-purple-300 transition-colors cursor-pointer shadow-sm"
+    >
       {/* Top Section: Image on left, Name and Price boxes on right */}
       <div className="flex items-start justify-between mb-4">
         {/* Token Image - Left side with LIVE badge overlay */}
@@ -88,7 +103,10 @@ const TokenCard = ({ token }: TokenCardProps) => {
       </div>
 
       <div>
-      <button className="text-purple-600 text-md font-semibold hover:text-purple-700 transition-colors">
+      <button 
+        onClick={handleViewTokenClick}
+        className="text-purple-600 text-md font-semibold hover:text-purple-700 transition-colors"
+      >
           View Token →
         </button>
       </div>
