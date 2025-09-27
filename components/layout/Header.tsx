@@ -4,6 +4,7 @@ import { useUser } from "@/hooks/useUser";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
+import Link from "next/link";
 
 function Header() {
   const { user, showOnboarding, completeOnboarding, dismissOnboarding } =
@@ -17,10 +18,10 @@ function Header() {
   ];
   return (
     <div className="flex items-center justify-between px-20 py-4 border-[#ebe3e8] bg-white border-b">
-      <div className="flex gap-x-2 items-center">
+      <Link href="/" className="flex gap-x-2 cursor-pointer items-center">
         <img src="/logo.svg" alt="Logo" className="h-7 w-14" />
         <p className="font-satoshi text-3xl font-bold">Whale.fun</p>
-      </div>
+      </Link>
       <div className="flex gap-x-8 text-lg font-instrument font-medium items-center">
         {navItems.map((item) => (
           <a key={item.name} href={item.href} className="transition-colors">
