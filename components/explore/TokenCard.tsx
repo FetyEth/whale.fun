@@ -27,7 +27,7 @@ const TokenCard = ({ token }: TokenCardProps) => {
           <img 
             src={token.image} 
             alt={token.name}
-            className="w-full h-full max-w-[110px] rounded-lg object-cover"
+            className="w-full h-[120px] max-w-[150px] rounded-lg object-cover"
           />
           {token.isLive && (
             <span className="absolute bottom-0 left-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-bl-lg rounded-tr-lg font-medium">
@@ -40,7 +40,7 @@ const TokenCard = ({ token }: TokenCardProps) => {
         <div className="flex flex-col items-center">
           {/* Token Name */}
           <div className="mb-2">
-            <span className="font-semibold text-gray-900 text-base">{token.name}</span>
+            <span className=" text-[#B65FFF] text-[18px] font-bold">{token.name}</span>
           </div>
 
           {/* Price Information - Stacked vertically */}
