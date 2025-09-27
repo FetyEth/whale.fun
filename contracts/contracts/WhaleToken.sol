@@ -63,24 +63,22 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
         // Initialize MEV protection
         mevConfig = MEVProtectionLibrary.getDefaultMEVConfig();
         
-   
         // Arbitrum One (Mainnet & Testnets)
         // supportedChains[42161]  = true; // Arbitrum One Mainnet [21]
         // supportedChains[421613] = true; // Arbitrum Goerli Testnet [31]
         // supportedChains[421614] = true; // Arbitrum Sepolia Testnet [22]
+        
+        // 0G Networks  
+        supportedChains[16661] = true; // 0G Mainnet
+        supportedChains[16600] = true; // 0G Newton Testnet
 
-        // Rootstock
-        supportedChains[30]   = true; // Rootstock Mainnet
-        supportedChains[31]   = true; // Rootstock Testnet
+        // Rootstock Networks
+        supportedChains[30] = true;   // Rootstock Mainnet
+        supportedChains[31] = true;   // Rootstock Testnet
 
-        // Filecoin EVM
-        supportedChains[314]  = true; // Filecoin Mainnet
-        supportedChains[3141] = true; // Filecoin Hyperspace Testnet
-
-        // 0G.ai (ØG)  
-        supportedChains[16661] = true; // 0G.ai Mainnet  
-        supportedChains[16600] = true; // 0G.ai Newton Testnet  
-
+        // Citrea Networks
+        supportedChains[5115]  = true; // Citrea Testnet
+        supportedChains[62298] = true; // Citrea Devnet
     }
     
     /**
