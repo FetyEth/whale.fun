@@ -84,12 +84,18 @@ export class SecurityGovernanceService extends BaseContractService {
       name: "SecurityGovernance",
       abi: SecurityGovernanceABI,
       deployments: {
-        // Add your deployment addresses here for the SecurityGovernance contracts
-        // 1: { // Ethereum Mainnet
-        //   address: "0x...", // Main contract address
+        // Base Testnet
+        84532: {
+          address: "0xd261122e129fe863bc0895f558622aa270bc4925",
+          deployedAt: 0,
+          verified: false,
+        },
+        // Example for Ethereum Mainnet
+        // 1: {
+        //   address: "0x...",
         //   deployedAt: 1234567890,
-        //   verified: true
-        // }
+        //   verified: true,
+        // },
       },
     });
   }

@@ -39,6 +39,22 @@ export class Huddle01Service {
   }
 
   /**
+   * Retry helper for token generation
+   */
+  private async retryToJwt(token: AccessToken, attempts = 2, delayMs = 800): Promise<string> {
+    let lastErr: any;
+    for (let i = 0; i <= attempts; i++) {
+      try {
+        return await token.toJwt();
+      } catch (e) {
+        lastErr = e;
+        if (i < attempts) await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    throw lastErr || new Error("Token generation failed after retries");
+  }
+
+  /**
    * Generate access token for the recorder bot
    */
   private async generateAccessToken(roomId: string): Promise<string> {
@@ -61,7 +77,7 @@ export class Huddle01Service {
       },
     });
 
-    return await token.toJwt();
+    return await this.retryToJwt(token);
   }
 
   /**
@@ -69,18 +85,19 @@ export class Huddle01Service {
    */
   async generateUserAccessToken(
     roomId: string,
-    userId?: string
+    userId?: string,
+    role: "host" | "guest" = "host"
   ): Promise<string> {
     try {
       console.log("Creating AccessToken with:", {
         apiKey: this.apiKey.substring(0, 10) + "...",
         roomId,
-        role: Role.HOST,
+        role,
       });
       const token = new AccessToken({
         apiKey: this.apiKey,
         roomId: roomId,
-        role: Role.HOST, // or Role.GUEST depending on your needs
+        role: role === "guest" ? Role.GUEST : Role.HOST,
         permissions: {
           admin: false,
           canConsume: true,
@@ -101,8 +118,8 @@ export class Huddle01Service {
         },
       });
 
-      console.log("Calling token.toJwt()");
-      const jwt = await token.toJwt();
+      console.log("Calling token.toJwt() (with retry)");
+      const jwt = await this.retryToJwt(token);
       console.log(
         "JWT generated successfully, length:",
         jwt?.length,
@@ -317,7 +334,7 @@ export class Huddle01Service {
     roomType?: "AUDIO" | "VIDEO",
     description?: string,
     roomLocked: boolean = false
-  ): Promise<{ roomId: string; meetingLink?: string }> {
+  ): Promise<{ roomId: string; meetingLink: string }> {
     try {
       const response = await fetch(
         "https://api.huddle01.com/api/v2/sdk/rooms/create-room",
@@ -352,8 +369,28 @@ export class Huddle01Service {
       if (!roomId) {
         throw new Error("Invalid create-room response: missing roomId");
       }
+      let meetingLinkFromApi =
+        data?.data?.meetingLink ||
+        data?.data?.roomUrl ||
+        data?.meetingLink ||
+        data?.roomUrl ||
+        null;
+      // Normalize to absolute URL; prefer huddle01.app domain which matches WalletConnect metadata
+      if (meetingLinkFromApi && typeof meetingLinkFromApi === "string") {
+        if (meetingLinkFromApi.startsWith("/")) {
+          meetingLinkFromApi = `https://huddle01.app${meetingLinkFromApi}`;
+        }
+        // Some responses might include app.huddle01.com
+        meetingLinkFromApi = meetingLinkFromApi.replace(
+          /^https:\/\/app\.huddle01\.com\/room\//,
+          "https://huddle01.app/room/"
+        );
+      }
+      const meetingLink =
+        meetingLinkFromApi || `https://huddle01.app/room/${roomId}`;
       return {
         roomId,
+        meetingLink,
       };
     } catch (error) {
       console.error("Failed to create room:", error);

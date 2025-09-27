@@ -52,12 +52,11 @@ export class TradingEngineService extends BaseContractService {
       name: "TradingEngine",
       abi: TradingEngineABI,
       deployments: {
-        // Add your deployment addresses here
-        // 1: { // Ethereum Mainnet
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // },
+        84532: {
+          address: "0x37fabbc03ffb620c7ea9ff9f533d7d422ea95cd0",
+          deployedAt: 0,
+          verified: false,
+        },
       },
     });
   }

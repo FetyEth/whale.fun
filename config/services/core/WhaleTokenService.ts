@@ -62,17 +62,12 @@ export class WhaleTokenService extends BaseContractService {
       name: "WhaleToken",
       abi: WhaleTokenABI,
       deployments: {
-        // Add your deployment addresses here
-        // 1: { // Ethereum Mainnet
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // },
-        // 137: { // Polygon
-        //   address: "0x...",
-        //   deployedAt: 1234567890,
-        //   verified: true
-        // }
+        // Base Testnet
+        84532: {
+          address: "0x496468bc6ffd9839bd5ab05f54142ed4883f7745",
+          deployedAt: 0,
+          verified: false,
+        },
       },
     });
   }

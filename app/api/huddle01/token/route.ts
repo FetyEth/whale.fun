@@ -3,7 +3,7 @@ import { createHuddle01Service } from "@/lib/services/huddle01";
 
 export async function POST(request: NextRequest) {
   try {
-    const { roomId, userId } = await request.json();
+    const { roomId, userId, role } = await request.json();
 
     if (!roomId) {
       return NextResponse.json(
@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     const huddle01Service = createHuddle01Service();
-    console.log("Generating token for roomId:", roomId, "userId:", userId);
-    const token = await huddle01Service.generateUserAccessToken(roomId, userId);
+    console.log("Generating token for roomId:", roomId, "userId:", userId, "role:", role || "host");
+    const token = await huddle01Service.generateUserAccessToken(roomId, userId, role === "guest" ? "guest" : "host");
     console.log("Generated token:", token, "length:", token?.length);
 
     if (!token) {
