@@ -9,12 +9,12 @@ function Header() {
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (
-    <div className="flex items-center justify-between px-20 py-4 border-[#ebe3e8] bg-white border-b ">
+    <div className="flex items-center justify-between px-20 py-4 border-[#ebe3e8] bg-white border-b">
       <div className="flex gap-x-2 items-center">
         <img src="/logo.svg" alt="Logo" className="h-7 w-14" />
         <p className="font-satoshi text-3xl font-bold">Whale.fun</p>
       </div>
-      <div className="flex gap-x-8 text-lg font-medium items-center">
+      <div className="flex gap-x-8 text-lg font-instrument font-medium items-center">
         {navItems.map((item) => (
           <a key={item.name} href={item.href} className="transition-colors">
             {item.name}
