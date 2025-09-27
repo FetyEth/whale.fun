@@ -42,11 +42,9 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
     
     // Cross-chain variables
     mapping(address => bool) public authorizedBridges;
-    mapping(uint256 => bool) public supportedChains;
     
     // Additional events not in interface
     event BridgeAuthorized(address indexed bridge, bool authorized);
-    event ChainSupported(uint256 indexed chainId, bool supported);
     
     // Staking parameters
     uint256 public constant MIN_STAKE_DURATION = 7 days;
@@ -62,23 +60,6 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
         
         // Initialize MEV protection
         mevConfig = MEVProtectionLibrary.getDefaultMEVConfig();
-        
-        // Arbitrum One (Mainnet & Testnets)
-        // supportedChains[42161]  = true; // Arbitrum One Mainnet [21]
-        // supportedChains[421613] = true; // Arbitrum Goerli Testnet [31]
-        // supportedChains[421614] = true; // Arbitrum Sepolia Testnet [22]
-        
-        // 0G Networks  
-        supportedChains[16661] = true; // 0G Mainnet
-        supportedChains[16600] = true; // 0G Newton Testnet
-
-        // Rootstock Networks
-        supportedChains[30] = true;   // Rootstock Mainnet
-        supportedChains[31] = true;   // Rootstock Testnet
-
-        // Citrea Networks
-        supportedChains[5115]  = true; // Citrea Testnet
-        supportedChains[62298] = true; // Citrea Devnet
     }
     
     /**
@@ -499,11 +480,6 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
     function setBridgeAuthorization(address bridge, bool authorized) external onlyOwner {
         authorizedBridges[bridge] = authorized;
         emit BridgeAuthorized(bridge, authorized);
-    }
-    
-    function setSupportedChain(uint256 chainId, bool supported) external onlyOwner {
-        supportedChains[chainId] = supported;
-        emit ChainSupported(chainId, supported);
     }
     
     function setStakingRewardRate(uint256 newRate) external onlyOwner {

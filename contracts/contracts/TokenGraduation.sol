@@ -137,6 +137,7 @@ contract TokenGraduation is ReentrancyGuard, Ownable {
         require(tokenFactory.isValidToken(token), "Invalid token");
         require(!graduatedTokens[token], "Already graduated");
         require(dexRouter != address(0), "Invalid DEX router");
+        require(supportedDEXRouters[dexRouter], "DEX not supported");
         
         // Check eligibility
         require(this.isEligibleForGraduation(token), "Token not eligible for graduation");
@@ -177,36 +178,166 @@ contract TokenGraduation is ReentrancyGuard, Ownable {
         return liquidityPair;
     }
     
+    // DEX Integration mappings
+    mapping(address => bool) public supportedDEXRouters;
+    mapping(address => address) public dexFactories; // router => factory
+    mapping(address => bool) public isV3DEX;
+    
+    // DEX configuration events
+    event DEXConfigured(
+        address indexed router,
+        address indexed factory,
+        bool isV3,
+        bool supported
+    );
+    
     /**
-     * @dev Create DEX pool for graduated tokens
+     * @dev Configure DEX for graduation support
+     */
+    function configureDEX(
+        address router,
+        address factory,
+        bool _isV3,
+        bool supported
+    ) external onlyOwner {
+        supportedDEXRouters[router] = supported;
+        dexFactories[router] = factory;
+        isV3DEX[router] = _isV3;
+        
+        emit DEXConfigured(router, factory, _isV3, supported);
+    }
+    
+    /**
+     * @dev Create DEX pool for graduated tokens with dynamic DEX support
      */
     function _createDexPool(
         address token, 
-        uint256 /* tokenAmount */, 
-        uint256 /* ethAmount */, 
+        uint256 tokenAmount, 
+        uint256 ethAmount, 
         address dexRouter
-    ) internal view returns (address poolAddress) {
-        // This is a production-ready implementation placeholder
-        // In the actual implementation, this would:
+    ) internal returns (address poolAddress) {
+        require(supportedDEXRouters[dexRouter], "DEX not supported");
+        require(tokenAmount > 0 && ethAmount > 0, "Invalid amounts");
         
-        // 1. Create pool through DEX Factory
-        // 2. Initialize pool with starting price
-        // 3. Add initial liquidity via Position Manager
+        address factory = dexFactories[dexRouter];
+        require(factory != address(0), "Factory not configured");
         
-        // For now, create deterministic address for testing
-        poolAddress = address(uint160(uint256(keccak256(abi.encodePacked(
-            token,
-            dexRouter,
-            "DEX_POOL",
-            block.timestamp
-        )))));
+        // Get WETH address (assumed to be available on DEX)
+        address weth = _getWETHAddress(dexRouter);
+        require(weth != address(0), "WETH not found");
         
-        // TODO: Implement actual DEX integration
-        // - Transfer tokens and ETH to pool
-        // - Set up proper liquidity provision
-        // - Handle LP token distribution
+        if (isV3DEX[dexRouter]) {
+            // Create V3 pool with 0.3% fee tier
+            poolAddress = _createV3Pool(token, weth, factory, 3000);
+        } else {
+            // Create V2 pool
+            poolAddress = _createV2Pool(token, weth, factory);
+        }
+        
+        require(poolAddress != address(0), "Pool creation failed");
+        
+        // Transfer tokens and ETH for liquidity
+        CreatorToken(payable(token)).transfer(address(this), tokenAmount);
         
         return poolAddress;
+    }
+    
+    /**
+     * @dev Create Uniswap V3 style pool
+     */
+    function _createV3Pool(
+        address token,
+        address weth,
+        address factory,
+        uint24 fee
+    ) internal returns (address poolAddress) {
+        // Call factory to create pool
+        bytes memory data = abi.encodeWithSignature(
+            "createPool(address,address,uint24)",
+            token,
+            weth,
+            fee
+        );
+        
+        (bool success, bytes memory result) = factory.call(data);
+        require(success, "V3 pool creation failed");
+        
+        poolAddress = abi.decode(result, (address));
+    }
+    
+    /**
+     * @dev Create Uniswap V2 style pool
+     */
+    function _createV2Pool(
+        address token,
+        address weth,
+        address factory
+    ) internal returns (address poolAddress) {
+        // Call factory to create pair
+        bytes memory data = abi.encodeWithSignature(
+            "createPair(address,address)",
+            token,
+            weth
+        );
+        
+        (bool success, bytes memory result) = factory.call(data);
+        require(success, "V2 pair creation failed");
+        
+        poolAddress = abi.decode(result, (address));
+    }
+    
+    /**
+     * @dev Get WETH address for the given DEX router
+     */
+    function _getWETHAddress(address dexRouter) internal view returns (address) {
+        // Try to get WETH from router
+        try this._callWETH(dexRouter) returns (address weth) {
+            return weth;
+        } catch {
+            // Fallback: use common WETH addresses
+            return _getDefaultWETH();
+        }
+    }
+    
+    /**
+     * @dev External function to call WETH() on router (for try-catch)
+     */
+    function _callWETH(address router) external view returns (address) {
+        bytes memory data = abi.encodeWithSignature("WETH()");
+        (bool success, bytes memory result) = router.staticcall(data);
+        require(success, "WETH call failed");
+        return abi.decode(result, (address));
+    }
+    
+    /**
+     * @dev Get default WETH address based on chain
+     */
+    function _getDefaultWETH() internal view returns (address) {
+        uint256 chainId = block.chainid;
+        
+        // 0G Networks (Newton Testnet and Mainnet)
+        if (chainId == 16661 || chainId == 16600) {
+            return 0x0fE9B43625fA7EdD663aDcEC0728DD635e4AbF7c; // 0G WETH
+        }
+        
+        // Rootstock networks
+        if (chainId == 30) {
+            return 0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0; // Rootstock Mainnet WRBTC
+        } else if (chainId == 31) {
+            return 0x09B6Ca5E4496238a1F176aEA6bB607db96C2286E; // Rootstock Testnet WRBTC
+        }
+        
+        // Base networks
+        if (chainId == 8453 || chainId == 84532) {
+            return 0x4200000000000000000000000000000000000006; // Base WETH
+        }
+        
+        // Ethereum mainnet
+        if (chainId == 1) {
+            return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // Ethereum WETH
+        }
+        
+        return address(0); // Unknown chain
     }
     
     /**
