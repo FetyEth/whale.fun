@@ -1,87 +1,185 @@
 import React from "react";
 
+// Placeholder icons to match the design
+const IconCreators = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-8 h-8 text-black"
+  >
+    <path
+      d="M20 17V7M4 17V7M4 7H20V17H4Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M4 12H20"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconFans = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-8 h-8 text-black"
+  >
+    <path
+      d="M17 20V18C17 15.7909 15.2091 14 13 14H8C5.79086 14 4 15.7909 4 18V20"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13 10C13 12.2091 11.2091 14 9 14C6.79086 14 5 12.2091 5 10C5 7.79086 6.79086 6 9 6C11.2091 6 13 7.79086 13 10Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M20 12V14M18 10V14H20"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconEveryone = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-8 h-8 text-black"
+  >
+    <path
+      d="M12 21.6498C12 21.6498 19 18.6498 19 12.6498V5.6498L12 2.6498L5 5.6498V12.6498C5 18.6498 12 21.6498 12 21.6498Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9.5 12.1498L11.5 14.1498L15 10.1498"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 function PodSection() {
   return (
-    <div className="px-32">
+    <div className="px-4 md:px-16 lg:px-32">
       <div className="flex flex-col py-10 justify-center border-[#ebe3e8] border-l border-r items-center">
-        <div>
-          <p className="bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
+        {/* Top Section */}
+        <div className="text-center px-4">
+          <p className="inline-block bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
             BUILT FOR THE POD
           </p>
-        </div>
-        <p className="font-britisans font-semibold pt-3 text-[52px] max-w-[720px] text-center leading-12 ">
-          <span className="flex">
-            {" "}
-            <span> Built for creators.</span>
+          <h1 className="font-britisans font-semibold pt-3 text-4xl md:text-5xl max-w-[720px] text-center leading-tight md:leading-snug">
+            Built for creators.{" "}
             <span className="text-[#B65FFF]">Safe for fans.</span>
-          </span>
-          <span> Fun for everyone.</span>
-        </p>
-        <p className="max-w-xs text-lg text-center pt-2">
-          Co-create live, mint in one click, and launch with safety rails on.
-        </p>
-        <div className="flex mt-10 gap-10 items-stretch">
+            <br />
+            Fun for everyone.
+          </h1>
+          <p className="max-w-xs mx-auto pb-12 text-lg text-center pt-2 text-gray-600">
+            Co-create live, mint in one click, and launch with safety rails on.
+          </p>
+        </div>
+
+        {/* Cards Section */}
+        <div className="flex bg-[url('/img/bg-pod.svg')] bg-no-repeat w-full bg-cover flex-col md:flex-row  p-4 items-stretch">
           {/* Card 1 */}
-          <div className="bg-[#f6f6f6] px-2 py-2 flex-1">
-            <div className="bg-[url('/img/howitworks1.svg')] rounded-lg px-4 bg-contain bg-no-repeat bg-white h-full flex flex-col">
-              <div className="py-10">
-                <img
-                  src="/img/sec1.svg"
-                  alt="howitworks"
-                  className="h-[10rem] w-full mx-auto"
-                />
-              </div>
-              <div className="pt-6 pb-4 flex flex-col gap-0.5">
-                <p className="text-lg text-[#999999]">Step 1:</p>
-                <p className="text-3xl font-britisans">Go live & co-create</p>
-                <p className="max-w-[280px] text-lg">
-                  Run polls for name, fees, and art. Viewers vote; your pod
-                  shapes the token live.
-                </p>
-              </div>
-            </div>
+          <div className="flex-1 flex flex-col p-8 rounded-2xl">
+            <IconCreators />
+            <h3 className="font-britisans font-medium text-xl mt-4">
+              For creators
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Earn from trading fees and tips the moment you mint—plus built-in
+              discovery and analytics to grow faster.
+            </p>
+            <p className="mt-auto pt-4 italic text-gray-800">
+              &quot;Instant monetization, zero code.&quot;
+            </p>
           </div>
 
           {/* Card 2 */}
-          <div className="bg-[#f6f6f6] px-2 py-2 flex-1">
-            <div className="bg-[url('/img/howitworks2.svg')] rounded-lg px-4 bg-contain bg-no-repeat bg-white h-full flex flex-col">
-              <div className="py-10">
-                <img
-                  src="/img/sec2.svg"
-                  alt="howitworks"
-                  className="h-[10rem] w-full mx-auto"
-                />
-              </div>
-              <div className="pt-6 pb-4 flex flex-col gap-0.5">
-                <p className="text-lg text-[#999999]">Step 2:</p>
-                <p className="text-3xl font-britisans">One-click safe mint</p>
-                <p className="max-w-[280px] text-lg">
-                  One tap to mint with LP locks and caps. Built-in checks
-                  confirm before listing.
-                </p>
-              </div>
-            </div>
+          <div className="flex-1 flex flex-col p-8  rounded-2xl">
+            <IconFans />
+            <h3 className="font-britisans font-medium text-xl mt-4">
+              For fans
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Vote on the token&apos;s basics, buy safely with locks in place,
+              and track your holdings as the community scales.
+            </p>
+            <p className="mt-auto pt-4 italic text-gray-800">
+              &quot;Own a piece of the moment.&quot;
+            </p>
           </div>
 
           {/* Card 3 */}
-          <div className="bg-[#f6f6f6] px-2 py-2 flex-1">
-            <div className="px-4 bg-white rounded-lg h-full flex justify-between flex-col">
-              <div className="pt-6">
-                <img
-                  src="/img/howitworks3.svg"
-                  alt="howitworks"
-                  className="h-[12rem] mx-auto bg-contain bg-no-repeat"
-                />
-              </div>
-              <div className="pt-6 pb-4 flex flex-col gap-0.5">
-                <p className="text-lg text-[#999999]">Step 3:</p>
-                <p className="text-3xl font-britisans">Trade, earn, grow</p>
-                <p className="max-w-[280px] text-lg">
-                  Fans become holders; you earn from tips and trading. Track
-                  growth in Analytics.
-                </p>
-              </div>
-            </div>
+          <div className="flex-1 flex flex-col p-8  rounded-2xl">
+            <IconEveryone />
+            <h3 className="font-britisans font-medium text-xl mt-4">
+              For everyone
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Liquidity locks, audit checks, and MEV-aware deploys add
+              protection without killing the fun.
+            </p>
+            <p className="mt-auto pt-4 italic text-gray-800">
+              &quot;Rug-safer by design.&quot;
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="flex flex-col items-center text-center mt-20 px-4">
+          <p className="inline-block bg-[#f5f5f5] font-instrument font-medium text-base px-4 py-1.5 rounded-full">
+            MAKE YOUR MOVE
+          </p>
+          <h2 className="font-britisans font-semibold pt-3 text-4xl md:text-5xl max-w-[720px] text-center leading-tight md:leading-snug">
+            Turn hype into <span className="text-[#B65FFF]">holdings</span>
+          </h2>
+          <p className="max-w-sm mx-auto text-xl text-center pt-2 text-gray-600">
+            Co-create a token on-stream—safer with liquidity locks and audit
+            checks.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            <button className="bg-black text-white px-6 py-3 rounded-lg font-medium">
+              Explore token launches
+            </button>
+            <button className="bg-white border border-gray-300 text-black px-6 py-3 rounded-lg font-medium">
+              Go Live & Launch
+            </button>
+          </div>
+          <div>
+            <img
+              src="/img/boxdown.svg"
+              alt="Arrow Down"
+              className="w-full h-full mt-10 mx-auto border-t"
+            />
           </div>
         </div>
       </div>
