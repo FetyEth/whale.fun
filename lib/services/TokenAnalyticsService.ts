@@ -189,7 +189,8 @@ export class TokenAnalyticsService extends BaseContractService {
       ]);
 
       // Get top creators (this would require additional contract methods in production)
-      const topCreators: Array<{ address: string; metrics: CreatorMetrics }> = [];
+      const topCreators: Array<{ address: string; metrics: CreatorMetrics }> =
+        [];
 
       // Calculate performance indicators
       const platformGrowthRate = this.calculateGrowthRate(
@@ -199,7 +200,8 @@ export class TokenAnalyticsService extends BaseContractService {
 
       const tokenSuccessRate = Number(factoryAnalytics.successRate);
 
-      const averageTokenLifespan = Number(platformMetrics.avgTokenAge) / (24 * 60 * 60); // Convert to days
+      const averageTokenLifespan =
+        Number(platformMetrics.avgTokenAge) / (24 * 60 * 60); // Convert to days
 
       return {
         factoryAnalytics,
@@ -254,22 +256,37 @@ export class TokenAnalyticsService extends BaseContractService {
   } {
     return {
       factory: {
-        avgTokensPerCreator: `${Number(analytics.factoryAnalytics.avgTokensPerCreator) / 1000}`,
+        avgTokensPerCreator: `${
+          Number(analytics.factoryAnalytics.avgTokensPerCreator) / 1000
+        }`,
         successRate: `${analytics.factoryAnalytics.successRate}%`,
-        totalMarketCap: `${this.formatEther(analytics.factoryAnalytics.totalMarketCap)} ETH`,
+        totalMarketCap: `${this.formatEther(
+          analytics.factoryAnalytics.totalMarketCap
+        )} ETH`,
       },
       platform: {
-        totalTokensCreated: analytics.platformMetrics.totalTokensCreated.toString(),
+        totalTokensCreated:
+          analytics.platformMetrics.totalTokensCreated.toString(),
         activeTokens: analytics.platformMetrics.activeTokens.toString(),
-        totalVolumeTraded: `${this.formatEther(analytics.platformMetrics.totalVolumeTraded)} ETH`,
-        avgTokenAge: `${Math.round(Number(analytics.platformMetrics.avgTokenAge) / (24 * 60 * 60))} days`,
-        topTokenMarketCap: `${this.formatEther(analytics.platformMetrics.topTokenMarketCap)} ETH`,
+        totalVolumeTraded: `${this.formatEther(
+          analytics.platformMetrics.totalVolumeTraded
+        )} ETH`,
+        avgTokenAge: `${Math.round(
+          Number(analytics.platformMetrics.avgTokenAge) / (24 * 60 * 60)
+        )} days`,
+        topTokenMarketCap: `${this.formatEther(
+          analytics.platformMetrics.topTokenMarketCap
+        )} ETH`,
       },
       performance: {
         platformGrowthRate: `${analytics.performanceIndicators.platformGrowthRate}%`,
         tokenSuccessRate: `${analytics.performanceIndicators.tokenSuccessRate}%`,
-        averageTokenLifespan: `${Math.round(analytics.performanceIndicators.averageTokenLifespan)} days`,
-        totalValueLocked: `${this.formatEther(analytics.performanceIndicators.totalValueLocked)} ETH`,
+        averageTokenLifespan: `${Math.round(
+          analytics.performanceIndicators.averageTokenLifespan
+        )} days`,
+        totalValueLocked: `${this.formatEther(
+          analytics.performanceIndicators.totalValueLocked
+        )} ETH`,
       },
     };
   }
@@ -292,7 +309,9 @@ export class TokenAnalyticsService extends BaseContractService {
   async compareCreators(
     creators: string[],
     chainId?: number
-  ): Promise<Array<{ address: string; metrics: CreatorMetrics; rank: number }>> {
+  ): Promise<
+    Array<{ address: string; metrics: CreatorMetrics; rank: number }>
+  > {
     try {
       const creatorMetrics = await Promise.all(
         creators.map(async (creator) => ({
@@ -303,7 +322,8 @@ export class TokenAnalyticsService extends BaseContractService {
 
       // Sort by total market cap (could be customized)
       creatorMetrics.sort(
-        (a, b) => Number(b.metrics.totalMarketCap) - Number(a.metrics.totalMarketCap)
+        (a, b) =>
+          Number(b.metrics.totalMarketCap) - Number(a.metrics.totalMarketCap)
       );
 
       // Add rankings
@@ -322,12 +342,14 @@ export class TokenAnalyticsService extends BaseContractService {
   async getSuccessRateTrend(
     periodDays: number = 30,
     chainId?: number
-  ): Promise<Array<{ date: string; successRate: number; tokensCreated: number }>> {
+  ): Promise<
+    Array<{ date: string; successRate: number; tokensCreated: number }>
+  > {
     // This would require additional contract functionality to track historical data
     // For now, return current success rate
     try {
       const analytics = await this.getFactoryAnalytics(chainId);
-      const currentDate = new Date().toISOString().split('T')[0];
+      const currentDate = new Date().toISOString().split("T")[0];
 
       return [
         {
@@ -358,7 +380,9 @@ export class TokenAnalyticsService extends BaseContractService {
     const feesScore = Math.min(totalFeesEarned / 100, 25); // 25% weight, capped at 100 ETH
     const volumeScore = Math.min(tokensCreated / 10, 15); // 15% weight, capped at 10 tokens
 
-    return Math.round(successRateScore + marketCapScore + feesScore + volumeScore);
+    return Math.round(
+      successRateScore + marketCapScore + feesScore + volumeScore
+    );
   }
 
   /**
@@ -382,7 +406,9 @@ export class TokenAnalyticsService extends BaseContractService {
         issues.push("No trading volume recorded");
       }
 
-      const activeRatio = Number(platformMetrics.activeTokens) / Number(platformMetrics.totalTokensCreated);
+      const activeRatio =
+        Number(platformMetrics.activeTokens) /
+        Number(platformMetrics.totalTokensCreated);
       if (activeRatio < 0.1) {
         issues.push("Low token activity ratio (< 10%)");
       }
