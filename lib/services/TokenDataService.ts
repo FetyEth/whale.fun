@@ -37,9 +37,11 @@ export class TokenDataService {
     try {
       console.log("🔍 Fetching all tokens from factory...");
       console.log("📡 Chain ID:", chainId);
-      
+
       // Get all token addresses from factory
-      const tokenAddresses = await tokenFactoryRootService.getAllTokens(chainId);
+      const tokenAddresses = await tokenFactoryRootService.getAllTokens(
+        chainId
+      );
       console.log("📋 Found token addresses:", tokenAddresses);
       console.log("📊 Total tokens found:", tokenAddresses.length);
 
@@ -50,18 +52,25 @@ export class TokenDataService {
 
       // Fetch data for each token
       const tokensData: TokenData[] = [];
-      
+
       for (let i = 0; i < tokenAddresses.length; i++) {
         const tokenAddress = tokenAddresses[i];
         try {
-          console.log(`🔄 Fetching data for token ${i + 1}/${tokenAddresses.length}: ${tokenAddress}`);
+          console.log(
+            `🔄 Fetching data for token ${i + 1}/${
+              tokenAddresses.length
+            }: ${tokenAddress}`
+          );
           const tokenData = await this.getTokenData(tokenAddress, chainId);
           if (tokenData) {
             tokensData.push(tokenData);
             console.log(`✅ Successfully fetched data for ${tokenData.symbol}`);
           }
         } catch (error) {
-          console.error(`❌ Error fetching data for token ${tokenAddress}:`, error);
+          console.error(
+            `❌ Error fetching data for token ${tokenAddress}:`,
+            error
+          );
           // Continue with other tokens even if one fails
         }
       }
@@ -78,7 +87,10 @@ export class TokenDataService {
   /**
    * Fetch data for a specific token
    */
-  async getTokenData(tokenAddress: string, chainId?: number): Promise<TokenData | null> {
+  async getTokenData(
+    tokenAddress: string,
+    chainId?: number
+  ): Promise<TokenData | null> {
     try {
       console.log(`Fetching data for token: ${tokenAddress}`);
 
@@ -90,7 +102,9 @@ export class TokenDataService {
       // Create public client for read operations
       const publicClient = createPublicClient({
         chain: celoAlfajores,
-        transport: http("https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb"),
+        transport: http(
+          "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb"
+        ),
       });
 
       // Fetch basic token info from factory
@@ -168,18 +182,24 @@ export class TokenDataService {
       const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
       const ageInSeconds = currentTimestamp - launchTime;
       const ageInDays = Number(ageInSeconds) / (24 * 60 * 60);
-      
-      const age = ageInDays < 1 
-        ? "Just launched"
-        : ageInDays < 2 
-        ? "1 day ago"
-        : `${Math.floor(ageInDays)} days ago`;
+
+      const age =
+        ageInDays < 1
+          ? "Just launched"
+          : ageInDays < 2
+          ? "1 day ago"
+          : `${Math.floor(ageInDays)} days ago`;
 
       // Calculate price change data (mock implementation - in real app you'd use price history)
       const basePrice = Number(currentPrice) / 1e18;
       const randomChange = (Math.random() - 0.5) * 100; // Random change between -50% and +50%
-      const priceChange = `${randomChange >= 0 ? '+' : ''}${randomChange.toFixed(1)}%`;
-      const priceValue = `${randomChange >= 0 ? '+' : ''}${(basePrice * randomChange / 100).toFixed(3)}`;
+      const priceChange = `${
+        randomChange >= 0 ? "+" : ""
+      }${randomChange.toFixed(1)}%`;
+      const priceValue = `${randomChange >= 0 ? "+" : ""}${(
+        (basePrice * randomChange) /
+        100
+      ).toFixed(3)}`;
 
       const tokenData: TokenData = {
         id: tokenAddress,
@@ -215,7 +235,7 @@ export class TokenDataService {
    */
   formatMarketCap(marketCap: bigint): string {
     const marketCapNumber = Number(marketCap) / 1e18; // Convert from wei
-    
+
     if (marketCapNumber >= 1e6) {
       return `$${(marketCapNumber / 1e6).toFixed(1)}M`;
     } else if (marketCapNumber >= 1e3) {
@@ -230,13 +250,55 @@ export class TokenDataService {
    */
   formatVolume(dailyVolume: bigint): string {
     const volumeNumber = Number(dailyVolume) / 1e18; // Convert from wei
-    
+
     if (volumeNumber >= 1e6) {
       return `${(volumeNumber / 1e6).toFixed(1)}M`;
     } else if (volumeNumber >= 1e3) {
       return `${(volumeNumber / 1e3).toFixed(1)}k`;
     } else {
       return `${volumeNumber.toFixed(2)}`;
+    }
+  }
+
+  /**
+   * Format launch time for display
+   */
+  formatLaunchTime(launchTime: bigint): string {
+    const launchTimeMs = Number(launchTime) * 1000; // Convert to milliseconds
+    const now = Date.now();
+    const diffMs = now - launchTimeMs;
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSeconds < 60) {
+      return "Just now";
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes}m ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    } else if (diffDays === 1) {
+      return "1 day ago";
+    } else {
+      return `${diffDays} days ago`;
+    }
+  }
+
+  /**
+   * Format current price for display
+   */
+  formatCurrentPrice(currentPrice: bigint): string {
+    const priceNumber = Number(currentPrice) / 1e18; // Convert from wei
+    
+    if (priceNumber >= 1) {
+      return `$${priceNumber.toFixed(4)}`;
+    } else if (priceNumber >= 0.0001) {
+      return `$${priceNumber.toFixed(6)}`;
+    } else if (priceNumber > 0) {
+      return `$${priceNumber.toExponential(2)}`;
+    } else {
+      return "$0.000000";
     }
   }
 }
