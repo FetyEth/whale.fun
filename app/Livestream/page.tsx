@@ -77,7 +77,7 @@ const TokenStat = ({
 
 const Livestream = () => {
   const [selectedToken, setSelectedToken] = useState<"WHALE" | "ARROW">("WHALE");
-  const [bossOpen, setBossOpen] = useState(true);
+  const [bossOpen, setBossOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   // Modal flow
@@ -192,11 +192,8 @@ const Livestream = () => {
               />
               </>
             ) : (
-              <Card className="overflow-hidden border-gray-200">
-                <CardContent className="p-8 text-center text-gray-500">
-                  Complete setup to start the stream preview
-                </CardContent>
-              </Card>
+             <>
+             </>
             )}
             {/* Token chart (always visible) */}
             <div className="mt-4">
@@ -228,7 +225,13 @@ const Livestream = () => {
                         <img src="/icons/trophy.svg" alt="trophy" width={24} height={24} />
                     </span>
                     <span className="text-[18px] font-semibold">Boss Battle</span>
-                    <span className="text-red-500">• Live</span>
+                    <span className="flex items-center gap-2">
+                      <span className="relative inline-flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                      </span>
+                      <span className="text-red-600 font-semibold drop-shadow-[0_0_4px_rgba(239,68,68,0.6)]">Live</span>
+                    </span>
                   </div>
                   <Button
                     variant="ghost"
@@ -279,53 +282,168 @@ const Livestream = () => {
                   </div>
                 </div>
 
-                <div>
-                  {!bossOpen ? (
-                    <p className="text-sm text-gray-600 mb-2">Select your chosen token</p>
-                  ) : selectedToken ? (
-                    <p className="text-sm text-gray-600 mb-2">
-                      you have selected <span className="font-semibold">{selectedToken}</span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-600 mb-2">Select your chosen token</p>
-                  )}
-                  {bossOpen && (
-                    <div className="flex gap-3">
-                      <TokenStat
-                        name="WHALE"
-                        percent="61%"
-                        votes="1,284"
-                        eth="7.1"
-                        selected={selectedToken === "WHALE"}
-                        onClick={() => setSelectedToken("WHALE")}
-                      />
-                      <TokenStat
-                        name="ARROW"
-                        percent="39%"
-                        votes="796"
-                        eth="5.3"
-                        selected={selectedToken === "ARROW"}
-                        onClick={() => setSelectedToken("ARROW")}
-                      />
-                    </div>
-                  )}
-                </div>
+                {/* ... other CardContent ... */}
 
-                {bossOpen && (
-                  <div className="space-y-3">
-                    <Input type="number" placeholder="Amount (ETH)" className="h-11 bg-[#E5E5E566]" />
-                    <Button className="w-full h-11 rounded-xl font-semibold cursor-pointer">
-                      {`Stake & Vote ${selectedToken}`}
-                    </Button>
+                {/* This is the new wrapper for the slide-down animation */}
+                <div
+                  className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                    bossOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  {/* Content that was previously conditional on bossOpen, wrapped inside the new div */}
+                  <div className="space-y-4">
+                    {/* Token Selection Section */}
+                    <div>
+                      {/* This is the text that shows up before the token selection. */}
+                      {selectedToken ? (
+                        <p className="text-sm text-gray-600 mb-2">
+                          you have selected <span className="font-semibold">{selectedToken}</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-600 mb-2">Select your chosen token</p>
+                      )}
+
+                      {/* Token Stats (WHALE/ARROW) */}
+                      <div className="flex gap-3">
+                        <TokenStat
+                          name="WHALE"
+                          percent="61%"
+                          votes="1,284"
+                          eth="7.1"
+                          selected={selectedToken === "WHALE"}
+                          onClick={() => setSelectedToken("WHALE")}
+                        />
+                        <TokenStat
+                          name="ARROW"
+                          percent="39%"
+                          votes="796"
+                          eth="5.3"
+                          selected={selectedToken === "ARROW"}
+                          onClick={() => setSelectedToken("ARROW")}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stake/Vote Section */}
+                    <div className="space-y-3 pt-2">
+                      <Input type="number" placeholder="Amount (ETH)" className="h-11 bg-[#E5E5E566]" />
+                      <Button className="w-full h-11 rounded-xl font-semibold cursor-pointer">
+                        {`Stake & Vote ${selectedToken}`}
+                      </Button>
+                    </div>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
             )}
 
-            {/* Live Chat */}
+            {/* Trade + Live Chat */}
             {acceptedTerms && chatAllowed && (
             <>
+            {/* Trade card */}
+            <Card className="border-gray-200 mt-2">
+              <CardContent className="p-2 md:p-3 space-y-3">
+                {/* Tabs container */}
+                <div className="p-0 flex gap-1" style={{ borderColor: '#0000001A' }}>
+                  <button
+                    onClick={() => setTradeMode("Buy")}
+                    className={`flex-1 px-6 py-2 rounded-2xl font-semibold transition-colors duration-200 cursor-pointer ${
+                      tradeMode === "Buy"
+                        ? "bg-[#B65FFF] text-white hover:bg-[#A24EE6]"
+                        : "bg-[#F2F2F2] text-gray-700 border hover:bg-[#DAADFF] hover:text-white"
+                    }`}
+                    style={tradeMode === "Buy" ? undefined : { borderColor: '#0000001A' }}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    onClick={() => setTradeMode("Sell")}
+                    className={`flex-1 px-6 py-2 rounded-2xl font-semibold transition-colors duration-200 cursor-pointer ${
+                      tradeMode === "Sell"
+                        ? "bg-[#B65FFF] text-white hover:bg-[#A24EE6]"
+                        : "bg-[#F2F2F2] text-gray-700 border hover:bg-[#DAADFF] hover:text-white"
+                    }`}
+                    style={tradeMode === "Sell" ? undefined : { borderColor: '#0000001A' }}
+                  >
+                    Sell
+                  </button>
+                </div>
+
+                {/* Utility buttons */}
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setTradeToken((t) => (t === "ART" ? "0G" : "ART"))}
+                    className="px-3 py-1 text-sm rounded-full bg-[#EFEFEF] text-gray-800 border cursor-pointer"
+                    style={{ borderColor: '#0000001A' }}
+                  >
+                    {tradeToken === "ART" ? "Switch to 0G" : "Switch to ART"}
+                  </button>
+                  <button
+                    onClick={() => setAmount(String(activeBalance))}
+                    className="px-3 py-1 text-sm rounded-full bg-[#EFEFEF] text-gray-800 border cursor-pointer"
+                    style={{ borderColor: '#0000001A' }}
+                  >
+                    Set max to slippage
+                  </button>
+                </div>
+
+                {/* Balance */}
+                <div className="flex items-center justify-between">
+                  <div className="text-xl font-semibold text-gray-900">Balance:</div>
+                  <div className="text-xl font-semibold text-gray-900">{activeBalance} {tradeToken}</div>
+                </div>
+
+                {/* Amount field */}
+                <div className="border rounded-xl px-3 py-2 flex items-center justify-between bg-white" style={{ borderColor: '#0000001A' }}>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-transparent outline-none text-2xl font-medium placeholder:text-gray-400"
+                  />
+                  { tradeToken === "ART" ? "ART" : <img src="/icons/0G-logo.svg" alt="token" width={28} height={28} className="ml-3" /> }
+                </div>
+
+                {/* Preset chips */}
+                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+                  <button
+                    onClick={() => setAmount("")}
+                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                    style={{ borderColor: '#0000001A' }}
+                  >
+                    Reset
+                  </button>
+                  {[0.10, 0.5, 10].map((val, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setAmount(String(val))}
+                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                      style={{ borderColor: '#0000001A' }}
+                    >
+                      {val} {tradeToken}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setAmount(String(activeBalance))}
+                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                    style={{ borderColor: '#0000001A' }}
+                  >
+                    Max
+                  </button>
+                </div>
+
+                {/* Primary action */}
+                <Button
+                  disabled={!amount || parsedAmount <= 0}
+                  className={`w-full h-12 rounded-2xl text-lg font-semibold text-white cursor-pointer ${!amount || parsedAmount <= 0 ? "bg-black/60 cursor-not-allowed" : "bg-black"}`}
+                >
+                  {tradeMode} {tradeToken}
+                </Button>
+              </CardContent>
+            </Card>
+            {/* Live Chat */}
             <Card className="border-gray-200 mt-6">
               <CardHeader className="pb-0">
                 <div className="flex items-center justify-between">
@@ -365,115 +483,11 @@ const Livestream = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-gray-200 mt-6">
-              <CardContent className="p-4 md:p-6 space-y-6">
-                {/* Tabs container */}
-                <div className="p-1 flex gap-2" style={{ borderColor: '#0000001A' }}>
-                  <button
-                    onClick={() => setTradeMode("Buy")}
-                    className={`flex-1 px-6 py-3 rounded-2xl font-semibold ${
-                      tradeMode === "Buy" ? "bg-[#B65FFF] text-white" : "bg-[#F2F2F2] text-gray-700 border"
-                    }`}
-                    style={tradeMode === "Buy" ? undefined : { borderColor: '#0000001A' }}
-                  >
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => setTradeMode("Sell")}
-                    className={`flex-1 px-6 py-3 rounded-2xl font-semibold ${
-                      tradeMode === "Sell" ? "bg-[#B65FFF] text-white" : "bg-[#F2F2F2] text-gray-700 border"
-                    }`}
-                    style={tradeMode === "Sell" ? undefined : { borderColor: '#0000001A' }}
-                  >
-                    Sell
-                  </button>
-                </div>
-
-                {/* Utility buttons */}
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setTradeToken((t) => (t === "ART" ? "0G" : "ART"))}
-                    className="px-5 py-2 rounded-full bg-[#EFEFEF] text-gray-800 border"
-                    style={{ borderColor: '#0000001A' }}
-                  >
-                    {tradeToken === "ART" ? "Switch to 0G" : "Switch to ART"}
-                  </button>
-                  <button
-                    onClick={() => setAmount(String(activeBalance))}
-                    className="px-5 py-2 rounded-full bg-[#EFEFEF] text-gray-800 border"
-                    style={{ borderColor: '#0000001A' }}
-                  >
-                    Set max to slippage
-                  </button>
-                </div>
-
-                {/* Balance */}
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-semibold text-gray-900">Balance:</div>
-                  <div className="text-2xl font-semibold text-gray-400">{activeBalance} {tradeToken}</div>
-                </div>
-
-                {/* Amount field */}
-                <div className="border rounded-xl px-4 py-3 flex items-center justify-between bg-white" style={{ borderColor: '#0000001A' }}>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-transparent outline-none text-2xl font-medium placeholder:text-gray-400"
-                  />
-                  <img src="/icons/0G-logo.svg" alt="token" width={28} height={28} className="ml-3" />
-                </div>
-
-                {/* Preset chips */}
-                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                  <button
-                    onClick={() => setAmount("")}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm"
-                    style={{ borderColor: '#0000001A' }}
-                  >
-                    Reset
-                  </button>
-                  {[
-                    0.10,
-                    0.5,
-                    10,
-                  ].map((val, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setAmount(String(val))}
-                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm"
-                      style={{ borderColor: '#0000001A' }}
-                    >
-                      {val} {tradeToken}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setAmount(String(activeBalance))}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm"
-                    style={{ borderColor: '#0000001A' }}
-                  >
-                    Max
-                  </button>
-                </div>
-
-                {/* Primary action */}
-                <Button
-                  disabled={!amount || parsedAmount <= 0}
-                  className={`w-full h-12 rounded-2xl text-lg font-semibold text-white ${
-                    !amount || parsedAmount <= 0 ? "bg-black/60 cursor-not-allowed" : "bg-black"
-                  }`}
-                >
-                  {tradeMode} {tradeToken}
-                </Button>
-              </CardContent>
-            </Card>
             </>
             )}
           </div>
-        </div>
-      </main>
+  475→        </div>
+  476→      </main>
 
       {/* Setup Modal (title/description) */}
       <Dialog open={showSetup} onOpenChange={setShowSetup}>
