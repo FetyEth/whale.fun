@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./WhaleToken.sol";
-import "./TokenFactory.sol";
+import "./TokenFactoryRoot.sol";
 
 /**
  * @title TradingEngine
