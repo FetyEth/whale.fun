@@ -1,12 +1,102 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Header from "@/components/layout/Header";
 import SearchAndFilter from "@/components/explore/SearchAndFilter";
 import CreateTokenButton from "@/components/explore/CreateTokenButton";
 import TokenGrid from "@/components/explore/TokenGrid";
+import { tokenDataService, type TokenData } from "@/lib/services/TokenDataService";
+import { getBlockchainConnection } from "@/utils/Blockchain";
 
 const ExplorePage = () => {
+  const [tokens, setTokens] = useState<TokenData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("all");
+
+  useEffect(() => {
+    fetchTokens();
+  }, []);
+
+  // Memoized filtered tokens for better performance
+  const filteredTokens = useMemo(() => {
+    let filtered = [...tokens];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(token => 
+        token.name.toLowerCase().includes(query) ||
+        token.symbol.toLowerCase().includes(query) ||
+        token.description.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply category filter
+    switch (selectedFilter) {
+      case 'recent':
+        // Sort by launch time (most recent first)
+        filtered = filtered.sort((a, b) => Number(b.launchTime - a.launchTime));
+        break;
+      case 'high-volume':
+        // Sort by daily volume (highest first)
+        filtered = filtered.sort((a, b) => Number(b.dailyVolume - a.dailyVolume));
+        break;
+      case 'low-price':
+        // Sort by current price (lowest first)
+        filtered = filtered.sort((a, b) => Number(a.currentPrice - b.currentPrice));
+        break;
+      case 'high-price':
+        // Sort by current price (highest first)
+        filtered = filtered.sort((a, b) => Number(b.currentPrice - a.currentPrice));
+        break;
+      case 'all':
+      default:
+        // No additional sorting, keep original order
+        break;
+    }
+
+    return filtered;
+  }, [tokens, searchQuery, selectedFilter]);
+
+  const fetchTokens = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log("Starting to fetch tokens...");
+      
+      // Get current network
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+      console.log("Current network chain ID:", chainId);
+      
+      // Fetch tokens data
+      const tokensData = await tokenDataService.getAllTokensData(chainId);
+      console.log("Fetched tokens data:", tokensData);
+      
+      setTokens(tokensData);
+    } catch (err: any) {
+      console.error("Error fetching tokens:", err);
+      setError(err.message || "Failed to fetch tokens");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchTokens();
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilter(filter);
+  };
+
   return (
     <div className="min-h-screen bg-white relative">
       <Header />
@@ -24,12 +114,86 @@ const ExplorePage = () => {
         
         {/* Search and Filter Section */}
         <div className="flex items-center justify-between mb-8 relative z-10">
-          <SearchAndFilter />
+          <SearchAndFilter 
+            onSearchChange={handleSearchChange}
+            onFilterChange={handleFilterChange}
+            searchQuery={searchQuery}
+            selectedFilter={selectedFilter}
+          />
           <CreateTokenButton />
         </div>
         
+        {/* Error State */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg relative z-10">
+            <p className="text-sm text-red-700 mb-2">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12 relative z-10">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <p className="mt-2 text-gray-600">Loading tokens...</p>
+          </div>
+        )}
+        
+        {/* Results Count */}
+        {!loading && !error && tokens.length > 0 && (
+          <div className="mb-4 relative z-10">
+            <p className="text-sm text-gray-600">
+              Showing {filteredTokens.length} of {tokens.length} tokens
+              {searchQuery && (
+                <span> for "{searchQuery}"</span>
+              )}
+              {selectedFilter !== 'all' && (
+                <span> • {selectedFilter.replace('-', ' ')}</span>
+              )}
+            </p>
+          </div>
+        )}
+        
         {/* Token Grid */}
-        <TokenGrid />
+        {!loading && !error && (
+          <TokenGrid tokens={filteredTokens} />
+        )}
+        
+        {/* Empty State */}
+        {!loading && !error && tokens.length === 0 && (
+          <div className="text-center py-12 relative z-10">
+            <p className="text-gray-600 mb-4">No tokens found</p>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+        
+        {/* No Results State */}
+        {!loading && !error && tokens.length > 0 && filteredTokens.length === 0 && (
+          <div className="text-center py-12 relative z-10">
+            <p className="text-gray-600 mb-4">
+              No tokens match your search criteria
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedFilter('all');
+              }}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
