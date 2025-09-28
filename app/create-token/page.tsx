@@ -10,6 +10,7 @@ import {
   switchNetwork,
   SUPPORTED_NETWORKS,
 } from "@/utils/Blockchain";
+import Link from "next/link";
 
 interface InputFieldProps {
   label: string;
@@ -338,16 +339,13 @@ const CreatePage: FC = () => {
         )}
       </div>
       <div className="flex items-center justify-center gap-4 mt-8">
-        <button
+        <Link
+          href={`/trade/${createdTokenHash}`}
           type="button"
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
-          onClick={() => {
-            // Navigate to token page - you can implement this
-            console.log("Navigate to token page");
-          }}
         >
           View token page
-        </button>
+        </Link>
         <button
           type="button"
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"

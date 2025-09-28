@@ -14,6 +14,7 @@ function Header() {
     { name: "Explore", href: "/explore" },
     { name: "Launch", href: "/launch" },
     { name: "Arena", href: "/arena" },
+    { name: "Predictions", href: "/predictions" },
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (
