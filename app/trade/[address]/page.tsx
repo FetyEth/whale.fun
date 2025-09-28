@@ -105,7 +105,7 @@ const TradePage = () => {
   const [userBalance, setUserBalance] = useState<string>("0");
   const [userTokenBalance, setUserTokenBalance] = useState<string>("0");
   const [copied, setCopied] = useState(false);
-
+  console.log("userbalance", userBalance);
   // Trading state
   const [buyAmount, setBuyAmount] = useState<string>("");
   const [sellAmount, setSellAmount] = useState<string>("");
@@ -193,22 +193,17 @@ const TradePage = () => {
 
     try {
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { rootstockTestnet } = await import("viem/chains");
 
       // Get current chain
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
+      const chainId = 31;
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 
-      const currentChain = chainMap[chainId] || celoAlfajores;
+      const currentChain = chainMap[chainId] || rootstockTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -359,9 +354,7 @@ const TradePage = () => {
 
     try {
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { rootstockTestnet } = await import("viem/chains");
 
       // Get current chain
       const connection = await getBlockchainConnection();
@@ -369,12 +362,10 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 
-      const currentChain = chainMap[chainId] || celoAlfajores;
+      const currentChain = chainMap[chainId] || rootstockTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -607,13 +598,11 @@ const TradePage = () => {
       const { createWalletClient, createPublicClient, http } = await import(
         "viem"
       );
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { rootstockTestnet } = await import("viem/chains");
 
       // Get current chain
       const walletClient = createWalletClient({
-        chain: celoAlfajores, // Default to Celo Alfajores
+        chain: rootstockTestnet, // Default to Celo Alfajores
         transport: http(),
       });
 
@@ -621,12 +610,11 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 
-      const currentChain = chainMap[chainId] || celoAlfajores;
+      console.log("chainId", chainId);
+      const currentChain = chainMap[chainId];
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -653,18 +641,14 @@ const TradePage = () => {
   const fetchChartData = async (chainId: number) => {
     try {
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { rootstockTestnet } = await import("viem/chains");
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 
-      const currentChain = chainMap[chainId] || celoAlfajores;
+      const currentChain = chainMap[chainId] || rootstockTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -845,9 +829,7 @@ const TradePage = () => {
       const { createWalletClient, http, custom, formatEther } = await import(
         "viem"
       );
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { rootstockTestnet } = await import("viem/chains");
 
       // Get current chain
       const connection = await getBlockchainConnection();
@@ -855,12 +837,10 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 
-      const currentChain = chainMap[chainId] || celoAlfajores;
+      const currentChain = chainMap[chainId] || rootstockTestnet;
 
       // Create wallet client without account (let it use the connected account)
       const walletClient = createWalletClient({
@@ -1282,7 +1262,7 @@ const TradePage = () => {
                         key={timeframe}
                         onClick={() => {
                           setChartTimeframe(timeframe);
-                          if (tokenData) fetchChartData(44787);
+                          if (tokenData) fetchChartData(31);
                         }}
                         className={`px-3 py-1 rounded text-sm ${
                           chartTimeframe === timeframe

@@ -44,7 +44,7 @@ const TokenCard = ({ token }: TokenCardProps) => {
       <div className="flex items-start justify-between mb-4">
         {/* Token Image - Left side with LIVE badge overlay */}
         <div className="relative w-1/2 max-w-[110px] h-20 rounded-lg bg-stone-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <Image
+          <img
             src={token.image}
             alt={token.name}
             width={150}

@@ -90,8 +90,6 @@ export default function PortfolioPage() {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        44787: celoAlfajores,
-        30: rootstock,
         31: rootstockTestnet,
       };
 

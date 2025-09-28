@@ -177,14 +177,6 @@ const CreatePage: FC = () => {
       // Map chain ID to chain object and contract address
       const chainMap: Record<number, { chain: any; contractAddress: string }> =
         {
-          44787: {
-            chain: celoAlfajores,
-            contractAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",
-          },
-          30: {
-            chain: rootstock,
-            contractAddress: "0x0000000000000000000000000000000000000000", // Update with actual address
-          },
           31: {
             chain: rootstockTestnet,
             contractAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
@@ -445,7 +437,7 @@ const CreatePage: FC = () => {
                             className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                             onClick={async () => {
                               try {
-                                await switchNetwork(44787); // Celo Alfajores
+                                await switchNetwork(31); // Celo Alfajores
                                 setError(null);
                                 checkNetwork();
                               } catch (switchError) {

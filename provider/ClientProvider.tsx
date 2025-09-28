@@ -4,13 +4,7 @@ import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode } from "react";
-import {
-  celoAlfajores,
-  rootstock,
-  rootstockTestnet,
-  polygonAmoy,
-  baseSepolia,
-} from "viem/chains";
+import { rootstockTestnet } from "viem/chains";
 
 // Custom 0G Network chain configuration
 const zeroGNetwork = {
@@ -44,11 +38,7 @@ const config = getDefaultConfig({
   projectId: "YOUR_PROJECT_ID",
   chains: [
     zeroGNetwork, // Custom 0G Network configuration
-    polygonAmoy,
-    baseSepolia,
-    rootstock,
     rootstockTestnet,
-    celoAlfajores,
   ],
   ssr: true,
 });
