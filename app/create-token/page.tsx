@@ -182,6 +182,34 @@ const CreatePage: FC = () => {
             chain: rootstockTestnet,
             contractAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
           },
+          16602: {
+            chain: {
+              id: 16602,
+              name: "0G Testnet",
+              network: "0g-testnet",
+              nativeCurrency: {
+                decimals: 18,
+                name: "0G",
+                symbol: "0G",
+              },
+              rpcUrls: {
+                default: {
+                  http: ["https://evmrpc-testnet.0g.ai"],
+                },
+                public: {
+                  http: ["https://evmrpc-testnet.0g.ai"],
+                },
+              },
+              blockExplorers: {
+                default: {
+                  name: "0G Explorer",
+                  url: "https://chainscan.0g.ai",
+                },
+              },
+              testnet: true,
+            },
+            contractAddress: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+          },
           // Add more chains as needed
         };
 
@@ -407,133 +435,34 @@ const CreatePage: FC = () => {
                     <p className="text-sm text-blue-700">
                       <strong>Creation Cost:</strong>{" "}
                       {formatEther(creationCost.total)}{" "}
-                      {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"}
+                      {currentNetwork?.chainId === 44787
+                        ? "CELO"
+                        : currentNetwork?.chainId === 16602
+                        ? "0G"
+                        : currentNetwork?.chainId === 31
+                        ? "RBTC"
+                        : "ETH"}
                       <br />
                       <span className="text-xs">
                         (Launch Fee: {formatEther(creationCost.launchFee)}{" "}
-                        {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"} +
-                        Min Liquidity: {formatEther(creationCost.liquidity)}{" "}
-                        {currentNetwork?.chainId === 44787 ? "CELO" : "ETH"})
+                        {currentNetwork?.chainId === 44787
+                          ? "CELO"
+                          : currentNetwork?.chainId === 16602
+                          ? "0G"
+                          : currentNetwork?.chainId === 31
+                          ? "RBTC"
+                          : "ETH"}{" "}
+                        + Min Liquidity: {formatEther(creationCost.liquidity)}{" "}
+                        {currentNetwork?.chainId === 44787
+                          ? "CELO"
+                          : currentNetwork?.chainId === 16602
+                          ? "0G"
+                          : currentNetwork?.chainId === 31
+                          ? "RBTC"
+                          : "ETH"}
+                        )
                       </span>
                     </p>
-                  </div>
-                )}
-                {error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{error}</p>
-                    {(error.includes("Unsupported network") ||
-                      error.includes("Contract call failed") ||
-                      error.includes("contract not deployed")) && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs text-gray-600">
-                          Available networks with deployed contracts:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {/* Only show networks that have contracts deployed */}
-                          <button
-                            type="button"
-                            className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                            onClick={async () => {
-                              try {
-                                await switchNetwork(31); // Celo Alfajores
-                                setError(null);
-                                checkNetwork();
-                              } catch (switchError) {
-                                console.error(
-                                  "Failed to switch network:",
-                                  switchError
-                                );
-                                setError(
-                                  "Failed to switch to Celo Alfajores. Please manually switch in your wallet."
-                                );
-                              }
-                            }}
-                          >
-                            Celo Alfajores ✅
-                          </button>
-                          {/* Add other networks when contracts are deployed */}
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          <p className="text-xs text-gray-500">
-                            💡 Get test CELO from:{" "}
-                            <a
-                              href="https://faucet.celo.org/"
-                              target="_blank"
-                              className="text-blue-600 underline"
-                            >
-                              https://faucet.celo.org/
-                            </a>
-                          </p>
-                          {error.includes("OVERFLOW") && (
-                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                              <p className="text-yellow-800 font-medium">
-                                ⚠️ RPC Endpoint Issue
-                              </p>
-                              <p className="text-yellow-700 mt-1">
-                                Your wallet might be using a different RPC. Try
-                                adding our Alchemy RPC to MetaMask:
-                              </p>
-                              <div className="mt-1 p-1 bg-yellow-100 rounded font-mono text-xs">
-                                https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb
-                              </div>
-                              <button
-                                type="button"
-                                className="mt-1 px-2 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
-                                onClick={async () => {
-                                  try {
-                                    await window.ethereum?.request({
-                                      method: "wallet_addEthereumChain",
-                                      params: [
-                                        {
-                                          chainId: "0xaef3",
-                                          chainName: "Celo Alfajores (Alchemy)",
-                                          rpcUrls: [
-                                            "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb",
-                                          ],
-                                          blockExplorerUrls: [
-                                            "https://alfajores.celoscan.io",
-                                          ],
-                                          nativeCurrency: {
-                                            name: "CELO",
-                                            symbol: "CELO",
-                                            decimals: 18,
-                                          },
-                                        },
-                                      ],
-                                    });
-                                  } catch (e) {
-                                    console.error("Failed to add network:", e);
-                                  }
-                                }}
-                              >
-                                Add Alchemy RPC to Wallet
-                              </button>
-                            </div>
-                          )}
-                          {error.includes("Contract call failed") && (
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
-                                onClick={() => window.location.reload()}
-                              >
-                                🔄 Refresh Page
-                              </button>
-                              <button
-                                type="button"
-                                className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
-                                onClick={() => {
-                                  setError(null);
-                                  checkNetwork();
-                                }}
-                              >
-                                🔍 Retry Connection
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

@@ -8,8 +8,8 @@ import { rootstockTestnet } from "viem/chains";
 
 // Custom 0G Network chain configuration
 const zeroGNetwork = {
-  id: 16661,
-  name: "0G Network",
+  id: 16602,
+  name: "0G Testnet Network",
   network: "0g-network",
   nativeCurrency: {
     decimals: 18,
@@ -18,10 +18,10 @@ const zeroGNetwork = {
   },
   rpcUrls: {
     default: {
-      http: ["https://evmrpc.0g.ai"],
+      http: ["https://evmrpc-testnet.0g.ai"],
     },
     public: {
-      http: ["https://evmrpc.0g.ai"],
+      http: ["https://evmrpc-testnet.0g.ai"],
     },
   },
   blockExplorers: {

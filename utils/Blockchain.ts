@@ -76,11 +76,11 @@ export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
     blockExplorerUrl: "https://sepolia.basescan.org",
   },
   // 0G Network
-  16601: {
-    chainId: 16601,
-    name: "0G Network",
+  16602: {
+    chainId: 16602,
+    name: "0G Testnet",
     rpcUrl:
-      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) || "https://evmrpc.0g.ai", // 0G testnet RPC
+      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) || "https://evmrpc-testnet.0g.ai", // 0G testnet RPC
     blockExplorerUrl: "https://chainscan.0g.ai",
   },
   31: {

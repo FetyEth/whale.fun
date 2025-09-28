@@ -38,14 +38,14 @@ function HeroSection() {
               Launch tokens on-stream. co-created and safe.
             </p>
             <p className="flex gap-2 mt-3 text-lg text-center justify-center  items-center">
-              built on{" Rootstock "}
-              <Image
+              built on ROOTSTOCK
+              {/* <Image
                 src="/icons/0g.svg"
                 alt="Rootstock Logo"
                 width={40}
                 height={40}
                 priority
-              />
+              /> */}
             </p>
           </div>
           <div className="flex justify-between pt-5 items-center px-10">

@@ -49,8 +49,8 @@ const SUPPORTED_NETWORKS: NetworkConfig[] = [
   },
   {
     name: "zerog-testnet",
-    chainId: 16600,
-    rpcUrl: "https://rpc-testnet.zero.g",
+    chainId: 16662,
+    rpcUrl: "https://evmrpc-testnet.0g.ai",
     blockExplorer: "https://scan-testnet.zero.g",
   },
 ];

@@ -1,7 +1,11 @@
 import { tokenFactoryRootService } from "./TokenFactoryRootService";
 import { getBlockchainConnection } from "@/utils/Blockchain";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
-import { ExternalTokenService, EXTERNAL_TOKENS, type ExternalTokenInfo } from "./ExternalTokenService";
+import {
+  ExternalTokenService,
+  EXTERNAL_TOKENS,
+  type ExternalTokenInfo,
+} from "./ExternalTokenService";
 
 /**
  * Token data interface for explore page
@@ -38,14 +42,18 @@ export class TokenDataService {
    */
   async getAllTokensData(chainId?: number): Promise<TokenData[]> {
     try {
-      console.log("🔍 Fetching all tokens from factory and external sources...");
+      console.log(
+        "🔍 Fetching all tokens from factory and external sources..."
+      );
       console.log("📡 Chain ID:", chainId);
 
       const tokensData: TokenData[] = [];
 
       // 1. Get platform tokens from factory
       try {
-        const tokenAddresses = await tokenFactoryRootService.getAllTokens(chainId);
+        const tokenAddresses = await tokenFactoryRootService.getAllTokens(
+          chainId
+        );
         console.log("📋 Found platform token addresses:", tokenAddresses);
         console.log("📊 Total platform tokens found:", tokenAddresses.length);
 
@@ -60,7 +68,9 @@ export class TokenDataService {
             const tokenData = await this.getTokenData(tokenAddress, chainId);
             if (tokenData) {
               tokensData.push(tokenData);
-              console.log(`✅ Successfully fetched data for ${tokenData.symbol}`);
+              console.log(
+                `✅ Successfully fetched data for ${tokenData.symbol}`
+              );
             }
           } catch (error) {
             console.error(
@@ -97,25 +107,54 @@ export class TokenDataService {
   ): Promise<TokenData | null> {
     try {
       console.log(`Fetching data for token: ${tokenAddress}`);
-
       // Create public client for read operations based on current chain
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores, polygonAmoy, rootstockTestnet } = await import("viem/chains");
-      let targetChain = celoAlfajores;
+      const { celoAlfajores, polygonAmoy, rootstockTestnet } = await import(
+        "viem/chains"
+      );
+      let targetChain = rootstockTestnet; // Default to Rootstock Testnet
       try {
         // Prefer provided chainId, else read from wallet
-        let activeChainId = chainId;
-        if (!activeChainId) {
+        if (!chainId) {
           const connection = await getBlockchainConnection();
-          activeChainId = Number(connection.network.chainId);
+          chainId = Number(connection.network.chainId);
         }
-        const map: Record<number, any> = {
-          44787: celoAlfajores,
+
+        // Map chainId to appropriate chain
+        const chainMap: Record<number, any> = {
           80002: polygonAmoy,
           31: rootstockTestnet,
+          16602: {
+            id: 16602,
+            name: "0G Testnet",
+            network: "0g-testnet",
+            nativeCurrency: {
+              decimals: 18,
+              name: "0G",
+              symbol: "0G",
+            },
+            rpcUrls: {
+              default: {
+                http: ["https://evmrpc-testnet.0g.ai"],
+              },
+              public: {
+                http: ["https://evmrpc-testnet.0g.ai"],
+              },
+            },
+            blockExplorers: {
+              default: {
+                name: "0G Explorer",
+                url: "https://chainscan.0g.ai",
+              },
+            },
+            testnet: true,
+          },
+          44787: celoAlfajores,
         };
-        targetChain = map[Number(activeChainId!)] || celoAlfajores;
-      } catch {}
+        targetChain = chainMap[Number(chainId)] || rootstockTestnet; // Default fallback
+      } catch (error) {
+        console.warn("Could not determine chain, using Rootstock Testnet:", error);
+      }
 
       const publicClient = createPublicClient({
         chain: targetChain,
@@ -305,7 +344,7 @@ export class TokenDataService {
    */
   formatCurrentPrice(currentPrice: bigint): string {
     const priceNumber = Number(currentPrice) / 1e18; // Convert from wei
-    
+
     if (priceNumber >= 1) {
       return `$${priceNumber.toFixed(4)}`;
     } else if (priceNumber >= 0.0001) {
@@ -388,7 +427,8 @@ export class TokenDataService {
         randomChange >= 0 ? "+" : ""
       }${randomChange.toFixed(1)}%`;
       const priceValue = `${randomChange >= 0 ? "+" : ""}${(
-        0.000001234 * randomChange / 100
+        (0.000001234 * randomChange) /
+        100
       ).toFixed(8)}`;
 
       const tokenData: TokenData = {
@@ -396,8 +436,14 @@ export class TokenDataService {
         address: externalToken.address,
         name: tokenInfo.name,
         symbol: tokenInfo.symbol,
-        description: externalToken.description || `${tokenInfo.name} - External token on ${chainId === 16600 ? '0G Network' : 'Unknown Network'}`,
-        logoUrl: externalToken.logoUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0ZGNkIzNSIvPgo8dGV4dCB4PSIyNCIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNGRkZGRkYiPlBBSTwvdGV4dD4KPC9zdmc+',
+        description:
+          externalToken.description ||
+          `${tokenInfo.name} - External token on ${
+            chainId === 16600 ? "0G Network" : "Unknown Network"
+          }`,
+        logoUrl:
+          externalToken.logoUrl ||
+          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0ZGNkIzNSIvPgo8dGV4dCB4PSIyNCIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNGRkZGRkYiPlBBSTwvdGV4dD4KPC9zdmc+",
         creator: "External", // External tokens don't have a creator in our system
         launchTime: mockLaunchTime,
         currentPrice: mockCurrentPrice,
@@ -414,10 +460,16 @@ export class TokenDataService {
         chainId: chainId,
       };
 
-      console.log(`✅ Successfully processed external token ${tokenInfo.symbol}:`, tokenData);
+      console.log(
+        `✅ Successfully processed external token ${tokenInfo.symbol}:`,
+        tokenData
+      );
       return tokenData;
     } catch (error) {
-      console.error(`❌ Error processing external token ${externalToken.symbol}:`, error);
+      console.error(
+        `❌ Error processing external token ${externalToken.symbol}:`,
+        error
+      );
       return null;
     }
   }

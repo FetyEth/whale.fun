@@ -91,6 +91,12 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
       deployedAt: 0,
       verified: false,
     },
+    16602: {
+      // 0G Testnet
+      address: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+      deployedAt: 0,
+      verified: false,
+    },
     // Add other networks as needed
   },
 };

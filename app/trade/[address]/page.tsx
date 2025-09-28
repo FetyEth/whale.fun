@@ -195,12 +195,24 @@ const TradePage = () => {
       const { createPublicClient, http } = await import("viem");
       const { rootstockTestnet } = await import("viem/chains");
 
-      // Get current chain
-      const chainId = 31;
+      // Get current chain dynamically
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
+          testnet: true,
+        },
       };
 
       const currentChain = chainMap[chainId] || rootstockTestnet;
@@ -363,6 +375,17 @@ const TradePage = () => {
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
+          testnet: true,
+        },
       };
 
       const currentChain = chainMap[chainId] || rootstockTestnet;
@@ -600,21 +623,28 @@ const TradePage = () => {
       );
       const { rootstockTestnet } = await import("viem/chains");
 
-      // Get current chain
-      const walletClient = createWalletClient({
-        chain: rootstockTestnet, // Default to Celo Alfajores
-        transport: http(),
-      });
-
-      const chainId = await walletClient.getChainId();
+      // Get current chain dynamically
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
+          testnet: true,
+        },
       };
 
       console.log("chainId", chainId);
-      const currentChain = chainMap[chainId];
+      const currentChain = chainMap[chainId] || rootstockTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -646,6 +676,17 @@ const TradePage = () => {
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
+          testnet: true,
+        },
       };
 
       const currentChain = chainMap[chainId] || rootstockTestnet;
@@ -838,6 +879,17 @@ const TradePage = () => {
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
+          testnet: true,
+        },
       };
 
       const currentChain = chainMap[chainId] || rootstockTestnet;
@@ -1016,27 +1068,59 @@ const TradePage = () => {
 
       console.log(`${tradeMode} transaction submitted:`, txHash);
 
-      // Wait for transaction confirmation
-      // (publicClient already created above)
+      // Wait for transaction confirmation with better error handling for 0G Testnet
+      try {
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 120000, // Increased timeout for 0G Testnet
+        });
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        timeout: 60000, // 60 second timeout
-      });
+        if (receipt.status === "success") {
+          console.log(`${tradeMode} transaction confirmed:`, receipt);
 
-      if (receipt.status === "success") {
-        console.log(`${tradeMode} transaction confirmed:`, receipt);
+          // Refresh data
+          await Promise.all([fetchTokenData(), fetchUserBalances()]);
 
-        // Refresh data
-        await Promise.all([fetchTokenData(), fetchUserBalances()]);
+          setAmount("");
+          setBuyQuote(null);
+          setSellQuote(null);
 
-        setAmount("");
-        setBuyQuote(null);
-        setSellQuote(null);
+          alert(`${tradeMode} successful! Transaction hash: ${txHash}`);
+        } else {
+          throw new Error(`Transaction failed with status: ${receipt.status}`);
+        }
+      } catch (receiptError: any) {
+        console.warn(
+          "Receipt error (transaction may still be successful):",
+          receiptError
+        );
 
-        alert(`${tradeMode} successful! Transaction hash: ${txHash}`);
-      } else {
-        throw new Error(`Transaction failed with status: ${receipt.status}`);
+        // If receipt retrieval fails but transaction was submitted,
+        // still refresh data and show success (common on 0G Testnet)
+        if (
+          receiptError.message.includes("no matching receipts found") ||
+          receiptError.message.includes("data corruption")
+        ) {
+          console.log(
+            "⚠️ Receipt not found, but transaction was submitted. Refreshing data..."
+          );
+
+          // Wait a bit for the transaction to be processed
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+
+          // Refresh data to see if the transaction went through
+          await Promise.all([fetchTokenData(), fetchUserBalances()]);
+
+          setAmount("");
+          setBuyQuote(null);
+          setSellQuote(null);
+
+          alert(
+            `${tradeMode} transaction submitted! Hash: ${txHash}\n\nNote: Receipt verification failed on 0G Testnet, but your transaction may have succeeded. Please check your balance.`
+          );
+        } else {
+          throw receiptError; // Re-throw other receipt errors
+        }
       }
     } catch (err: any) {
       console.error("Error executing trade:", err);
@@ -1596,30 +1680,6 @@ const TradePage = () => {
                   </button>
                 </div>
 
-                {/* Quote Display */}
-                {buyQuote && tradeMode === "Buy" && (
-                  <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                    <div className="flex justify-between mb-1">
-                      <span>Cost:</span>
-                      <span className="font-semibold">
-                        {formatEther(buyQuote.cost)} ETH
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Price Impact:</span>
-                      <span
-                        className={`font-semibold ${
-                          buyQuote.priceImpact > 5
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {buyQuote.priceImpact.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-
                 {sellQuote && tradeMode === "Sell" && (
                   <div className="bg-green-50 p-3 rounded-lg text-sm">
                     <div className="flex justify-between mb-1">
@@ -1676,13 +1736,6 @@ const TradePage = () => {
                     Max
                   </button>
                 </div>
-
-                {/* Error Display */}
-                {tradingError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-                    {tradingError}
-                  </div>
-                )}
 
                 {/* Primary action */}
                 <Button

@@ -91,6 +91,31 @@ export default function PortfolioPage() {
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         31: rootstockTestnet,
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: {
+            decimals: 18,
+            name: "0G",
+            symbol: "0G",
+          },
+          rpcUrls: {
+            default: {
+              http: ["https://evmrpc-testnet.0g.ai"],
+            },
+            public: {
+              http: ["https://evmrpc-testnet.0g.ai"],
+            },
+          },
+          blockExplorers: {
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan.0g.ai",
+            },
+          },
+          testnet: true,
+        },
       };
 
       const currentChain = chainMap[chainId];
