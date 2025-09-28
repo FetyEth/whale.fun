@@ -75,6 +75,14 @@ export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
       "https://sepolia.base.org", // fallback public RPC (lower reliability)
     blockExplorerUrl: "https://sepolia.basescan.org",
   },
+  // 0G Network
+  16601: {
+    chainId: 16601,
+    name: "0G Network",
+    rpcUrl:
+      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) || "https://evmrpc.0g.ai", // 0G testnet RPC
+    blockExplorerUrl: "https://chainscan.0g.ai",
+  },
 };
 
 /**

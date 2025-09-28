@@ -74,24 +74,27 @@ export default function PortfolioPage() {
     setLoading(true);
     try {
       // Get dynamic chain info from wallet
-      const { createWalletClient, createPublicClient, http, custom } = await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
-      
+      const { createWalletClient, createPublicClient, http, custom } =
+        await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
+        "viem/chains"
+      );
+
       // Create wallet client to get current chain
       const walletClient = createWalletClient({
         transport: custom(window.ethereum),
       });
-      
+
       const chainId = await walletClient.getChainId();
       console.log("Current chain ID:", chainId);
-      
+
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
         44787: celoAlfajores,
         30: rootstock,
         31: rootstockTestnet,
       };
-      
+
       const currentChain = chainMap[chainId];
       if (!currentChain) {
         throw new Error(`Unsupported chain ID: ${chainId}`);
@@ -100,8 +103,10 @@ export default function PortfolioPage() {
       const factoryService = new TokenFactoryRootService();
 
       // Get tokens created by user
-      const createdTokenAddresses = await factoryService.getCreatorTokens(address);
-      
+      const createdTokenAddresses = await factoryService.getCreatorTokens(
+        address
+      );
+
       // Get creator stats
       const creatorStats = await factoryService.getCreatorStats(address);
 
@@ -119,61 +124,79 @@ export default function PortfolioPage() {
             });
 
             // Load CreatorToken ABI
-            const CreatorTokenABI = (await import("@/config/abi/CreatorToken.json")).default;
+            const CreatorTokenABI = (
+              await import("@/config/abi/CreatorToken.json")
+            ).default;
 
             // Read basic token info from contract
             const [name, symbol, totalSupply, decimals] = await Promise.all([
               publicClient.readContract({
                 address: tokenAddress as `0x${string}`,
                 abi: CreatorTokenABI,
-                functionName: 'name',
+                functionName: "name",
               }),
               publicClient.readContract({
                 address: tokenAddress as `0x${string}`,
                 abi: CreatorTokenABI,
-                functionName: 'symbol',
+                functionName: "symbol",
               }),
               publicClient.readContract({
                 address: tokenAddress as `0x${string}`,
                 abi: CreatorTokenABI,
-                functionName: 'totalSupply',
+                functionName: "totalSupply",
               }),
               publicClient.readContract({
                 address: tokenAddress as `0x${string}`,
                 abi: CreatorTokenABI,
-                functionName: 'decimals',
+                functionName: "decimals",
               }),
             ]);
 
             // Try to get additional stats (may fail if methods don't exist)
             let stats;
             try {
-              const [currentPrice, marketCap, holderCount, totalSold, creatorFees] = await Promise.all([
-                publicClient.readContract({
-                  address: tokenAddress as `0x${string}`,
-                  abi: CreatorTokenABI,
-                  functionName: 'getCurrentPrice',
-                }).catch(() => parseEther("0.001")), // Default price if method doesn't exist
-                publicClient.readContract({
-                  address: tokenAddress as `0x${string}`,
-                  abi: CreatorTokenABI,
-                  functionName: 'marketCap',
-                }).catch(() => BigInt(0)),
-                publicClient.readContract({
-                  address: tokenAddress as `0x${string}`,
-                  abi: CreatorTokenABI,
-                  functionName: 'holderCount',
-                }).catch(() => BigInt(1)),
-                publicClient.readContract({
-                  address: tokenAddress as `0x${string}`,
-                  abi: CreatorTokenABI,
-                  functionName: 'totalSold',
-                }).catch(() => BigInt(0)),
-                publicClient.readContract({
-                  address: tokenAddress as `0x${string}`,
-                  abi: CreatorTokenABI,
-                  functionName: 'getTotalFeesCollected',
-                }).catch(() => BigInt(0)),
+              const [
+                currentPrice,
+                marketCap,
+                holderCount,
+                totalSold,
+                creatorFees,
+              ] = await Promise.all([
+                publicClient
+                  .readContract({
+                    address: tokenAddress as `0x${string}`,
+                    abi: CreatorTokenABI,
+                    functionName: "getCurrentPrice",
+                  })
+                  .catch(() => parseEther("0.001")), // Default price if method doesn't exist
+                publicClient
+                  .readContract({
+                    address: tokenAddress as `0x${string}`,
+                    abi: CreatorTokenABI,
+                    functionName: "marketCap",
+                  })
+                  .catch(() => BigInt(0)),
+                publicClient
+                  .readContract({
+                    address: tokenAddress as `0x${string}`,
+                    abi: CreatorTokenABI,
+                    functionName: "holderCount",
+                  })
+                  .catch(() => BigInt(1)),
+                publicClient
+                  .readContract({
+                    address: tokenAddress as `0x${string}`,
+                    abi: CreatorTokenABI,
+                    functionName: "totalSold",
+                  })
+                  .catch(() => BigInt(0)),
+                publicClient
+                  .readContract({
+                    address: tokenAddress as `0x${string}`,
+                    abi: CreatorTokenABI,
+                    functionName: "getTotalFeesCollected",
+                  })
+                  .catch(() => BigInt(0)),
               ]);
 
               stats = {
@@ -185,7 +208,10 @@ export default function PortfolioPage() {
                 creatorFees: creatorFees as bigint,
               };
             } catch (error) {
-              console.warn(`Could not load stats for token ${tokenAddress}:`, error);
+              console.warn(
+                `Could not load stats for token ${tokenAddress}:`,
+                error
+              );
               // Fallback stats
               stats = {
                 totalSupply: totalSupply as bigint,
@@ -200,17 +226,21 @@ export default function PortfolioPage() {
             // Get user's balance
             let balance = BigInt(0);
             try {
-              balance = await publicClient.readContract({
+              balance = (await publicClient.readContract({
                 address: tokenAddress as `0x${string}`,
                 abi: CreatorTokenABI,
-                functionName: 'balanceOf',
+                functionName: "balanceOf",
                 args: [address],
-              }) as bigint;
+              })) as bigint;
             } catch (error) {
-              console.warn(`Could not get balance for token ${tokenAddress}:`, error);
+              console.warn(
+                `Could not get balance for token ${tokenAddress}:`,
+                error
+              );
             }
 
-            const currentValue = (balance * stats.currentPrice) / BigInt(10 ** 18);
+            const currentValue =
+              (balance * stats.currentPrice) / BigInt(10 ** 18);
 
             return {
               address: tokenAddress,
@@ -219,13 +249,16 @@ export default function PortfolioPage() {
               balance,
               stats,
               creator: address,
-              launchTime: BigInt(Date.now() - (index * 86400000)), // Approximate
+              launchTime: BigInt(Date.now() - index * 86400000), // Approximate
               description: `Token ${name} created by you`,
               logoUrl: "",
               currentValue,
             };
           } catch (error) {
-            console.error(`Error loading token data for ${tokenAddress}:`, error);
+            console.error(
+              `Error loading token data for ${tokenAddress}:`,
+              error
+            );
             // Return minimal data if contract calls fail
             return {
               address: tokenAddress,
@@ -274,7 +307,7 @@ export default function PortfolioPage() {
       });
     } catch (error) {
       console.error("Error loading portfolio data:", error);
-      
+
       // Set empty state on error
       setCreatedTokens([]);
       setPortfolioTokens([]);
@@ -389,7 +422,9 @@ export default function PortfolioPage() {
               <p className="text-gray-600 mb-8">
                 Connect your wallet to view your token portfolio
               </p>
-              <Button className="bg-black text-white hover:bg-gray-800">Connect Wallet</Button>
+              <Button className="bg-black text-white hover:bg-gray-800">
+                Connect Wallet
+              </Button>
             </div>
           </div>
         </div>
@@ -519,7 +554,9 @@ export default function PortfolioPage() {
                           You don&apos;t have any tokens in your portfolio yet.
                         </p>
                         <Link href="/explore">
-                          <Button className="bg-black text-white hover:bg-gray-800">Explore Tokens</Button>
+                          <Button className="bg-black text-white hover:bg-gray-800">
+                            Explore Tokens
+                          </Button>
                         </Link>
                       </div>
                     )}
