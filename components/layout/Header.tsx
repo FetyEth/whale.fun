@@ -5,6 +5,7 @@ import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 import Link from "next/link";
+import { Button } from "../ui/button";
 
 function Header() {
   const { user, showOnboarding, completeOnboarding, dismissOnboarding } =
@@ -14,7 +15,6 @@ function Header() {
     { name: "Explore", href: "/explore" },
     { name: "Launch", href: "/launch" },
     { name: "Arena", href: "/arena" },
-    { name: "Predictions", href: "/predictions" },
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (
@@ -64,9 +64,9 @@ function Header() {
                   {(() => {
                     if (!connected) {
                       return (
-                        <button onClick={openConnectModal} type="button">
+                        <Button onClick={openConnectModal} type="button">
                           Connect Wallet
-                        </button>
+                        </Button>
                       );
                     }
 
