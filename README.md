@@ -1,36 +1,210 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Whale.fun 🐋
 
-## Getting Started
+A decentralized platform for creating and trading meme tokens with bonding curves, battle arenas, and community features.
 
-First, run the development server:
+## 🌐 Deployed Contract Addresses
+
+### Rootstock Testnet (Chain ID: 31)
+
+- **WhaleToken**: `0x7906f9a13728e65d60aa8f8baee2a4f1ccd96c5e`
+- **TokenFactory**: `0x76f96e2acbc39d7d9620a607ac099bb9687e2207`
+- **Network**: Rootstock Testnet
+- **RPC URL**: https://public-node.testnet.rsk.co
+- **Explorer**: https://explorer.testnet.rsk.co
+
+### 0G Testnet (Chain ID: 16602)
+
+- **WhaleToken**: Not yet deployed
+- **TokenFactory**: `0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25`
+- **Network**: 0G Testnet Network
+- **RPC URL**: https://evmrpc-testnet.0g.ai
+- **Explorer**: https://chainscan.0g.ai
+
+## 🚀 Features
+
+- **Token Creation**: Create meme tokens with customizable bonding curves
+- **Trading Interface**: Buy/sell tokens with real-time price calculations
+- **Battle Arena**: Gamified token competitions and leaderboards
+- **Portfolio Management**: Track your token holdings and performance
+- **Multi-Chain Support**: Deploy on Rootstock, 0G, Celo, and Polygon networks
+
+## 🛠️ Technology Stack
+
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
+- **Blockchain**: Ethereum-compatible networks (Rootstock, 0G, Celo, Polygon)
+- **Smart Contracts**: Solidity with Hardhat framework
+- **Web3 Integration**: Viem, Wagmi, RainbowKit
+- **State Management**: React Query, Context API
+
+## 📦 Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm/yarn
+- MetaMask or compatible Web3 wallet
+- Git
+
+### Installation
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/your-username/whale.fun.git
+cd whale.fun
+```
+
+2. **Install dependencies**
+
+```bash
+npm install
+# or
+yarn install
+```
+
+3. **Set up environment variables**
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` with your configuration:
+
+```env
+# RPC URLs (optional - fallbacks are provided)
+NEXT_PUBLIC_ROOTSTOCK_TESTNET_RPC_URL=https://public-node.testnet.rsk.co
+NEXT_PUBLIC_0G_RPC_URL=https://evmrpc-testnet.0g.ai
+NEXT_PUBLIC_CELO_ALFAJORES_RPC_URL=https://alfajores-forno.celo-testnet.org
+NEXT_PUBLIC_POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
+
+# Database (if using backend features)
+DATABASE_URL=your_database_url
+```
+
+4. **Run the development server**
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔧 Smart Contract Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Contract Deployment
 
-## Learn More
+1. **Navigate to contracts directory**
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd contracts
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Install contract dependencies**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+```
 
-## Deploy on Vercel
+3. **Compile contracts**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx hardhat compile
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Deploy to testnet**
+
+```bash
+# Deploy to Rootstock Testnet
+npx hardhat run scripts/deploy-multichain.ts --network rootstock-testnet
+
+# Deploy to 0G Testnet
+npx hardhat run scripts/deploy-multichain.ts --network zeroG-testnet
+```
+
+### Contract Architecture
+
+- **TokenFactoryRoot**: Main factory contract for creating tokens
+- **WhaleToken**: Platform utility token
+- **BondingCurveLibrary**: Mathematical functions for price calculations
+- **CreatorToken**: Individual meme token implementation
+
+## 🎮 Platform Features
+
+### Token Creation
+
+- Customizable bonding curve parameters
+- Creator fee settings (30-95%)
+- Initial liquidity requirements
+- Multi-chain deployment support
+
+### Trading Engine
+
+- Real-time bonding curve calculations
+- Slippage protection
+- Transaction receipt handling for slow RPCs
+- Hybrid contract + frontend calculation fallback
+
+### Battle Arena
+
+- Token competition system
+- Leaderboards and rankings
+- Achievement system
+- Prize pool distribution
+
+### Portfolio Management
+
+- Multi-chain token tracking
+- Real-time balance updates
+- Performance analytics
+- Creator statistics
+
+## 🌍 Supported Networks
+
+| Network           | Chain ID | Status     | Features                |
+| ----------------- | -------- | ---------- | ----------------------- |
+| Rootstock Testnet | 31       | ✅ Active  | Full platform support   |
+| 0G Testnet        | 16602    | ✅ Active  | Token creation, trading |
+| Celo Alfajores    | 44787    | ✅ Active  | Full platform support   |
+| Polygon Amoy      | 80002    | ⚠️ Limited | Token creation only     |
+
+## 🔐 Security Features
+
+- **Contract Validation**: Parameter bounds checking
+- **Overflow Protection**: SafeMath implementations
+- **Access Control**: Owner-only admin functions
+- **Reentrancy Guards**: Protection against attacks
+- **Audit Trail**: Comprehensive event logging
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: [docs.whale.fun](https://docs.whale.fun)
+- **Discord**: [Join our community](https://discord.gg/whale-fun)
+- **Twitter**: [@WhaleFunPlatform](https://twitter.com/WhaleFunPlatform)
+- **Issues**: [GitHub Issues](https://github.com/your-username/whale.fun/issues)
+
+## 🎯 Roadmap
+
+- [ ] Mainnet deployment
+- [ ] Additional DEX integrations
+- [ ] Mobile app development
+- [ ] Advanced analytics dashboard
+- [ ] Cross-chain bridge integration
+- [ ] NFT marketplace integration
+
+---
+
+Built with ❤️ by the Whale.fun team
