@@ -104,7 +104,7 @@ const CREATOR_TOKEN_CONFIG: ContractConfig = {
     // Note: CreatorToken is deployed dynamically by TokenFactory
     // These are placeholder entries for common networks
     44787: {
-      address: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15", // Updated TokenFactory address
+      address: "0x0bb4da9a543d0c8482843f49f80222f936310637", // Updated TokenFactory address
       deployedAt: 0,
       verified: false,
     },

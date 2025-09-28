@@ -13,10 +13,12 @@ import TradingViewChart from "@/components/TradingViewChart";
 import { Copy, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { tokenDataViemService, type TokenData } from "@/lib/services/TokenDataViemService";
 import { getBlockchainConnection } from "@/utils/Blockchain";
-import { formatEther } from "ethers";
+import { formatEther, parseEther } from "ethers";
 import tokenDataService from "@/lib/services/TokenDataService";
 import StreamPlayer from "@/components/StreamPlayer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useAccount } from "wagmi";
+import CreatorTokenABI from "@/config/abi/CreatorToken.json";
 
 const TokenStat = ({
   name,
@@ -91,7 +93,23 @@ const TradePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userBalance, setUserBalance] = useState<string>("0");
+  const [userTokenBalance, setUserTokenBalance] = useState<string>("0");
   const [copied, setCopied] = useState(false);
+  
+  // Trading state
+  const [buyAmount, setBuyAmount] = useState<string>("");
+  const [sellAmount, setSellAmount] = useState<string>("");
+  const [buyQuote, setBuyQuote] = useState<{cost: bigint; priceImpact: number} | null>(null);
+  const [sellQuote, setSellQuote] = useState<{proceeds: bigint; priceImpact: number} | null>(null);
+  const [tradingLoading, setTradingLoading] = useState(false);
+  const [tradingError, setTradingError] = useState<string | null>(null);
+  
+  // Chart data
+  const [chartData, setChartData] = useState<{timestamp: number; price: number}[]>([]);
+  const [chartTimeframe, setChartTimeframe] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
+  
+  // Wallet connection
+  const { address: userAddress, isConnected } = useAccount();
 
   // Livestream state
   const [selectedToken, setSelectedToken] = useState<"WHALE" | "ARROW">("WHALE");
@@ -100,10 +118,7 @@ const TradePage = () => {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   // Trade panel state (match Livestream UI)
   const [tradeMode, setTradeMode] = useState<"Buy" | "Sell">("Buy");
-  const [tradeToken, setTradeToken] = useState<"ART" | "0G">("ART");
   const [amount, setAmount] = useState<string>("");
-  const [balances, setBalances] = useState<Record<string, number>>({ "0G": 42.23, ART: 0 });
-  const activeBalance = balances[tradeToken];
   const parsedAmount = Number(amount || 0);
   // Modal flow
   const [showSetup, setShowSetup] = useState(false);
@@ -129,6 +144,255 @@ const TradePage = () => {
       fetchTokenData();
     }
   }, [tokenAddress]);
+  
+  // Fetch user balances when connected
+  useEffect(() => {
+    if (tokenAddress && userAddress && isConnected) {
+      fetchUserBalances();
+    }
+  }, [tokenAddress, userAddress, isConnected]);
+  
+  // Update quotes when amount changes
+  useEffect(() => {
+    if (tokenAddress && amount && parsedAmount > 0) {
+      if (tradeMode === "Buy") {
+        updateBuyQuote();
+      } else {
+        updateSellQuote();
+      }
+    } else {
+      setBuyQuote(null);
+      setSellQuote(null);
+    }
+  }, [amount, tradeMode, tokenAddress]);
+
+  const updateBuyQuote = async () => {
+    if (!tokenAddress || !amount || parsedAmount <= 0) return;
+    
+    try {
+      const { createPublicClient, http } = await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
+      
+      // Get current chain
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+      
+      // Map chain ID to chain object
+      const chainMap: Record<number, any> = {
+        44787: celoAlfajores,
+        30: rootstock,
+        31: rootstockTestnet
+      };
+      
+      const currentChain = chainMap[chainId] || celoAlfajores;
+      
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http()
+      });
+      
+      // Token amount should be in token units (18 decimals)
+      // User enters number of tokens they want to buy (e.g., "1" means 1 token)
+      const tokenAmount = parseEther(amount); // Convert to token wei (18 decimals)
+      
+      // Try contract calculation first (now with fixed BondingCurveLibrary)
+      try {
+        console.log("Attempting contract calculation for:", { tokenAddress, tokenAmount: tokenAmount.toString(), amount });
+        
+        const [cost, currentPrice] = await Promise.all([
+          publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: CreatorTokenABI,
+            functionName: "calculateBuyCost",
+            args: [tokenAmount]
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: CreatorTokenABI,
+            functionName: "getCurrentPrice"
+          }) as Promise<bigint>
+        ]);
+        
+        console.log("Contract calculation results:", { 
+          cost: cost.toString(), 
+          costEth: formatEther(cost),
+          currentPrice: currentPrice.toString(),
+          currentPriceEth: formatEther(currentPrice)
+        });
+        
+        // Calculate price impact based on bonding curve
+        const currentPriceEth = Number(formatEther(currentPrice));
+        const costEth = Number(formatEther(cost));
+        const tokenAmountNumber = parseFloat(amount);
+        
+        // Check if contract returned reasonable values
+        if (costEth > 1000000) { // If cost is more than 1M ETH, something is wrong
+          throw new Error(`Contract returned unreasonable cost: ${costEth} ETH`);
+        }
+        
+        // Simple price impact: how much more expensive per token compared to current price
+        const avgPricePerToken = tokenAmountNumber > 0 ? costEth / tokenAmountNumber : 0;
+        const priceImpact = currentPriceEth > 0 ? ((avgPricePerToken - currentPriceEth) / currentPriceEth) * 100 : 0;
+        
+        console.log("Contract calculation success:", { costEth, priceImpact });
+        setBuyQuote({ cost, priceImpact: Math.max(0, priceImpact) });
+        return;
+      } catch (contractError) {
+        console.warn("Contract calculation failed, using frontend fallback:", contractError);
+      }
+      
+      // Fallback to frontend calculation if contract fails
+      const currentPrice = await publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: CreatorTokenABI,
+        functionName: "getCurrentPrice"
+      }) as bigint;
+      
+      const tokenAmountNumber = parseFloat(amount);
+      const currentPriceEth = Number(formatEther(currentPrice));
+      
+      // Handle very small prices (like 0.000001 ETH)
+      if (currentPriceEth === 0) {
+        setBuyQuote({ cost: parseEther("0.001"), priceImpact: 0 }); // Minimum cost
+        return;
+      }
+      
+      // Simple linear bonding curve: price increases with each token bought
+      // For very small prices, use a more conservative approach
+      console.log("Frontend fallback calculation:", { currentPriceEth, tokenAmountNumber });
+      
+      if (currentPriceEth < 0.000001) {
+        // For very small prices, use a fixed small cost
+        const cost = parseEther((tokenAmountNumber * 0.000001).toString());
+        setBuyQuote({ cost, priceImpact: 10 }); // 10% impact
+        return;
+      }
+      
+      const priceIncrement = Math.max(currentPriceEth * 0.01, 0.000001); // 1% price increase per token or minimum
+      const avgPricePerToken = currentPriceEth + (tokenAmountNumber * priceIncrement / 2); // Average price over the range
+      const totalCostEth = tokenAmountNumber * avgPricePerToken;
+      
+      console.log("Calculation details:", { priceIncrement, avgPricePerToken, totalCostEth });
+      
+      // Ensure totalCostEth is reasonable before parsing
+      if (totalCostEth > 1000000) { // Cap at 1M ETH
+        console.warn("Cost too high, capping at 1000 ETH");
+        setBuyQuote({ cost: parseEther("1000"), priceImpact: 100 });
+        return;
+      }
+      
+      if (totalCostEth < 0.000000001) { // Minimum cost
+        console.warn("Cost too low, setting minimum");
+        setBuyQuote({ cost: parseEther("0.000001"), priceImpact: 1 });
+        return;
+      }
+      
+      // Convert to wei safely
+      const cost = parseEther(totalCostEth.toFixed(18)); // Fix precision issues
+      
+      // Calculate price impact
+      const priceImpact = currentPriceEth > 0 ? ((avgPricePerToken - currentPriceEth) / currentPriceEth) * 100 : 0;
+      
+      setBuyQuote({ cost, priceImpact: Math.max(0, priceImpact) });
+    } catch (err: any) {
+      console.error("Error updating buy quote:", err);
+      setBuyQuote(null);
+    }
+  };
+  
+  const updateSellQuote = async () => {
+    if (!tokenAddress || !amount || parsedAmount <= 0) return;
+    
+    try {
+      const { createPublicClient, http } = await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
+      
+      // Get current chain
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+      
+      // Map chain ID to chain object
+      const chainMap: Record<number, any> = {
+        44787: celoAlfajores,
+        30: rootstock,
+        31: rootstockTestnet
+      };
+      
+      const currentChain = chainMap[chainId] || celoAlfajores;
+      
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http()
+      });
+      
+      // Token amount should be in token units (18 decimals)
+      // User enters number of tokens they want to sell (e.g., "1" means 1 token)
+      const tokenAmount = parseEther(amount); // Convert to token wei (18 decimals)
+      
+      // Try contract calculation first (now with fixed BondingCurveLibrary)
+      try {
+        const [proceeds, currentPrice] = await Promise.all([
+          publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: CreatorTokenABI,
+            functionName: "calculateSellPrice",
+            args: [tokenAmount]
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: CreatorTokenABI,
+            functionName: "getCurrentPrice"
+          }) as Promise<bigint>
+        ]);
+        
+        // Calculate price impact for selling based on bonding curve
+        const currentPriceEth = Number(formatEther(currentPrice));
+        const proceedsEth = Number(formatEther(proceeds));
+        const tokenAmountNumber = parseFloat(amount);
+        
+        // Simple price impact: how much less you get per token compared to current price
+        const avgPricePerToken = tokenAmountNumber > 0 ? proceedsEth / tokenAmountNumber : 0;
+        const priceImpact = currentPriceEth > 0 ? ((currentPriceEth - avgPricePerToken) / currentPriceEth) * 100 : 0;
+        
+        setSellQuote({ proceeds, priceImpact: Math.max(0, priceImpact) });
+        return;
+      } catch (contractError) {
+        console.warn("Contract sell calculation failed, using frontend fallback:", contractError);
+      }
+      
+      // Fallback to frontend calculation if contract fails
+      const currentPrice = await publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: CreatorTokenABI,
+        functionName: "getCurrentPrice"
+      }) as bigint;
+      
+      const tokenAmountNumber = parseFloat(amount);
+      const currentPriceEth = Number(formatEther(currentPrice));
+      
+      // Handle very small prices
+      if (currentPriceEth === 0) {
+        setSellQuote({ proceeds: parseEther("0"), priceImpact: 0 });
+        return;
+      }
+      
+      // Simple linear bonding curve: price decreases when selling
+      const priceDecrement = Math.max(currentPriceEth * 0.01, 0.000001); // 1% price decrease per token or minimum
+      const avgPricePerToken = Math.max(currentPriceEth - (tokenAmountNumber * priceDecrement / 2), currentPriceEth * 0.5); // Minimum 50% of current price
+      const totalProceedsEth = tokenAmountNumber * avgPricePerToken;
+      
+      // Convert to wei
+      const proceeds = parseEther(totalProceedsEth.toString());
+      
+      // Calculate price impact
+      const priceImpact = currentPriceEth > 0 ? ((currentPriceEth - avgPricePerToken) / currentPriceEth) * 100 : 0;
+      
+      setSellQuote({ proceeds, priceImpact: Math.max(0, priceImpact) });
+    } catch (err: any) {
+      console.error("Error updating sell quote:", err);
+      setSellQuote(null);
+    }
+  };
 
   // Update default stream title when token data loads
   useEffect(() => {
@@ -153,8 +417,7 @@ const TradePage = () => {
       const data = await tokenDataViemService.getTokenData(tokenAddress, chainId);
       if (data) {
         setTokenData(data);
-        // TODO: Fetch user's token balance
-        // setUserBalance(userTokenBalance);
+        await fetchChartData(chainId);
       } else {
         setError("Token not found");
       }
@@ -163,6 +426,274 @@ const TradePage = () => {
       setError(err.message || "Failed to fetch token data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserBalances = async () => {
+    if (!userAddress || !tokenAddress) return;
+    
+    try {
+      const { createWalletClient, createPublicClient, http } = await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
+      
+      // Get current chain
+      const walletClient = createWalletClient({
+        chain: celoAlfajores, // Default to Celo Alfajores
+        transport: http()
+      });
+      
+      const chainId = await walletClient.getChainId();
+      
+      // Map chain ID to chain object
+      const chainMap: Record<number, any> = {
+        44787: celoAlfajores,
+        30: rootstock,
+        31: rootstockTestnet
+      };
+      
+      const currentChain = chainMap[chainId] || celoAlfajores;
+      
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http()
+      });
+      
+      const [ethBalance, tokenBalance] = await Promise.all([
+        publicClient.getBalance({ address: userAddress as `0x${string}` }),
+        publicClient.readContract({
+          address: tokenAddress as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "balanceOf",
+          args: [userAddress]
+        })
+      ]);
+      
+      setUserBalance(formatEther(ethBalance));
+      setUserTokenBalance(formatEther(tokenBalance as bigint));
+    } catch (err: any) {
+      console.error("Error fetching user balances:", err);
+    }
+  };
+
+  const fetchChartData = async (chainId: number) => {
+    try {
+      const { createPublicClient, http } = await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
+      
+      // Map chain ID to chain object
+      const chainMap: Record<number, any> = {
+        44787: celoAlfajores,
+        30: rootstock,
+        31: rootstockTestnet
+      };
+      
+      const currentChain = chainMap[chainId] || celoAlfajores;
+      
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http()
+      });
+      
+      // Get current block number
+      const currentBlock = await publicClient.getBlockNumber();
+      const blocksToFetch = chartTimeframe === '1h' ? 300 : chartTimeframe === '24h' ? 7200 : chartTimeframe === '7d' ? 50400 : 216000;
+      const fromBlock = currentBlock - BigInt(blocksToFetch);
+      
+      try {
+        // Fetch TokenPurchased and TokenSold events to build real price history
+        const [purchaseEvents, sellEvents] = await Promise.all([
+          publicClient.getLogs({
+            address: tokenAddress as `0x${string}`,
+            event: {
+              type: 'event',
+              name: 'TokenPurchased',
+              inputs: [
+                { name: 'buyer', type: 'address', indexed: true },
+                { name: 'tokenAmount', type: 'uint256', indexed: false },
+                { name: 'price', type: 'uint256', indexed: false },
+                { name: 'totalPaid', type: 'uint256', indexed: false }
+              ]
+            },
+            fromBlock,
+            toBlock: currentBlock
+          }),
+          publicClient.getLogs({
+            address: tokenAddress as `0x${string}`,
+            event: {
+              type: 'event',
+              name: 'TokenSold',
+              inputs: [
+                { name: 'seller', type: 'address', indexed: true },
+                { name: 'tokenAmount', type: 'uint256', indexed: false },
+                { name: 'price', type: 'uint256', indexed: false },
+                { name: 'totalReceived', type: 'uint256', indexed: false }
+              ]
+            },
+            fromBlock,
+            toBlock: currentBlock
+          })
+        ]);
+
+        // Combine and sort events by block number
+        const allEvents = [...purchaseEvents, ...sellEvents].sort((a, b) => 
+          Number(a.blockNumber) - Number(b.blockNumber)
+        );
+
+        if (allEvents.length > 0) {
+          // Build candlestick data from events
+          const candleData = [];
+          const intervalMs = chartTimeframe === '1h' ? 60000 : chartTimeframe === '24h' ? 600000 : chartTimeframe === '7d' ? 3600000 : 3600000;
+          
+          for (const event of allEvents) {
+            const block = await publicClient.getBlock({ blockNumber: event.blockNumber });
+            const timestamp = Number(block.timestamp) * 1000;
+            const price = Number(formatEther(event.args.price as bigint));
+            
+            candleData.push({ timestamp, price });
+          }
+          
+          setChartData(candleData);
+        } else {
+          // Fallback: get current price and create a single data point
+          const currentPrice = await publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: CreatorTokenABI,
+            functionName: "getCurrentPrice"
+          }) as bigint;
+          
+          const currentPriceEth = Number(formatEther(currentPrice));
+          const now = Date.now();
+          
+          setChartData([
+            { timestamp: now - 3600000, price: currentPriceEth },
+            { timestamp: now, price: currentPriceEth }
+          ]);
+        }
+      } catch (eventError) {
+        console.error("Error fetching events, using current price:", eventError);
+        
+        // Fallback to current price
+        const currentPrice = await publicClient.readContract({
+          address: tokenAddress as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "getCurrentPrice"
+        }) as bigint;
+        
+        const currentPriceEth = Number(formatEther(currentPrice));
+        const now = Date.now();
+        
+        setChartData([
+          { timestamp: now - 3600000, price: currentPriceEth },
+          { timestamp: now, price: currentPriceEth }
+        ]);
+      }
+    } catch (err: any) {
+      console.error("Error fetching chart data:", err);
+    }
+  };
+
+  const executeTrade = async () => {
+    if (!userAddress || !isConnected) {
+      setTradingError("Please connect your wallet");
+      return;
+    }
+    
+    if (!amount || parsedAmount <= 0) {
+      setTradingError("Please enter a valid amount");
+      return;
+    }
+    
+    try {
+      setTradingLoading(true);
+      setTradingError(null);
+      
+      const { createWalletClient, http, custom } = await import("viem");
+      const { celoAlfajores, rootstock, rootstockTestnet } = await import("viem/chains");
+      
+      // Get current chain
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+      
+      // Map chain ID to chain object
+      const chainMap: Record<number, any> = {
+        44787: celoAlfajores,
+        30: rootstock,
+        31: rootstockTestnet
+      };
+      
+      const currentChain = chainMap[chainId] || celoAlfajores;
+      
+      // Create wallet client
+      const walletClient = createWalletClient({
+        chain: currentChain,
+        transport: custom((window as any).ethereum)
+      });
+      
+      // Token amount should be in token units (18 decimals)
+      // User enters number of tokens they want to trade (e.g., "1" means 1 token)
+      const tokenAmount = parseEther(amount); // Convert to token wei (18 decimals)
+      let txHash;
+      
+      if (tradeMode === "Buy") {
+        if (!buyQuote) {
+          throw new Error("No buy quote available");
+        }
+        if (buyQuote.priceImpact > 100) { // 100% max slippage for bonding curves (more reasonable)
+          throw new Error(`Price impact too high: ${buyQuote.priceImpact.toFixed(2)}%`);
+        }
+        
+        txHash = await walletClient.writeContract({
+          account: userAddress as `0x${string}`,
+          address: tokenAddress as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "buyTokens",
+          args: [tokenAmount],
+          value: buyQuote.cost,
+          chain: currentChain
+        });
+      } else {
+        if (!sellQuote) {
+          throw new Error("No sell quote available");
+        }
+        if (sellQuote.priceImpact > 100) { // 100% max slippage for bonding curves (more reasonable)
+          throw new Error(`Price impact too high: ${sellQuote.priceImpact.toFixed(2)}%`);
+        }
+        
+        txHash = await walletClient.writeContract({
+          account: userAddress as `0x${string}`,
+          address: tokenAddress as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "sellTokens",
+          args: [tokenAmount],
+          chain: currentChain
+        });
+      }
+      
+      // Wait for transaction confirmation
+      const { createPublicClient } = await import("viem");
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http()
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      
+      // Refresh data
+      await Promise.all([
+        fetchTokenData(),
+        fetchUserBalances()
+      ]);
+      
+      setAmount("");
+      setBuyQuote(null);
+      setSellQuote(null);
+      
+      alert(`${tradeMode} successful! Transaction hash: ${txHash}`);
+      
+    } catch (err: any) {
+      console.error("Error executing trade:", err);
+      setTradingError(err.message || `Failed to ${tradeMode.toLowerCase()} tokens`);
+    } finally {
+      setTradingLoading(false);
     }
   };
 
@@ -336,12 +867,62 @@ const TradePage = () => {
               </CardContent>
             </Card>
 
-            {/* Chart placeholder */}
+            {/* Price Chart */}
             <Card className="border-gray-200">
               <CardContent className="p-5 md:p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Chart</h3>
-                <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">Trading chart will be integrated here</p>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Price Chart</h3>
+                  <div className="flex gap-2">
+                    {(['1h', '24h', '7d', '30d'] as const).map((timeframe) => (
+                      <button
+                        key={timeframe}
+                        onClick={() => {
+                          setChartTimeframe(timeframe);
+                          if (tokenData) fetchChartData(44787);
+                        }}
+                        className={`px-3 py-1 rounded text-sm ${
+                          chartTimeframe === timeframe
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {timeframe}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-64 bg-gray-50 rounded-lg relative">
+                  {chartData.length > 0 ? (
+                    <svg className="w-full h-full" viewBox="0 0 400 200">
+                      {chartData.map((point, index) => {
+                        if (index === 0) return null;
+                        const prevPoint = chartData[index - 1];
+                        const x1 = (index - 1) * (400 / (chartData.length - 1));
+                        const y1 = 180 - ((prevPoint.price - Math.min(...chartData.map(d => d.price))) / (Math.max(...chartData.map(d => d.price)) - Math.min(...chartData.map(d => d.price)))) * 160;
+                        const x2 = index * (400 / (chartData.length - 1));
+                        const y2 = 180 - ((point.price - Math.min(...chartData.map(d => d.price))) / (Math.max(...chartData.map(d => d.price)) - Math.min(...chartData.map(d => d.price)))) * 160;
+                        return (
+                          <line
+                            key={index}
+                            x1={x1}
+                            y1={y1}
+                            x2={x2}
+                            y2={y2}
+                            stroke="#8B5CF6"
+                            strokeWidth="2"
+                            fill="none"
+                          />
+                        );
+                      })}
+                    </svg>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-500">Loading chart data...</p>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 text-sm text-gray-500 text-center">
+                  Current Price: {tokenData ? formatEther(tokenData.currentPrice) : '0'} ETH
                 </div>
               </CardContent>
             </Card>
@@ -465,7 +1046,7 @@ const TradePage = () => {
                 </CardContent>
               </Card>
 
-            {/* Trade card (same UI as Livestream, always visible) */}
+            {/* Trade card with real functionality */}
               <Card className="border-gray-200 mt-2">
                 <CardContent className="p-2 md:p-3 space-y-3">
                   {/* Tabs container */}
@@ -494,29 +1075,19 @@ const TradePage = () => {
                     </button>
                   </div>
 
-                  {/* Utility buttons */}
-                  <div className="flex items-center justify-between">
-                    <button
-                      onClick={() => setTradeToken((t) => (t === "ART" ? "0G" : "ART"))}
-                      className="px-3 py-1 text-sm rounded-full bg-[#EFEFEF] text-gray-800 border cursor-pointer"
-                      style={{ borderColor: '#0000001A' }}
-                    >
-                      {tradeToken === "ART" ? "Switch to 0G" : "Switch to ART"}
-                    </button>
-                    <button
-                      onClick={() => setAmount(String(activeBalance))}
-                      className="px-3 py-1 text-sm rounded-full bg-[#EFEFEF] text-gray-800 border cursor-pointer"
-                      style={{ borderColor: '#0000001A' }}
-                    >
-                      Set max to slippage
-                    </button>
+                  {/* Balance Display */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      {tradeMode === "Buy" ? "ETH Balance:" : "Token Balance:"}
+                    </span>
+                    <span className="font-semibold">
+                      {tradeMode === "Buy" 
+                        ? `${parseFloat(userBalance).toFixed(4)} ETH`
+                        : `${parseFloat(userTokenBalance).toFixed(4)} ${tokenData?.symbol || 'TOKEN'}`
+                      }
+                    </span>
                   </div>
 
-                  {/* Balance */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-xl font-semibold text-gray-900">Balance:</div>
-                    <div className="text-xl font-semibold text-gray-900">{activeBalance} {tradeToken}</div>
-                  </div>
 
                   {/* Amount field */}
                   <div className="border rounded-xl px-3 py-2 flex items-center justify-between bg-white" style={{ borderColor: '#0000001A' }}>
@@ -528,7 +1099,9 @@ const TradePage = () => {
                       placeholder="0.00"
                       className="w-full bg-transparent outline-none text-2xl font-medium placeholder:text-gray-400"
                     />
-                    { tradeToken === "ART" ? "ART" : <img src="/icons/0G-logo.svg" alt="token" width={28} height={28} className="ml-3" /> }
+                    <span className="text-sm font-medium text-gray-600 ml-2">
+                      {tradeMode === "Buy" ? tokenData?.symbol || 'TOKEN' : 'TOKEN'}
+                    </span>
                   </div>
 
                   {/* Preset chips */}
@@ -547,11 +1120,16 @@ const TradePage = () => {
                         className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
                         style={{ borderColor: '#0000001A' }}
                       >
-                        {val} {tradeToken}
+                        {val}
                       </button>
                     ))}
                     <button
-                      onClick={() => setAmount(String(activeBalance))}
+                      onClick={() => {
+                        const maxAmount = tradeMode === "Buy" 
+                          ? (parseFloat(userBalance) * 0.95).toFixed(4)
+                          : userTokenBalance;
+                        setAmount(maxAmount);
+                      }}
                       className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
                       style={{ borderColor: '#0000001A' }}
                     >
@@ -559,12 +1137,92 @@ const TradePage = () => {
                     </button>
                   </div>
 
+                  {/* Quote Display */}
+                  {(buyQuote && tradeMode === "Buy") && (
+                    <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span>Cost:</span>
+                        <span className="font-semibold">{formatEther(buyQuote.cost)} ETH</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Price Impact:</span>
+                        <span className={`font-semibold ${
+                          buyQuote.priceImpact > 5 ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {buyQuote.priceImpact.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {(sellQuote && tradeMode === "Sell") && (
+                    <div className="bg-green-50 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span>You&apos;ll receive:</span>
+                        <span className="font-semibold">{formatEther(sellQuote.proceeds)} ETH</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Price Impact:</span>
+                        <span className={`font-semibold ${
+                          sellQuote.priceImpact > 5 ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {sellQuote.priceImpact.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preset chips */}
+                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+                    <button
+                      onClick={() => setAmount("")}
+                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                      style={{ borderColor: '#0000001A' }}
+                    >
+                      Reset
+                    </button>
+                    {[0.01, 0.1, 0.5].map((val, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setAmount(String(val))}
+                        className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                        style={{ borderColor: '#0000001A' }}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const maxAmount = tradeMode === "Buy" 
+                          ? (parseFloat(userBalance) * 0.95).toFixed(4)
+                          : userTokenBalance;
+                        setAmount(maxAmount);
+                      }}
+                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
+                      style={{ borderColor: '#0000001A' }}
+                    >
+                      Max
+                    </button>
+                  </div>
+
+                  {/* Error Display */}
+                  {tradingError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                      {tradingError}
+                    </div>
+                  )}
+
                   {/* Primary action */}
                   <Button
-                    disabled={!amount || parsedAmount <= 0}
-                    className={`w-full h-12 rounded-2xl text-lg font-semibold text-white cursor-pointer ${!amount || parsedAmount <= 0 ? "bg-black/60 cursor-not-allowed" : "bg-black"}`}
+                    onClick={executeTrade}
+                    disabled={!amount || parsedAmount <= 0 || tradingLoading || !isConnected}
+                    className={`w-full h-12 rounded-2xl text-lg font-semibold text-white cursor-pointer ${
+                      (!amount || parsedAmount <= 0 || tradingLoading || !isConnected) 
+                        ? "bg-black/60 cursor-not-allowed" 
+                        : "bg-black hover:bg-gray-800"
+                    }`}
                   >
-                    {tradeMode} {tradeToken}
+                    {tradingLoading ? "Processing..." : `${tradeMode} ${tokenData?.symbol || 'TOKEN'}`}
                   </Button>
                 </CardContent>
               </Card>

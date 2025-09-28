@@ -80,8 +80,8 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
       verified: false,
     },
     44787: {
-      // Celo Alfajores - Updated with simplified exponential bonding curve
-      address: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15",
+      // Celo Alfajores - Debug version with detailed error messages
+      address: "0x0bb4da9a543d0c8482843f49f80222f936310637",
       deployedAt: 0, // Update with actual block number if needed
       verified: false,
     },

@@ -30,30 +30,32 @@ export class TokenDataViemService {
    */
   private async getChainConfig() {
     const { createWalletClient, custom } = await import("viem");
-    
+
     // Create temporary wallet client to get current chain
     const tempWalletClient = createWalletClient({
       transport: custom(window.ethereum),
     });
-    
+
     const currentChainId = await tempWalletClient.getChainId();
-    
+
     // Map chain ID to chain object and contract address
     const chainMap: Record<number, { chain: any; factoryAddress: string }> = {
-      44787: { 
-        chain: (await import("viem/chains")).celoAlfajores, 
-        factoryAddress: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15" 
+      44787: {
+        chain: (await import("viem/chains")).celoAlfajores,
+        factoryAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",
       },
       80002: {
         chain: (await import("viem/chains")).polygonAmoy,
-        factoryAddress: "0x2e650ddc1f722ecfd9f6ba430b33960942000982" // TokenFactory on Polygon Amoy
+        factoryAddress: "0x2e650ddc1f722ecfd9f6ba430b33960942000982", // TokenFactory on Polygon Amoy
       },
       // Add more chains as needed
     };
-    
+
     const chainConfig = chainMap[currentChainId];
     if (!chainConfig) {
-      throw new Error(`Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`);
+      throw new Error(
+        `Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`
+      );
     }
 
     return { currentChainId, chainConfig };
@@ -78,7 +80,8 @@ export class TokenDataViemService {
    * Load TokenFactory ABI
    */
   private async loadFactoryABI() {
-    const TokenFactoryABI = (await import("@/config/abi/TokenFactoryRoot.json")).default;
+    const TokenFactoryABI = (await import("@/config/abi/TokenFactoryRoot.json"))
+      .default;
     return TokenFactoryABI;
   }
 
@@ -86,7 +89,8 @@ export class TokenDataViemService {
    * Load CreatorToken ABI
    */
   private async loadCreatorTokenABI() {
-    const CreatorTokenABI = (await import("@/config/abi/CreatorToken.json")).default;
+    const CreatorTokenABI = (await import("@/config/abi/CreatorToken.json"))
+      .default;
     return CreatorTokenABI;
   }
 
@@ -97,17 +101,17 @@ export class TokenDataViemService {
     try {
       console.log("🔍 Fetching all tokens from factory...");
       console.log("📡 Chain ID:", chainId);
-      
+
       const publicClient = await this.createPublicClient();
       const factoryABI = await this.loadFactoryABI();
       const { chainConfig } = await this.getChainConfig();
-      
+
       // Get all token addresses from factory
-      const tokenAddresses = await publicClient.readContract({
+      const tokenAddresses = (await publicClient.readContract({
         address: chainConfig.factoryAddress as `0x${string}`,
         abi: factoryABI,
         functionName: "getAllTokens",
-      }) as string[];
+      })) as string[];
 
       console.log("📋 Found token addresses:", tokenAddresses);
       console.log("📊 Total tokens found:", tokenAddresses.length);
@@ -119,18 +123,25 @@ export class TokenDataViemService {
 
       // Fetch data for each token
       const tokensData: TokenData[] = [];
-      
+
       for (let i = 0; i < tokenAddresses.length; i++) {
         const tokenAddress = tokenAddresses[i];
         try {
-          console.log(`🔄 Fetching data for token ${i + 1}/${tokenAddresses.length}: ${tokenAddress}`);
+          console.log(
+            `🔄 Fetching data for token ${i + 1}/${
+              tokenAddresses.length
+            }: ${tokenAddress}`
+          );
           const tokenData = await this.getTokenData(tokenAddress, chainId);
           if (tokenData) {
             tokensData.push(tokenData);
             console.log(`✅ Successfully fetched data for ${tokenData.symbol}`);
           }
         } catch (error) {
-          console.error(`❌ Error fetching data for token ${tokenAddress}:`, error);
+          console.error(
+            `❌ Error fetching data for token ${tokenAddress}:`,
+            error
+          );
           // Continue with other tokens even if one fails
         }
       }
@@ -147,7 +158,10 @@ export class TokenDataViemService {
   /**
    * Fetch data for a specific token
    */
-  async getTokenData(tokenAddress: string, chainId?: number): Promise<TokenData | null> {
+  async getTokenData(
+    tokenAddress: string,
+    chainId?: number
+  ): Promise<TokenData | null> {
     try {
       console.log(`Fetching data for token: ${tokenAddress}`);
 
@@ -241,18 +255,24 @@ export class TokenDataViemService {
       const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
       const ageInSeconds = currentTimestamp - launchTime;
       const ageInDays = Number(ageInSeconds) / (24 * 60 * 60);
-      
-      const age = ageInDays < 1 
-        ? "Just launched"
-        : ageInDays < 2 
-        ? "1 day ago"
-        : `${Math.floor(ageInDays)} days ago`;
+
+      const age =
+        ageInDays < 1
+          ? "Just launched"
+          : ageInDays < 2
+          ? "1 day ago"
+          : `${Math.floor(ageInDays)} days ago`;
 
       // Calculate price change data (mock implementation - in real app you'd use price history)
       const basePrice = Number(currentPrice) / 1e18;
       const randomChange = (Math.random() - 0.5) * 100; // Random change between -50% and +50%
-      const priceChange = `${randomChange >= 0 ? '+' : ''}${randomChange.toFixed(1)}%`;
-      const priceValue = `${randomChange >= 0 ? '+' : ''}${(basePrice * randomChange / 100).toFixed(3)}`;
+      const priceChange = `${
+        randomChange >= 0 ? "+" : ""
+      }${randomChange.toFixed(1)}%`;
+      const priceValue = `${randomChange >= 0 ? "+" : ""}${(
+        (basePrice * randomChange) /
+        100
+      ).toFixed(3)}`;
 
       const tokenData: TokenData = {
         id: tokenAddress,
@@ -288,7 +308,7 @@ export class TokenDataViemService {
    */
   formatMarketCap(marketCap: bigint): string {
     const marketCapNumber = Number(marketCap) / 1e18; // Convert from wei
-    
+
     if (marketCapNumber >= 1e6) {
       return `$${(marketCapNumber / 1e6).toFixed(1)}M`;
     } else if (marketCapNumber >= 1e3) {
@@ -303,7 +323,7 @@ export class TokenDataViemService {
    */
   formatVolume(dailyVolume: bigint): string {
     const volumeNumber = Number(dailyVolume) / 1e18; // Convert from wei
-    
+
     if (volumeNumber >= 1e6) {
       return `${(volumeNumber / 1e6).toFixed(1)}M`;
     } else if (volumeNumber >= 1e3) {

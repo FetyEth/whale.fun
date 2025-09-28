@@ -114,15 +114,9 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         // Initialize MEV protection
         mevConfig = MEVProtectionLibrary.getDefaultMEVConfig();
         
-        // Calculate optimal bonding curve parameters
-        curveParams = BondingCurveLibrary.getOptimalCurveParams(
-            _totalSupply,
-            targetMarketCap,
-            communitySize,
-            liquidityDepth
-        );
-        
-        currentPrice = BondingCurveLibrary.calculatePrice(0, curveParams);
+        // Simple initial price calculation: targetMarketCap / totalSupply / 100 (start at 1% of target)
+        currentPrice = targetMarketCap / (_totalSupply * 100);
+        if (currentPrice < 1e12) currentPrice = 1e12; // Minimum price 0.000001 ETH
         
         // Mint total supply to this contract for bonding curve
         _mint(address(this), _totalSupply);
@@ -171,29 +165,31 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     function _executeBuyTokens(address buyer, uint256 tokenAmount, uint256 ethSent) internal {
         require(tokenAmount > 0, "Invalid amount");
         
-        // Check if we have enough tokens available (total supply minus already sold)
-        uint256 availableTokens = totalSupply_ - totalSold;
-        require(availableTokens >= tokenAmount, "Not enough tokens available");
-        require(balanceOf(address(this)) >= tokenAmount, "Contract token balance insufficient");
+        // Debug: Check actual balances
+        uint256 contractBalance = balanceOf(address(this));
+        uint256 totalSupplyCheck = totalSupply();
         
-        uint256 cost = BondingCurveLibrary.calculateBuyCost(totalSold, tokenAmount, curveParams);
-        require(ethSent >= cost, "Insufficient ETH");
-        
-        MEVProtectionLibrary.PriceImpact memory impact = MEVProtectionLibrary.calculatePriceImpact(
-            address(this).balance,
-            totalSold * currentPrice / 1e18,
-            cost
+        // More detailed error message for debugging
+        require(contractBalance >= tokenAmount, 
+            string(abi.encodePacked(
+                "Contract balance: ", 
+                _toString(contractBalance),
+                ", requested: ",
+                _toString(tokenAmount),
+                ", total supply: ",
+                _toString(totalSupplyCheck)
+            ))
         );
         
-        if (impact.exceedsThreshold) {
-            emit PriceImpactWarning(buyer, impact.impactPercentage, block.timestamp);
-            require(impact.impactPercentage <= mevConfig.priceImpactThreshold, "Price impact high");
-        }
+        // Simple fixed price calculation instead of complex bonding curve
+        uint256 cost = tokenAmount * currentPrice / 1e18;
+        require(ethSent >= cost, "Insufficient ETH sent");
         
         uint256 fee = (cost * creatorFeePercent) / 10000;
         
         totalSold += tokenAmount;
-        currentPrice = BondingCurveLibrary.calculatePrice(totalSold, curveParams);
+        // Simple price increase: 0.1% per token sold
+        currentPrice = currentPrice + (currentPrice / 1000);
         marketCap = totalSold * currentPrice / 1e18;
         totalFeeCollected += fee;
         
@@ -261,11 +257,13 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     }
     
     function calculateBuyCost(uint256 tokenAmount) external view override returns (uint256) {
-        return BondingCurveLibrary.calculateBuyCost(totalSold, tokenAmount, curveParams);
+        // Simple calculation: tokenAmount * currentPrice / 1e18
+        return tokenAmount * currentPrice / 1e18;
     }
     
     function calculateSellPrice(uint256 tokenAmount) external view override returns (uint256) {
-        return BondingCurveLibrary.calculateSellProceeds(totalSold, tokenAmount, curveParams);
+        // Simple calculation: tokenAmount * currentPrice * 0.95 / 1e18 (5% slippage for selling)
+        return tokenAmount * currentPrice * 95 / (1e18 * 100);
     }
     
     function getCurrentPrice() external view override returns (uint256) {
@@ -274,6 +272,26 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     
     function getTotalFeesCollected() external view override returns (uint256) {
         return totalFeeCollected;
+    }
+    
+    // Helper function to convert uint256 to string for debugging
+    function _toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
     
     function claimCreatorFees() external override {

@@ -126,7 +126,7 @@ const CreatePage: FC = () => {
         chainId,
         ":",
         chainId === 44787
-          ? "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15"
+          ? "0x0bb4da9a543d0c8482843f49f80222f936310637"
           : "not configured"
       );
 
@@ -158,36 +158,45 @@ const CreatePage: FC = () => {
 
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet, zeroG, zeroGGalileoTestnet } = await import("viem/chains");
+      const {
+        celoAlfajores,
+        rootstock,
+        rootstockTestnet,
+        zeroG,
+        zeroGGalileoTestnet,
+      } = await import("viem/chains");
 
       // Create wallet client to get current chain dynamically
       const tempWalletClient = createWalletClient({
         transport: custom(window.ethereum),
       });
-      
+
       const currentChainId = await tempWalletClient.getChainId();
       console.log("Current chain ID:", currentChainId);
-      
+
       // Map chain ID to chain object and contract address
-      const chainMap: Record<number, { chain: any; contractAddress: string }> = {
-        44787: { 
-          chain: celoAlfajores, 
-          contractAddress: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15" 
-        },
-        30: { 
-          chain: rootstock, 
-          contractAddress: "0x0000000000000000000000000000000000000000" // Update with actual address
-        },
-        31: { 
-          chain: rootstockTestnet, 
-          contractAddress: "0x0000000000000000000000000000000000000000" // Update with actual address
-        },
-        // Add more chains as needed
-      };
-      
+      const chainMap: Record<number, { chain: any; contractAddress: string }> =
+        {
+          44787: {
+            chain: celoAlfajores,
+            contractAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",
+          },
+          30: {
+            chain: rootstock,
+            contractAddress: "0x0000000000000000000000000000000000000000", // Update with actual address
+          },
+          31: {
+            chain: rootstockTestnet,
+            contractAddress: "0x0000000000000000000000000000000000000000", // Update with actual address
+          },
+          // Add more chains as needed
+        };
+
       const chainConfig = chainMap[currentChainId];
       if (!chainConfig) {
-        throw new Error(`Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`);
+        throw new Error(
+          `Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`
+        );
       }
 
       // Use wallet provider for signing with dynamic chain
@@ -219,7 +228,7 @@ const CreatePage: FC = () => {
         account: account,
         name: formData.tokenName,
         symbol: formData.tokenSymbol.toUpperCase(),
-        totalSupply: BigInt(1000000),
+        totalSupply: parseEther("1000000"), // 1M tokens in wei
         targetMarketCap: parseEther("0.1"),
         creatorFeePercent: BigInt(30),
         description: formData.description || "Token created via Whale.fun",
@@ -236,7 +245,7 @@ const CreatePage: FC = () => {
         args: [
           formData.tokenName,
           formData.tokenSymbol.toUpperCase(),
-          BigInt(1000000), // 1M tokens
+          parseEther("1000000"), // 1M tokens in wei
           parseEther("0.1"), // 0.1 CELO
           BigInt(30), // 30%
           formData.description || "Token created via Whale.fun",

@@ -24,30 +24,32 @@ export class CreatorTokenViemService {
    */
   private async getChainConfig() {
     const { createWalletClient, custom } = await import("viem");
-    
+
     // Create temporary wallet client to get current chain
     const tempWalletClient = createWalletClient({
       transport: custom(window.ethereum),
     });
-    
+
     const currentChainId = await tempWalletClient.getChainId();
-    
+
     // Map chain ID to chain object (following create-token pattern)
     const chainMap: Record<number, { chain: any; contractAddress: string }> = {
-      44787: { 
-        chain: (await import("viem/chains")).celoAlfajores, 
-        contractAddress: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15" 
+      44787: {
+        chain: (await import("viem/chains")).celoAlfajores,
+        contractAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",
       },
       80002: {
         chain: (await import("viem/chains")).polygonAmoy,
-        contractAddress: "0x2e650ddc1f722ecfd9f6ba430b33960942000982" // TokenFactory on Polygon Amoy
+        contractAddress: "0x2e650ddc1f722ecfd9f6ba430b33960942000982", // TokenFactory on Polygon Amoy
       },
       // Add more chains as needed
     };
-    
+
     const chainConfig = chainMap[currentChainId];
     if (!chainConfig) {
-      throw new Error(`Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`);
+      throw new Error(
+        `Unsupported chain ID: ${currentChainId}. Please switch to a supported network.`
+      );
     }
 
     return { currentChainId, chainConfig };
@@ -87,7 +89,8 @@ export class CreatorTokenViemService {
    * Load CreatorToken ABI
    */
   private async loadABI() {
-    const CreatorTokenABI = (await import("@/config/abi/CreatorToken.json")).default;
+    const CreatorTokenABI = (await import("@/config/abi/CreatorToken.json"))
+      .default;
     return CreatorTokenABI;
   }
 
@@ -97,11 +100,11 @@ export class CreatorTokenViemService {
   private async getAccount(): Promise<`0x${string}`> {
     const walletClient = await this.createWalletClient();
     const accounts = await walletClient.getAddresses();
-    
+
     if (!accounts || accounts.length === 0) {
       throw new Error("No wallet accounts found. Please connect your wallet.");
     }
-    
+
     return accounts[0];
   }
 
@@ -113,12 +116,12 @@ export class CreatorTokenViemService {
   async getName(): Promise<string> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "name",
-    }) as string;
+    })) as string;
   }
 
   /**
@@ -127,12 +130,12 @@ export class CreatorTokenViemService {
   async getSymbol(): Promise<string> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "symbol",
-    }) as string;
+    })) as string;
   }
 
   /**
@@ -141,12 +144,12 @@ export class CreatorTokenViemService {
   async getDescription(): Promise<string> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "description",
-    }) as string;
+    })) as string;
   }
 
   /**
@@ -155,12 +158,12 @@ export class CreatorTokenViemService {
   async getLogoUrl(): Promise<string> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "logoUrl",
-    }) as string;
+    })) as string;
   }
 
   /**
@@ -169,12 +172,12 @@ export class CreatorTokenViemService {
   async getCreator(): Promise<string> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "creator",
-    }) as string;
+    })) as string;
   }
 
   /**
@@ -183,12 +186,12 @@ export class CreatorTokenViemService {
   async getTokenLaunchTime(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "tokenLaunchTime",
-    }) as bigint;
+    })) as bigint;
   }
 
   // ==================== Bonding Curve Operations ====================
@@ -199,13 +202,13 @@ export class CreatorTokenViemService {
   async calculateBuyCost(tokenAmount: bigint): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "calculateBuyCost",
       args: [tokenAmount],
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -214,13 +217,13 @@ export class CreatorTokenViemService {
   async calculateSellPrice(tokenAmount: bigint): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "calculateSellPrice",
       args: [tokenAmount],
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -229,12 +232,12 @@ export class CreatorTokenViemService {
   async getCurrentPrice(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "getCurrentPrice",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -244,7 +247,7 @@ export class CreatorTokenViemService {
     const walletClient = await this.createWalletClient();
     const abi = await this.loadABI();
     const account = await this.getAccount();
-    
+
     console.log("Buying tokens with Viem:", {
       account,
       tokenAddress: this.tokenAddress,
@@ -272,7 +275,7 @@ export class CreatorTokenViemService {
     const walletClient = await this.createWalletClient();
     const abi = await this.loadABI();
     const account = await this.getAccount();
-    
+
     console.log("Selling tokens with Viem:", {
       account,
       tokenAddress: this.tokenAddress,
@@ -299,12 +302,12 @@ export class CreatorTokenViemService {
   async getTokenStats(): Promise<TokenStats> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    const result = await publicClient.readContract({
+
+    const result = (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "getTokenStats",
-    }) as [bigint, bigint, bigint, bigint, bigint, bigint];
+    })) as [bigint, bigint, bigint, bigint, bigint, bigint];
 
     return {
       totalSupply: result[0],
@@ -322,12 +325,12 @@ export class CreatorTokenViemService {
   async getMarketCap(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "marketCap",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -336,12 +339,12 @@ export class CreatorTokenViemService {
   async getDailyVolume(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "dailyVolume",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -350,12 +353,12 @@ export class CreatorTokenViemService {
   async getHolderCount(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "holderCount",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -364,12 +367,12 @@ export class CreatorTokenViemService {
   async getTotalSold(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "totalSold",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -378,12 +381,12 @@ export class CreatorTokenViemService {
   async getTotalSupply(): Promise<bigint> {
     const publicClient = await this.createPublicClient();
     const abi = await this.loadABI();
-    
-    return await publicClient.readContract({
+
+    return (await publicClient.readContract({
       address: this.tokenAddress as `0x${string}`,
       abi: abi,
       functionName: "totalSupply_",
-    }) as bigint;
+    })) as bigint;
   }
 
   /**
@@ -391,7 +394,7 @@ export class CreatorTokenViemService {
    */
   async waitForTransaction(txHash: string): Promise<any> {
     const publicClient = await this.createPublicClient();
-    
+
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash as `0x${string}`,
       timeout: 60000,
