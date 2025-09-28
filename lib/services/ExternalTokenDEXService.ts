@@ -15,8 +15,8 @@ import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 
 // Jaine V3 contract addresses on 0G Network (from transaction data)
 export const JAINE_V3_ADDRESSES = {
-  16600: {
-    // 0G Testnet
+  16661: {
+    // 0G Mainnet
     factory: "0x7453582657F056ce5CfcEeE9E31E4BC390fa2b3c", // Assumed from zer0dex
     router: "0xb95B5953FF8ee5D5d9818CdbEfE363ff2191318c", // Assumed from zer0dex
     quoter: "0x8d5E064d2EF44C29eE349e71CF70F751ECD62892", // Assumed from zer0dex
@@ -36,7 +36,7 @@ export const PANDA_AI_CONFIG = {
   name: "Panda AI",
   decimals: 9, // From the explorer data
   totalSupply: "1000000000", // 1B PAI
-  chainId: 16600,
+  chainId: 16661,
   logoUrl: "https://pandas-ai.com/assets/logos/pandasai-logo.avif",
   description: "Panda AI - An innovative AI-powered token on 0G Network",
 };
@@ -305,7 +305,7 @@ export function useTokenApproval() {
  * Hook for getting swap quotes
  */
 export function useSwapQuote(params: SwapParams | null) {
-  const quoterAddress = JAINE_V3_ADDRESSES[16600].quoter as `0x${string}`;
+  const quoterAddress = JAINE_V3_ADDRESSES[16661].quoter as `0x${string}`;
 
   const { data: amountOut, isLoading } = useReadContract({
     address: quoterAddress,
@@ -357,7 +357,7 @@ export function useSwap() {
   });
 
   const swap = async (params: SwapParams) => {
-    const routerAddress = JAINE_V3_ADDRESSES[16600].router as `0x${string}`;
+    const routerAddress = JAINE_V3_ADDRESSES[16661].router as `0x${string}`;
     const deadline = Math.floor(Date.now() / 1000) + 1200; // 20 minutes from now
     const amountIn = parseUnits(params.amountIn, PANDA_AI_CONFIG.decimals);
     const minimumAmountOut =

@@ -56,7 +56,7 @@ const ExternalTokenTradePage = () => {
   } = useSellPandaAI();
 
   // Approval hooks
-  const routerAddress = JAINE_V3_ADDRESSES[16600].router as `0x${string}`;
+  const routerAddress = JAINE_V3_ADDRESSES[16661].router as `0x${string}`;
   const { allowance, refetch: refetchAllowance } = useTokenAllowance(
     PANDA_AI_CONFIG.address,
     routerAddress
@@ -72,23 +72,50 @@ const ExternalTokenTradePage = () => {
     const loadTokenInfo = async () => {
       if (
         tokenAddress &&
-        tokenAddress === PANDA_AI_CONFIG.address.toLowerCase()
+        tokenAddress.toLowerCase() === PANDA_AI_CONFIG.address.toLowerCase()
       ) {
         try {
           setLoading(true);
-          const externalTokenService = new ExternalTokenService(
-            tokenAddress,
-            16600
-          );
-          const info = await externalTokenService.getTokenInfo();
-          setTokenInfo(info);
+
+          // Try to fetch from contract first
+          try {
+            const externalTokenService = new ExternalTokenService(
+              tokenAddress,
+              16661
+            );
+            const info = await externalTokenService.getTokenInfo();
+            setTokenInfo(info);
+          } catch (contractError) {
+            console.warn(
+              "Contract call failed, using fallback data:",
+              contractError
+            );
+
+            // Use fallback data from PANDA_AI_CONFIG
+            const fallbackInfo = {
+              address: PANDA_AI_CONFIG.address,
+              name: PANDA_AI_CONFIG.name,
+              symbol: PANDA_AI_CONFIG.symbol,
+              decimals: PANDA_AI_CONFIG.decimals,
+              totalSupply:
+                BigInt(PANDA_AI_CONFIG.totalSupply) *
+                BigInt(10 ** PANDA_AI_CONFIG.decimals),
+              chainId: PANDA_AI_CONFIG.chainId,
+              logoUrl: PANDA_AI_CONFIG.logoUrl,
+              description: PANDA_AI_CONFIG.description,
+              isExternal: true as const,
+            };
+            setTokenInfo(fallbackInfo);
+          }
         } catch (error) {
           console.error("Error loading token info:", error);
+          setTokenInfo(null);
         } finally {
           setLoading(false);
         }
       } else {
         setLoading(false);
+        setTokenInfo(null);
       }
     };
 
@@ -169,13 +196,44 @@ const ExternalTokenTradePage = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center py-20">
-          <div className="text-center">
+          <div className="text-center max-w-md mx-auto">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Token Not Found
+              Token Not Available
             </h2>
-            <p className="text-gray-600">
-              The requested external token is not supported or does not exist.
+            <p className="text-gray-600 mb-4">
+              The requested external token ({tokenAddress}) is not currently
+              supported or may not exist on the 0G Network.
             </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Supported Token:</strong> Only Panda AI (PAI) at address{" "}
+                <code className="bg-yellow-100 px-1 rounded text-xs">
+                  {PANDA_AI_CONFIG.address}
+                </code>{" "}
+                is currently supported for external trading.
+              </p>
+            </div>
+            <button
+              onClick={() => window.history.back()}
+              className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Go Back
+            </button>
           </div>
         </div>
       </div>
@@ -191,7 +249,7 @@ const ExternalTokenTradePage = () => {
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Image
+              <img
                 src={PANDA_AI_CONFIG.logoUrl}
                 alt={tokenInfo.name}
                 width={64}
@@ -403,26 +461,31 @@ const ExternalTokenTradePage = () => {
 
                   {/* Approval needed check */}
                   {(() => {
-                    if (!sellAmount || !allowance || typeof allowance !== "bigint") {
+                    if (
+                      !sellAmount ||
+                      !allowance ||
+                      typeof allowance !== "bigint"
+                    ) {
                       return null;
                     }
-                    
+
                     const sellAmountBigInt = BigInt(
                       Math.floor(
                         parseFloat(sellAmount) * 10 ** PANDA_AI_CONFIG.decimals
                       )
                     );
-                    
+
                     if (sellAmountBigInt > allowance) {
                       return (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                           <p className="text-sm text-yellow-800">
-                            You need to approve {tokenInfo.symbol} spending first.
+                            You need to approve {tokenInfo.symbol} spending
+                            first.
                           </p>
                         </div>
                       );
                     }
-                    
+
                     return null;
                   })()}
 

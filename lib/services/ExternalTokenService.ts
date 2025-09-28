@@ -57,7 +57,7 @@ export class ExternalTokenService {
    */
   private async getChainConfig() {
     const chainMap: Record<number, any> = {
-      16600: (await import("viem/chains")).mainnet, // Use mainnet as base, we'll override RPC
+      16661: (await import("viem/chains")).mainnet, // Use mainnet as base, we'll override RPC
       44787: (await import("viem/chains")).celoAlfajores,
       80002: (await import("viem/chains")).polygonAmoy,
       84532: (await import("viem/chains")).baseSepolia,
@@ -66,11 +66,11 @@ export class ExternalTokenService {
     let chain = chainMap[this.chainId];
 
     // For 0G Network, create custom chain config
-    if (this.chainId === 16600) {
+    if (this.chainId === 16661) {
       chain = {
-        id: 16600,
-        name: "0G Network",
-        network: "0g-network",
+        id: 16661,
+        name: "0G Mainnet",
+        network: "0g-mainnet",
         nativeCurrency: {
           decimals: 18,
           name: "0G",
@@ -78,10 +78,10 @@ export class ExternalTokenService {
         },
         rpcUrls: {
           default: {
-            http: ["https://evmrpc-testnet.0g.ai"],
+            http: ["https://evmrpc.0g.ai"],
           },
           public: {
-            http: ["https://evmrpc-testnet.0g.ai"],
+            http: ["https://evmrpc.0g.ai"],
           },
         },
         blockExplorers: {
@@ -90,7 +90,7 @@ export class ExternalTokenService {
             url: "https://chainscan.0g.ai",
           },
         },
-        testnet: true,
+        testnet: false,
       };
     }
 
@@ -208,6 +208,17 @@ export class ExternalTokenService {
     const abi = this.getERC20ABI();
 
     try {
+      // First, check if the address is a valid contract
+      const bytecode = await publicClient.getBytecode({
+        address: this.tokenAddress as `0x${string}`,
+      });
+
+      if (!bytecode || bytecode === "0x") {
+        throw new Error(
+          `No contract found at address ${this.tokenAddress} on chain ${this.chainId}. This address may not be a valid contract or may not exist on this network.`
+        );
+      }
+
       const [name, symbol, decimals, totalSupply] = await Promise.all([
         publicClient.readContract({
           address: this.tokenAddress as `0x${string}`,
@@ -240,9 +251,23 @@ export class ExternalTokenService {
         chainId: this.chainId,
         isExternal: true,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching token info:", error);
-      throw new Error(`Failed to fetch token information: ${error}`);
+      
+      // Provide more specific error messages
+      if (error.message?.includes("returned no data")) {
+        throw new Error(
+          `Contract at ${this.tokenAddress} does not implement ERC-20 standard functions (name, symbol, decimals, totalSupply). This may not be a valid ERC-20 token.`
+        );
+      }
+      
+      if (error.message?.includes("No contract found")) {
+        throw error; // Re-throw our custom error
+      }
+      
+      throw new Error(
+        `Failed to fetch token information from ${this.tokenAddress} on chain ${this.chainId}: ${error.message || error}`
+      );
     }
   }
 
@@ -405,7 +430,7 @@ export const EXTERNAL_TOKENS: Record<string, ExternalTokenInfo> = {
     symbol: "PAI",
     decimals: 18,
     totalSupply: BigInt(0), // Will be fetched dynamically
-    chainId: 16600, // 0G Network
+    chainId: 16661, // 0G Mainnet
     logoUrl: "https://via.placeholder.com/64x64/000000/FFFFFF?text=PAI",
     description:
       "Panda AI token on 0G Network - An innovative AI-powered token",
