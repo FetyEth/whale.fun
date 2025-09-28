@@ -1,20 +1,20 @@
 {
   "network": "celo-alfajores",
   "chainId": 44787,
-  "timestamp": "2025-09-27T18:46:26.524Z",
+  "timestamp": "2025-09-28T00:20:39.160Z",
   "deployer": "0x941Bdd008abeD439b1CEe02090c0D7574C27d23F",
   "contracts": {
     "WhaleToken": {
-      "address": "0x6f48b3244d2a9cf6eb4eeace6be00ccf38306e9f",
-      "transactionHash": "0x1d187def2fa714ec6659468f8363967b1fd7ddcd1c8988d70a0d0cdfba652760",
+      "address": "0x554cd9ad6b3c3be1f8cd122496609d2defb12629",
+      "transactionHash": "0x265c03e35e4833e7d136dfbea81db600cc4d2a2dffa4ba3ad03bdecf62b365bd",
       "gasUsed": "3096552",
-      "explorerUrl": "https://alfajores.celoscan.io/tx/0x1d187def2fa714ec6659468f8363967b1fd7ddcd1c8988d70a0d0cdfba652760"
+      "explorerUrl": "https://alfajores.celoscan.io/tx/0x265c03e35e4833e7d136dfbea81db600cc4d2a2dffa4ba3ad03bdecf62b365bd"
     },
     "TokenFactory": {
-      "address": "0x5755574a0d453729568f068026ef03078e8ea87c",
-      "transactionHash": "0x929b51ab65b8c492713353896af86cb42f4db00960314ec19ceac63ebb613a7c",
+      "address": "0xb38f69dd86deaf443972ae2551f5fa8dc87364c1",
+      "transactionHash": "0xb7010c5f9b7d16b67c892340bf10e6a9af0e5a8487c0fa5700efe6c8d4fc7c43",
       "gasUsed": "5036884",
-      "explorerUrl": "https://alfajores.celoscan.io/tx/0x929b51ab65b8c492713353896af86cb42f4db00960314ec19ceac63ebb613a7c"
+      "explorerUrl": "https://alfajores.celoscan.io/tx/0xb7010c5f9b7d16b67c892340bf10e6a9af0e5a8487c0fa5700efe6c8d4fc7c43"
     }
   },
   "summary": {

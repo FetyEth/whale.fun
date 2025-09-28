@@ -42,7 +42,7 @@ export class TokenDataViemService {
     const chainMap: Record<number, { chain: any; factoryAddress: string }> = {
       44787: { 
         chain: (await import("viem/chains")).celoAlfajores, 
-        factoryAddress: "0x5755574a0d453729568f068026ef03078e8ea87c" 
+        factoryAddress: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15" 
       },
       80002: {
         chain: (await import("viem/chains")).polygonAmoy,

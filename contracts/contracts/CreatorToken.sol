@@ -152,7 +152,6 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         payable 
         override
         nonReentrant 
-        mevProtected(tokenAmount)
     {
         _executeBuyTokens(msg.sender, tokenAmount, msg.value);
     }
@@ -171,7 +170,11 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     
     function _executeBuyTokens(address buyer, uint256 tokenAmount, uint256 ethSent) internal {
         require(tokenAmount > 0, "Invalid amount");
-        require(balanceOf(address(this)) >= tokenAmount, "Not enough tokens");
+        
+        // Check if we have enough tokens available (total supply minus already sold)
+        uint256 availableTokens = totalSupply_ - totalSold;
+        require(availableTokens >= tokenAmount, "Not enough tokens available");
+        require(balanceOf(address(this)) >= tokenAmount, "Contract token balance insufficient");
         
         uint256 cost = BondingCurveLibrary.calculateBuyCost(totalSold, tokenAmount, curveParams);
         require(ethSent >= cost, "Insufficient ETH");

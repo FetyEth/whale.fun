@@ -126,7 +126,7 @@ const CreatePage: FC = () => {
         chainId,
         ":",
         chainId === 44787
-          ? "0x5755574a0d453729568f068026ef03078e8ea87c"
+          ? "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15"
           : "not configured"
       );
 
@@ -172,7 +172,7 @@ const CreatePage: FC = () => {
       const chainMap: Record<number, { chain: any; contractAddress: string }> = {
         44787: { 
           chain: celoAlfajores, 
-          contractAddress: "0x5755574a0d453729568f068026ef03078e8ea87c" 
+          contractAddress: "0x2db5bb2bf9d33fc1b3052780bbb185e969606d15" 
         },
         30: { 
           chain: rootstock, 

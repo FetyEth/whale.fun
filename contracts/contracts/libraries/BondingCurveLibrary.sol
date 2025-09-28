@@ -8,13 +8,9 @@ pragma solidity ^0.8.20;
 library BondingCurveLibrary {
     using FixedPointMathLib for uint256;
     
-    // Curve types
+    // Curve types - simplified to only exponential
     enum CurveType {
-        LINEAR,
-        EXPONENTIAL,
-        LOGARITHMIC,
-        SIGMOID,
-        POLYNOMIAL
+        EXPONENTIAL
     }
     
     // Curve parameters
@@ -47,19 +43,8 @@ library BondingCurveLibrary {
     {
         require(supply <= MAX_SUPPLY, "Supply exceeds maximum");
         
-        if (params.curveType == CurveType.LINEAR) {
-            price = _calculateLinearPrice(supply, params);
-        } else if (params.curveType == CurveType.EXPONENTIAL) {
-            price = _calculateExponentialPrice(supply, params);
-        } else if (params.curveType == CurveType.LOGARITHMIC) {
-            price = _calculateLogarithmicPrice(supply, params);
-        } else if (params.curveType == CurveType.SIGMOID) {
-            price = _calculateSigmoidPrice(supply, params);
-        } else if (params.curveType == CurveType.POLYNOMIAL) {
-            price = _calculatePolynomialPrice(supply, params);
-        } else {
-            revert("Invalid curve type");
-        }
+        // Only exponential curve supported
+        price = _calculateExponentialPrice(supply, params);
         
         // Ensure price bounds
         if (price < MIN_PRICE) price = MIN_PRICE;
@@ -81,17 +66,15 @@ library BondingCurveLibrary {
         CurveParams memory params
     ) internal pure returns (uint256 cost) {
         require(currentSupply + tokenAmount <= MAX_SUPPLY, "Exceeds max supply");
+        require(tokenAmount > 0, "Token amount must be greater than 0");
+        require(tokenAmount <= 1e24, "Token amount too large"); // Cap at 1M tokens to prevent overflow
         
-        if (params.curveType == CurveType.LINEAR) {
-            cost = _calculateLinearIntegral(currentSupply, currentSupply + tokenAmount, params);
-        } else if (params.curveType == CurveType.EXPONENTIAL) {
-            cost = _calculateExponentialIntegral(currentSupply, currentSupply + tokenAmount, params);
-        } else if (params.curveType == CurveType.LOGARITHMIC) {
-            cost = _calculateLogarithmicIntegral(currentSupply, currentSupply + tokenAmount, params);
-        } else if (params.curveType == CurveType.SIGMOID) {
-            cost = _calculateSigmoidIntegral(currentSupply, currentSupply + tokenAmount, params);
-        } else if (params.curveType == CurveType.POLYNOMIAL) {
-            cost = _calculatePolynomialIntegral(currentSupply, currentSupply + tokenAmount, params);
+        // Only exponential curve supported
+        cost = _calculateExponentialIntegral(currentSupply, currentSupply + tokenAmount, params);
+        
+        // Final safety check: cap the cost at a reasonable maximum
+        if (cost > 1e26) { // Max 100M ETH cost
+            cost = 1e26;
         }
         
         return cost;
@@ -134,19 +117,17 @@ library BondingCurveLibrary {
         require(totalSupply <= MAX_SUPPLY, "Total supply too large");
         require(targetMarketCap <= 1e24, "Target market cap too large"); // Max 1M ETH
         
-        // Dynamic curve selection based on characteristics
-        if (communitySize < 100 && targetMarketCap < 100 ether) {
-            // Small community tokens - use linear curve for safety
-            params.curveType = CurveType.LINEAR;
-            params.steepness = PRECISION / 1000; // Very gentle slope
-        } else if (communitySize > 1000 && targetMarketCap > 1000 ether) {
-            // Large community tokens - gentler sigmoid curve
-            params.curveType = CurveType.SIGMOID;
-            params.inflectionPoint = totalSupply / 2; // Midpoint inflection
+        // Always use exponential curve with safe parameters
+        params.curveType = CurveType.EXPONENTIAL;
+        
+        // Very gentle exponential growth to prevent overflow
+        // Steepness determines how fast the price grows
+        if (targetMarketCap < 10 ether) {
+            params.steepness = PRECISION / 10000; // Very gentle for small tokens
+        } else if (targetMarketCap < 100 ether) {
+            params.steepness = PRECISION / 5000; // Gentle for medium tokens
         } else {
-            // Medium tokens - logarithmic curve for stability
-            params.curveType = CurveType.LOGARITHMIC;
-            params.steepness = PRECISION / 1000; // Even gentler steepness
+            params.steepness = PRECISION / 2000; // Moderate for large tokens
         }
         
         // Calculate initial and final prices with safety bounds
@@ -221,7 +202,7 @@ library BondingCurveLibrary {
         }
         
         uint256 sigmoid = PRECISION + expValue;
-        return params.finalPrice / sigmoid * PRECISION; // Reorder to prevent overflow
+        return (params.finalPrice * PRECISION) / sigmoid; // Proper order to maintain precision
     }
     
     function _calculatePolynomialPrice(uint256 supply, CurveParams memory params) 
@@ -242,9 +223,19 @@ library BondingCurveLibrary {
         returns (uint256) 
     {
         // ∫(initialPrice + steepness * s)ds = initialPrice * s + steepness * s^2 / 2 - prevent overflow
-        uint256 fromValue = params.initialPrice * from + (params.steepness * from * from) / (2 * PRECISION);
-        uint256 toValue = params.initialPrice * to + (params.steepness * to * to) / (2 * PRECISION);
-        return toValue - fromValue;
+        // Reorder operations to prevent intermediate overflow
+        uint256 linearPart = params.initialPrice * (to - from);
+        
+        // Calculate quadratic part safely: steepness * (to^2 - from^2) / (2 * PRECISION)
+        // Use (to^2 - from^2) = (to + from) * (to - from) to reduce overflow risk
+        uint256 quadraticPart = 0;
+        if (params.steepness > 0 && to > from) {
+            uint256 sumFromTo = (from + to) / 2; // Average to prevent overflow
+            uint256 diff = to - from;
+            quadraticPart = (params.steepness * sumFromTo * diff) / (2 * PRECISION);
+        }
+        
+        return linearPart + quadraticPart;
     }
     
     function _calculateExponentialIntegral(uint256 from, uint256 to, CurveParams memory params) 
@@ -318,17 +309,33 @@ library BondingCurveLibrary {
         returns (uint256) 
     {
         // ∫(initialPrice + steepness * s^2)ds = initialPrice * s + steepness * s^3 / 3
-        uint256 fromValue = params.initialPrice * from + 
-                          (params.steepness * from * from * from) / (3 * PRECISION * PRECISION);
-        uint256 toValue = params.initialPrice * to + 
-                        (params.steepness * to * to * to) / (3 * PRECISION * PRECISION);
-        return toValue - fromValue;
+        // Calculate linear part safely
+        uint256 linearPart = params.initialPrice * (to - from);
+        
+        // Calculate cubic part with overflow protection
+        uint256 cubicPart = 0;
+        if (params.steepness > 0 && to > from) {
+            // Cap values to prevent overflow in cubic calculation
+            uint256 safeTo = to > 1e9 ? 1e9 : to;
+            uint256 safeFrom = from > 1e9 ? 1e9 : from;
+            
+            // Use safer calculation: steepness * (to^3 - from^3) / (3 * PRECISION^2)
+            // Calculate to^3 and from^3 with intermediate division to prevent overflow
+            uint256 toCubed = (safeTo * safeTo) / PRECISION * safeTo;
+            uint256 fromCubed = (safeFrom * safeFrom) / PRECISION * safeFrom;
+            
+            if (toCubed > fromCubed) {
+                cubicPart = (params.steepness * (toCubed - fromCubed)) / (3 * PRECISION);
+            }
+        }
+        
+        return linearPart + cubicPart;
     }
     
     // Mathematical helper functions
     function _exp(uint256 x) private pure returns (uint256) {
         if (x == 0) return PRECISION;
-        if (x > 50 * PRECISION) return type(uint256).max; // Prevent overflow
+        if (x > 50 * PRECISION) return MAX_PRICE; // Return reasonable max instead of uint256.max
         
         uint256 result = PRECISION;
         uint256 term = x;
