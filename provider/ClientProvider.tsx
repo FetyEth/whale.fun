@@ -8,16 +8,44 @@ import {
   celoAlfajores,
   rootstock,
   rootstockTestnet,
-  zeroG,
-  zeroGGalileoTestnet,
+  polygonAmoy,
+  baseSepolia,
 } from "viem/chains";
 
+// Custom 0G Network chain configuration
+const zeroGNetwork = {
+  id: 16661,
+  name: "0G Network",
+  network: "0g-network",
+  nativeCurrency: {
+    decimals: 18,
+    name: "0G",
+    symbol: "0G",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://evmrpc.0g.ai"],
+    },
+    public: {
+      http: ["https://evmrpc.0g.ai"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "0G Explorer",
+      url: "https://chainscan.0g.ai",
+    },
+  },
+  testnet: true,
+} as const;
+
 const config = getDefaultConfig({
-  appName: "My RainbowKit App",
+  appName: "Whale.fun",
   projectId: "YOUR_PROJECT_ID",
   chains: [
-    zeroG,
-    zeroGGalileoTestnet,
+    zeroGNetwork, // Custom 0G Network configuration
+    polygonAmoy,
+    baseSepolia,
     rootstock,
     rootstockTestnet,
     celoAlfajores,

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface TokenCardProps {
   token: {
@@ -16,6 +17,8 @@ interface TokenCardProps {
     volume: string;
     age: string;
     isLive?: boolean;
+    isExternal?: boolean;
+    chainId?: number;
   };
 }
 
@@ -23,7 +26,13 @@ const TokenCard = ({ token }: TokenCardProps) => {
   const router = useRouter();
 
   const handleCardClick = () => {
-    router.push(`/trade/${token.id}`);
+    // Route to external token trading page for external tokens
+    if (token.isExternal) {
+      router.push(`/trade/external/${token.id}`);
+    } else {
+      // Route to regular platform token trading page
+      router.push(`/trade/${token.id}`);
+    }
   };
 
   return (
@@ -35,14 +44,21 @@ const TokenCard = ({ token }: TokenCardProps) => {
       <div className="flex items-start justify-between mb-4">
         {/* Token Image - Left side with LIVE badge overlay */}
         <div className="relative w-1/2 max-w-[110px] h-20 rounded-lg bg-stone-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img
+          <Image
             src={token.image}
             alt={token.name}
+            width={150}
+            height={120}
             className="w-full h-[120px] max-w-[150px] rounded-lg object-cover"
           />
           {token.isLive && (
             <span className="absolute bottom-0 left-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-bl-lg rounded-tr-lg font-medium">
               LIVE
+            </span>
+          )}
+          {token.isExternal && (
+            <span className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-tr-lg rounded-bl-lg font-medium">
+              EXT
             </span>
           )}
         </div>

@@ -262,6 +262,7 @@ export class CreatorTokenViemService {
       functionName: "buyTokens",
       args: [tokenAmount],
       value: value,
+      chain: (await this.getChainConfig()).chainConfig.chain,
     });
 
     console.log("Buy transaction hash:", txHash);
@@ -288,6 +289,7 @@ export class CreatorTokenViemService {
       abi: abi,
       functionName: "sellTokens",
       args: [tokenAmount],
+      chain: (await this.getChainConfig()).chainConfig.chain,
     });
 
     console.log("Sell transaction hash:", txHash);
