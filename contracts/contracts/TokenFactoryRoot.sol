@@ -22,9 +22,10 @@ contract TokenFactory is ReentrancyGuard, Ownable, ITokenFactory {
     mapping(address => address[]) public creatorTokens;
     mapping(address => bool) public override isValidToken;
     
-    // Enhanced factory parameters
-    uint256 public launchFee = 0.01 ether;
-    uint256 public minInitialLiquidity = 0.1 ether;
+    // Enhanced factory parameters (testnet-cheap defaults)
+    // Set launch fee to 0 and allow very low initial liquidity for testnet UX
+    uint256 public launchFee = 0; // 0 ether
+    uint256 public minInitialLiquidity = 0.000000001 ether; // 1e-7 ether
     uint256 public maxTokensPerCreator = 5;
     
     // Platform statistics
@@ -188,7 +189,8 @@ contract TokenFactory is ReentrancyGuard, Ownable, ITokenFactory {
     }
     
     function setMinInitialLiquidity(uint256 newMin) external onlyOwner {
-        require(newMin >= 0.01 ether, "Too low");
+        // Allow very low threshold for testnet: 0.0000001 ether (1e-7)
+        require(newMin >= 0.0000001 ether, "Too low");
         minInitialLiquidity = newMin;
     }
     

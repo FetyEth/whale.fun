@@ -187,7 +187,7 @@ const CreatePage: FC = () => {
           },
           31: {
             chain: rootstockTestnet,
-            contractAddress: "0x0000000000000000000000000000000000000000", // Update with actual address
+            contractAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
           },
           // Add more chains as needed
         };
@@ -220,9 +220,12 @@ const CreatePage: FC = () => {
       ).default;
 
       const contractAddress = chainConfig.contractAddress as `0x${string}`;
-      const launchFee = parseEther("0.01"); // 0.01 CELO
-      const minLiquidity = parseEther("0.1"); // 0.1 CELO
-      const totalCost = launchFee + minLiquidity; // 0.11 CELO
+      // Load current on-chain creation costs dynamically (launchFee + minInitialLiquidity)
+      const dynamicCost = await tokenFactoryRootService.calculateCreationCost(
+        undefined,
+        currentChainId
+      );
+      const totalCost = dynamicCost.total;
 
       console.log("Direct contract call with params:", {
         account: account,

@@ -1,0 +1,18 @@
+{
+  "network": "rootstock-testnet",
+  "chainId": 31,
+  "timestamp": "2025-09-28T02:08:18.952Z",
+  "deployer": "0x95Cf028D5e86863570E300CAD14484Dc2068eB79",
+  "contracts": {
+    "WhaleToken": {
+      "address": "0x7906f9a13728e65d60aa8f8baee2a4f1ccd96c5e",
+      "transactionHash": "0x195b326002336365ccf38117d71cf2cb522132a03678e08bc56acaa22b42c83e",
+      "explorerUrl": "https://explorer.testnet.rsk.co/tx/0x195b326002336365ccf38117d71cf2cb522132a03678e08bc56acaa22b42c83e"
+    },
+    "TokenFactory": {
+      "address": "0x76f96e2acbc39d7d9620a607ac099bb9687e2207",
+      "transactionHash": "0x0abbfe7d53ae3f380d167a76f84a3379708890636b8755d60ac8339345af7e2d",
+      "explorerUrl": "https://explorer.testnet.rsk.co/tx/0x0abbfe7d53ae3f380d167a76f84a3379708890636b8755d60ac8339345af7e2d"
+    }
+  }
+}

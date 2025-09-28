@@ -85,6 +85,12 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
       deployedAt: 0, // Update with actual block number if needed
       verified: false,
     },
+    31: {
+      // Rootstock Testnet
+      address: "0x2aa101937824aea2b88d8464e00cfa823573688a",
+      deployedAt: 0,
+      verified: false,
+    },
     // Add other networks as needed
   },
 };

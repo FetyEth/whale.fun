@@ -40,6 +40,10 @@ export class TokenDataViemService {
 
     // Map chain ID to chain object and contract address
     const chainMap: Record<number, { chain: any; factoryAddress: string }> = {
+      31: {
+        chain: (await import("viem/chains")).rootstockTestnet,
+        factoryAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
+      },
       44787: {
         chain: (await import("viem/chains")).celoAlfajores,
         factoryAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",

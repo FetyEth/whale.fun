@@ -75,6 +75,14 @@ export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
       "https://sepolia.base.org", // fallback public RPC (lower reliability)
     blockExplorerUrl: "https://sepolia.basescan.org",
   },
+  31: {
+    chainId: 31,
+    name: "Rootstock Testnet",
+    rpcUrl:
+      (process.env.NEXT_PUBLIC_ROOTSTOCK_TESTNET_RPC_URL as string) ||
+      "https://public-node.testnet.rsk.co",
+    blockExplorerUrl: "https://explorer.testnet.rsk.co",
+  },
 };
 
 /**

@@ -5,6 +5,7 @@ import Header from "./layout/Header";
 import Link from "next/link";
 import { WelcomeBanner } from "./onboarding/WelcomeBanner";
 import { useUser } from "@/hooks/useUser";
+import Image from "next/image";
 
 function HeroSection() {
   const { user, isNewUser, showOnboarding, dismissOnboarding } = useUser();
@@ -37,8 +38,14 @@ function HeroSection() {
               Launch tokens on-stream. co-created and safe.
             </p>
             <p className="flex gap-2 mt-3 text-lg text-center justify-center  items-center">
-              built on{" "}
-              <img src="/icons/0g.svg" alt="Logo" className="w-10 h-10" />
+              built on{" Rootstock "}
+              <Image
+                src="/icons/0g.svg"
+                alt="Rootstock Logo"
+                width={40}
+                height={40}
+                priority
+              />
             </p>
           </div>
           <div className="flex justify-between pt-5 items-center px-10">

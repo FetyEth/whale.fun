@@ -94,17 +94,28 @@ export class TokenDataService {
     try {
       console.log(`Fetching data for token: ${tokenAddress}`);
 
-      // Get blockchain connection
-      const connection = await getBlockchainConnection();
+      // Create public client for read operations based on current chain
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores } = await import("viem/chains");
+      const { celoAlfajores, polygonAmoy, rootstockTestnet } = await import("viem/chains");
+      let targetChain = celoAlfajores;
+      try {
+        // Prefer provided chainId, else read from wallet
+        let activeChainId = chainId;
+        if (!activeChainId) {
+          const connection = await getBlockchainConnection();
+          activeChainId = Number(connection.network.chainId);
+        }
+        const map: Record<number, any> = {
+          44787: celoAlfajores,
+          80002: polygonAmoy,
+          31: rootstockTestnet,
+        };
+        targetChain = map[Number(activeChainId!)] || celoAlfajores;
+      } catch {}
 
-      // Create public client for read operations
       const publicClient = createPublicClient({
-        chain: celoAlfajores,
-        transport: http(
-          "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb"
-        ),
+        chain: targetChain,
+        transport: http(),
       });
 
       // Fetch basic token info from factory
@@ -149,7 +160,7 @@ export class TokenDataService {
         publicClient.readContract({
           address: tokenAddress as `0x${string}`,
           abi: CreatorTokenABI,
-          functionName: "currentPrice",
+          functionName: "getCurrentPrice",
         }),
         publicClient.readContract({
           address: tokenAddress as `0x${string}`,
@@ -159,7 +170,7 @@ export class TokenDataService {
         publicClient.readContract({
           address: tokenAddress as `0x${string}`,
           abi: CreatorTokenABI,
-          functionName: "totalSupply",
+          functionName: "totalSupply_",
         }),
         publicClient.readContract({
           address: tokenAddress as `0x${string}`,

@@ -11,7 +11,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1, // Minimum runs for maximum size optimization
+        runs: 200, // Higher runs generally reduce runtime gas (slightly larger bytecode)
       },
       metadata: {
         bytecodeHash: "none",
@@ -45,6 +45,13 @@ const config: HardhatUserConfig = {
       chainType: "l1",
       url: configVariable("BASE_TESTNET_RPC_URL"),
       accounts: [configVariable("BASE_TESTNET_PRIVATE_KEY")],
+    },
+    rootstockTestnet: {
+      type: "http",
+      chainType: "l1",
+      url: configVariable("ROOTSTOCK_TESTNET_RPC_URL"),
+      accounts: [configVariable("ROOTSTOCK_TESTNET_PRIVATE_KEY")],
+      chainId: 31,
     },
     celoAlfajores: {
       type: "http",
