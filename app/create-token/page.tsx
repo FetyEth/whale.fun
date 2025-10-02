@@ -11,6 +11,9 @@ import {
   SUPPORTED_NETWORKS,
 } from "@/utils/Blockchain";
 import Link from "next/link";
+import Image from "next/image";
+import { useAccount } from "wagmi";
+import { ChevronLeft, UploadCloud, X, Globe, Send, User, Trash2, FileText } from "lucide-react";
 
 interface InputFieldProps {
   label: string;
@@ -21,6 +24,7 @@ interface InputFieldProps {
   isTextArea?: boolean;
   maxLength?: number;
   infoText?: string;
+  type?: string;
 }
 
 const InputField: FC<InputFieldProps> = ({
@@ -32,6 +36,7 @@ const InputField: FC<InputFieldProps> = ({
   isTextArea = false,
   maxLength,
   infoText,
+  type = "text",
 }) => (
   <div>
     <label
@@ -45,7 +50,7 @@ const InputField: FC<InputFieldProps> = ({
         id={id}
         name={id}
         rows={3}
-        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+        className="w-full px-3 py-2 bg-black/5 border border-transparent rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
         placeholder={placeholder}
         value={value}
         onChange={onChange}
@@ -53,10 +58,10 @@ const InputField: FC<InputFieldProps> = ({
       />
     ) : (
       <input
-        type="text"
+        type={type}
         id={id}
         name={id}
-        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+        className="w-full px-3 py-2 bg-black/5 border border-transparent rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
         placeholder={placeholder}
         value={value}
         onChange={onChange}
@@ -66,14 +71,143 @@ const InputField: FC<InputFieldProps> = ({
   </div>
 );
 
+const StepIndicator: FC<{ current: number; total: number }> = ({ current, total }) => {
+  return (
+    <div className="flex items-center gap-3 my-4" aria-label="progress">
+      {Array.from({ length: total }).map((_, i) => {
+        const idx = i + 1;
+        const active = idx <= current;
+        return (
+          <div
+            key={idx}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${active ? "bg-purple-500" : "bg-gray-200"}`}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+const PreviewCard: FC<{
+  name: string;
+  symbol: string;
+  description: string;
+  logo: string;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  address?: string | undefined;
+}> = ({ name, symbol, description, logo, website, twitter, telegram, address }) => {
+  const short = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "0x…";
+  const siteUrl = website && website.trim() ? (website.startsWith("http") ? website : `https://${website}`) : null;
+  const twitterUrl = twitter && twitter.trim()
+    ? (twitter.startsWith("http") ? twitter : `https://twitter.com/${twitter.replace(/^@/, "")}`)
+    : null;
+  const telegramUrl = telegram && telegram.trim()
+    ? (telegram.startsWith("http") ? telegram : `https://t.me/${telegram.replace(/^@/, "")}`)
+    : null;
+  return (
+    <div className="sticky top-8 rounded-2xl bg-black text-white shadow-lg w-[340px] md:w-[360px] min-h-[520px] flex flex-col">
+      <div
+        className={`relative aspect-square w-full ${logo ? "rounded-t-2xl" : "rounded-2xl"} overflow-hidden flex items-center justify-center`}
+        style={{ backgroundColor: logo ? undefined : "#E4D3F3" }}
+      >
+        {logo ? (
+          <Image src={logo} alt="Logo preview" className="object-cover" fill />
+        ) : (
+          <div className="text-purple-700 font-semibold rounded-lg"></div>
+        )}
+      </div>
+      <div className="flex flex-col p-4 space-y-2 flex-grow">
+        <div className="text-2xl font-bold">{symbol ? `$${symbol.toUpperCase()}` : "$YOURCOIN"}</div>
+        <div className="text-sm text-gray-400">{name || "Your Token"}</div>
+        <div className="text-xs text-gray-500 flex items-center gap-1.5">
+          <span className="uppercase">CA:</span>
+          <User className="w-3 h-3" />
+          <span>{short}</span>
+        </div>
+        <p className="text-sm text-gray-400 flex-grow pt-2">
+          {description || "Add a token description. It goes here."}
+        </p>
+        <div className="flex items-center gap-3 pt-2 mt-auto">
+          {/* Website */}
+          <a
+            href={siteUrl ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
+            onClick={(e) => { if (!siteUrl) e.preventDefault(); }}
+            aria-label="Website"
+          >
+            <Globe className="w-4 h-4 text-gray-300" />
+          </a>
+          {/* X (Twitter) - inline brand X svg */}
+          <a
+            href={twitterUrl ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
+            onClick={(e) => { if (!twitterUrl) e.preventDefault(); }}
+            aria-label="Twitter (X)"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" clipRule="evenodd" d="M18.244 3H21l-7.42 8.486L22 21h-6.59l-5.16-6.034L4.9 21H2l7.94-9.08L2 3h6.59l4.73 5.53L18.244 3Zm-1.038 16.2h2.06L8.91 4.8H6.85l10.356 14.4Z" className="text-gray-300" />
+            </svg>
+          </a>
+          {/* Telegram */}
+          <a
+            href={telegramUrl ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
+            onClick={(e) => { if (!telegramUrl) e.preventDefault(); }}
+            aria-label="Telegram"
+          >
+            <Send className="w-4 h-4 text-gray-300" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CreatePage: FC = () => {
   const [formData, setFormData] = useState({
     tokenName: "",
     tokenSymbol: "",
     description: "",
     logoUrl: "",
+    totalSupply: "1000000",
+    targetMarketCap: "0.1",
+    creatorFeeBps: "30",
+    website: "",
+    telegram: "",
+    twitter: "",
+    logoPreview: "",
+    logoFile: null as File | null,
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
+  const [currentStep, setCurrentStep] = useState(1); // 1: Basics, 2: Supply & Fees, 3: Story
+  const totalSteps = 3;
+
+  const stepMeta: Record<number, { title: string; subtitle: string }> = {
+    1: {
+      title: "Create your token",
+      subtitle: "Upload a logo, name your token, and set a short symbol.",
+    },
+    2: {
+      title: "Set your supply & fees",
+      subtitle: "Define how many tokens exist and your creator fee.",
+    },
+    3: {
+      title: "Tell your story",
+      subtitle: "Add a concise thesis and optional links.",
+    },
+  };
+
+  const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -94,6 +228,48 @@ const CreatePage: FC = () => {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, logoPreview: localUrl, logoFile: file }));
+    setUploadingLogo(true);
+    setUploadStatus("Uploading...");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+      }
+      const data = await res.json();
+      if (data?.url) {
+        setFormData((prev) => ({ ...prev, logoUrl: data.url }));
+        setUploadStatus("Uploaded Successfully");
+      } else {
+        setUploadStatus("Uploaded (no URL returned)");
+      }
+    } catch (err: any) {
+      console.error("Pinata upload error:", err);
+      setUploadStatus("Upload failed");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const removeLogo = () => {
+    if (formData.logoFile) {
+      URL.revokeObjectURL(formData.logoPreview);
+    }
+    setFormData((prev) => ({ ...prev, logoPreview: "", logoFile: null, logoUrl: "" }));
+    setUploadStatus(null);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -242,11 +418,11 @@ const CreatePage: FC = () => {
         account: account,
         name: formData.tokenName,
         symbol: formData.tokenSymbol.toUpperCase(),
-        totalSupply: parseEther("1000000"), // 1M tokens in wei
-        targetMarketCap: parseEther("0.1"),
-        creatorFeePercent: BigInt(30),
+        totalSupply: parseEther(formData.totalSupply || "0"),
+        targetMarketCap: parseEther(formData.targetMarketCap || "0"),
+        creatorFeePercent: BigInt(Number(formData.creatorFeeBps || "0")),
         description: formData.description || "Token created via Whale.fun",
-        logoUrl: formData.logoUrl || "https://example.com/logo.png",
+        logoUrl: formData.logoUrl || formData.logoPreview || "https://example.com/logo.png",
         value: totalCost.toString(),
       });
 
@@ -259,11 +435,11 @@ const CreatePage: FC = () => {
         args: [
           formData.tokenName,
           formData.tokenSymbol.toUpperCase(),
-          parseEther("1000000"), // 1M tokens in wei
-          parseEther("0.1"), // 0.1 CELO
-          BigInt(30), // 30%
+          parseEther(formData.totalSupply || "0"),
+          parseEther(formData.targetMarketCap || "0"),
+          BigInt(Number(formData.creatorFeeBps || "0")),
           formData.description || "Token created via Whale.fun",
-          formData.logoUrl || "https://example.com/logo.png",
+          formData.logoUrl || formData.logoPreview || "https://example.com/logo.png",
         ],
         value: totalCost,
         chain: chainConfig.chain,
@@ -333,10 +509,12 @@ const CreatePage: FC = () => {
   // Success message component
   const TokenCreatedMessage = () => (
     <div className="text-center p-8 border-2 border-dashed border-purple-200 rounded-2xl">
-      <img
+      <Image
         src="/img/congrats.svg"
         alt="Token creation successful"
-        className="mx-auto mb-6 h-24 w-24"
+        className="mx-auto mb-6"
+        width={96}
+        height={96}
       />
       <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
         Token created
@@ -394,7 +572,16 @@ const CreatePage: FC = () => {
             tokenSymbol: "",
             description: "",
             logoUrl: "",
+            totalSupply: "1000000",
+            targetMarketCap: "0.1",
+            creatorFeeBps: "30",
+            website: "",
+            telegram: "",
+            twitter: "",
+            logoPreview: "",
+            logoFile: null,
           });
+          setCurrentStep(1);
         }}
       >
         Create another token
@@ -405,127 +592,252 @@ const CreatePage: FC = () => {
   return (
     <main>
       <Header />
-      <div className="flex items-center justify-center  w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4">
-        <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm max-w-4xl w-full mx-auto">
+      <div className="flex items-center justify-center w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4">
+        <div className="w-full max-w-6xl mx-auto">
           {isTokenCreated ? (
-            <TokenCreatedMessage />
+            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border" style={{ borderColor: "#B65FFF33" }}>
+              <TokenCreatedMessage />
+            </div>
           ) : (
             <>
-              <div className="text-center mb-10">
-                <h1 className="text-4xl sm:text-5xl font-bold text-purple-500">
-                  Create your token
-                </h1>
-                <p className="text-gray-500 mt-2">
-                  Set the basics, lock the rules, and preview your curve before
-                  mint.
-                </p>
+              <form
+                onSubmit={handleSubmit}
+                onKeyDown={(e) => {
+                  if ((e as unknown as KeyboardEvent).key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                <div
+                  className="rounded-2xl p-5 sm:p-6"
+                  style={{ backgroundColor: "#B65FFF33" }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                    {/* LEFT: Steps */}
+                    <div className="md:pl-2 mx-4">
+                      <div className="bg-white rounded-2xl p-5 sm:p-6">
+                        <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
+                          {stepMeta[currentStep].title}
+                        </h2>
+                        <p className="text-gray-600 mt-1">{stepMeta[currentStep].subtitle}</p>
+                        <StepIndicator current={currentStep} total={totalSteps} />
 
-                {creationCost && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      <strong>Creation Cost:</strong>{" "}
-                      {formatEther(creationCost.total)}{" "}
-                      {currentNetwork?.chainId === 44787
-                        ? "CELO"
-                        : currentNetwork?.chainId === 16602
-                        ? "0G"
-                        : currentNetwork?.chainId === 31
-                        ? "RBTC"
-                        : "ETH"}
-                      <br />
-                      <span className="text-xs">
-                        (Launch Fee: {formatEther(creationCost.launchFee)}{" "}
-                        {currentNetwork?.chainId === 44787
-                          ? "CELO"
-                          : currentNetwork?.chainId === 16602
-                          ? "0G"
-                          : currentNetwork?.chainId === 31
-                          ? "RBTC"
-                          : "ETH"}{" "}
-                        + Min Liquidity: {formatEther(creationCost.liquidity)}{" "}
-                        {currentNetwork?.chainId === 44787
-                          ? "CELO"
-                          : currentNetwork?.chainId === 16602
-                          ? "0G"
-                          : currentNetwork?.chainId === 31
-                          ? "RBTC"
-                          : "ETH"}
-                        )
-                      </span>
-                    </p>
+                        <div className="min-h-[26rem] sm:min-h-[28rem] flex flex-col">
+                        {currentStep === 1 && (
+                          <div className="space-y-5">
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl bg-black/5">
+                              <label className="cursor-pointer flex min-h-40 sm:min-h-48 flex-col items-center justify-center gap-4 transition-colors">
+                                <span className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-[#1018280D] text-[#101828]">
+                                  <UploadCloud className="w-6 h-6" />
+                                </span>
+                                <p className="text-base">
+                                  <span className="font-semibold text-gray-900">Click to upload</span>
+                                  <span className="text-gray-500"> or drag and drop</span>
+                                </p>
+                                <p className="text-xs text-gray-400 tracking-wide">SVG, PNG, JPG or GIF</p>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={handleFileChange}
+                                />
+                              </label>
+                            </div>
+
+                            {formData.logoFile && (
+                              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-black/5 text-gray-700">
+                                    <FileText className="w-5 h-5" />
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">{formData.logoFile.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {(formData.logoFile.size / (1024 * 1024)).toFixed(2)}MB
+                                      {" "}| {uploadingLogo ? "Uploading..." : uploadStatus || (formData.logoUrl ? "Uploaded Successfully" : "Pending")}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={removeLogo}
+                                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 p-2 text-gray-600 hover:bg-black/5 hover:text-red-600"
+                                  aria-label="Remove file"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            )}
+                            <InputField
+                              label="Token Name"
+                              id="tokenName"
+                              placeholder="Your Token"
+                              value={formData.tokenName}
+                              onChange={handleChange}
+                            />
+                            <InputField
+                              label="Token Symbol"
+                              id="tokenSymbol"
+                              placeholder="$ YOURCOIN"
+                              value={formData.tokenSymbol}
+                              onChange={handleChange}
+                            />
+                          </div>
+                        )}
+
+                        {currentStep === 2 && (
+                          <div className="space-y-6">
+                            <InputField
+                              label="Total Supply"
+                              id="totalSupply"
+                              placeholder="1,000,000"
+                              value={formData.totalSupply}
+                              onChange={handleChange}
+                              type="number"
+                            />
+                            <InputField
+                              label="Target Market Cap (in native token)"
+                              id="targetMarketCap"
+                              placeholder="0.1"
+                              value={formData.targetMarketCap}
+                              onChange={handleChange}
+                              type="number"
+                            />
+                            <InputField
+                              label="Creator Fee (bps)"
+                              id="creatorFeeBps"
+                              placeholder="50"
+                              value={formData.creatorFeeBps}
+                              onChange={handleChange}
+                              type="number"
+                            />
+                          </div>
+                        )}
+
+                        {currentStep === 3 && (
+                          <div className="space-y-6">
+                            <InputField
+                              label="Description"
+                              id="description"
+                              placeholder="What's the thesis, utility, or story?"
+                              value={formData.description}
+                              onChange={handleChange}
+                              isTextArea
+                              maxLength={280}
+                              infoText="max 280 chars"
+                            />
+                            <InputField
+                              label="Website URL (optional)"
+                              id="website"
+                              placeholder="https://..."
+                              value={formData.website}
+                              onChange={handleChange}
+                            />
+                            <InputField
+                              label="Telegram (optional)"
+                              id="telegram"
+                              placeholder="@yourchannel"
+                              value={formData.telegram}
+                              onChange={handleChange}
+                            />
+                            <InputField
+                              label="Twitter/X (optional)"
+                              id="twitter"
+                              placeholder="@handle"
+                              value={formData.twitter}
+                              onChange={handleChange}
+                            />
+                            <InputField
+                              label="Logo URL (optional)"
+                              id="logoUrl"
+                              placeholder="https://example.com/logo.png"
+                              value={formData.logoUrl}
+                              onChange={handleChange}
+                              infoText="Direct link to your token logo image"
+                            />
+                          </div>
+                        )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 mt-6">
+                          <button
+                            type="button"
+                            disabled={isLoading || currentStep === 1}
+                            onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+                            className="w-10 h-10 flex items-center justify-center bg-black/5 text-gray-900 font-semibold rounded-xl hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+
+                          {currentStep < totalSteps ? (
+                            <button
+                              type="button"
+                              disabled={isLoading || (currentStep === 1 && (!formData.tokenName || !formData.tokenSymbol))}
+                              onClick={() => setCurrentStep((s) => Math.min(totalSteps, s + 1))}
+                              className="px-8 py-3 w-full hover:cursor-pointer hover:text-white bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleSubmit}
+                              disabled={isLoading}
+                              className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isLoading ? "Creating Token..." : "Create"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT: Preview */}
+                    <div className="md:pr-2 flex md:justify-center items-center bg-white rounded-2xl">
+                      <div className="bg-black rounded-xl p-4 h-fit">
+                        <PreviewCard
+                          name={formData.tokenName}
+                          symbol={formData.tokenSymbol}
+                          description={formData.description}
+                          logo={formData.logoPreview || formData.logoUrl}
+                          website={formData.website}
+                          twitter={formData.twitter}
+                          telegram={formData.telegram}
+                          address={address}
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-6">
-                  {/* Logo Upload Section */}
-
-                  {/* Basic Token Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputField
-                      label="Token name"
-                      id="tokenName"
-                      placeholder="e.g., Whale Wars"
-                      value={formData.tokenName}
-                      onChange={handleChange}
-                    />
-                    <InputField
-                      label="Token symbol"
-                      id="tokenSymbol"
-                      placeholder="e.g., WHALE"
-                      value={formData.tokenSymbol}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <InputField
-                    label="Description"
-                    id="description"
-                    placeholder="What's the thesis, utility, or story?"
-                    value={formData.description}
-                    onChange={handleChange}
-                    isTextArea
-                    maxLength={280}
-                    infoText="max 280 chars"
-                  />
-                  <InputField
-                    label="Logo URL"
-                    id="logoUrl"
-                    placeholder="https://example.com/logo.png"
-                    value={formData.logoUrl}
-                    onChange={handleChange}
-                    infoText="Direct link to your token logo image"
-                  />
-                </div>
-
-                <div className="flex items-center justify-center gap-4 mt-8">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? "Creating Token..." : "Create token"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isLoading}
-                    className="px-8 py-3 bg-white text-gray-800 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => {
-                      setFormData({
-                        tokenName: "",
-                        tokenSymbol: "",
-                        description: "",
-                        logoUrl: "",
-                      });
-                      setError(null);
-                      setSuccess(null);
-                    }}
-                  >
-                    {isLoading ? "Processing..." : "Reset"}
-                  </button>
                 </div>
               </form>
+              <div className="flex items-center justify-center mt-8">
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                  onClick={() => {
+                    setFormData({
+                      tokenName: "",
+                      tokenSymbol: "",
+                      description: "",
+                      logoUrl: "",
+                      totalSupply: "1000000",
+                      targetMarketCap: "0.1",
+                      creatorFeeBps: "30",
+                      website: "",
+                      telegram: "",
+                      twitter: "",
+                      logoPreview: "",
+                      logoFile: null,
+                    });
+                    setError(null);
+                    setSuccess(null);
+                    setCurrentStep(1);
+                  }}
+                >
+                  Reset form
+                </button>
+              </div>
             </>
           )}
         </div>

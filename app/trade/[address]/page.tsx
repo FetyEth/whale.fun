@@ -27,8 +27,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const TokenStat = ({
   name,
@@ -105,6 +106,8 @@ const TradePage = () => {
   const [userBalance, setUserBalance] = useState<string>("0");
   const [userTokenBalance, setUserTokenBalance] = useState<string>("0");
   const [copied, setCopied] = useState(false);
+  const account = useAccount();
+  console.log("chainId", account?.chain?.id);
   console.log("userbalance", userBalance);
   // Trading state
   const [buyAmount, setBuyAmount] = useState<string>("");
@@ -129,7 +132,19 @@ const TradePage = () => {
   >("24h");
 
   // Wallet connection
-  const { address: userAddress, isConnected } = useAccount();
+  const { address: userAddress, isConnected, chain } = useAccount();
+  // Reactive native balance via wagmi (more reliable for UI)
+  const { data: nativeBal } = useBalance({
+    address: userAddress,
+    chainId: chain?.id,
+    // useBalance@wagmi v2 uses TanStack Query options via `query`
+    scopeKey: `native-${chain?.id}-${userAddress}`,
+    query: {
+      enabled: Boolean(userAddress && chain?.id),
+      refetchInterval: 10000, // refresh every 10s
+      refetchOnWindowFocus: true,
+    },
+  });
 
   // Livestream state
   const [selectedToken, setSelectedToken] = useState<"WHALE" | "ARROW">(
@@ -174,6 +189,15 @@ const TradePage = () => {
     }
   }, [tokenAddress, userAddress, isConnected]);
 
+  // Keep userBalance in sync with wagmi's native balance
+  useEffect(() => {
+    if (nativeBal) {
+      // nativeBal.formatted is a string like "0.093"
+      console.log("wagmi native balance:", nativeBal.formatted, nativeBal.symbol);
+      setUserBalance(nativeBal.formatted);
+    }
+  }, [nativeBal]);
+
   // Update quotes when amount changes
   useEffect(() => {
     if (tokenAddress && amount && parsedAmount > 0) {
@@ -187,6 +211,23 @@ const TradePage = () => {
       setSellQuote(null);
     }
   }, [amount, tradeMode, tokenAddress]);
+
+  // Realtime refresh for chart data
+  useEffect(() => {
+    let timer: any;
+    (async () => {
+      try {
+        const connection = await getBlockchainConnection();
+        const chainId = Number(connection.network.chainId);
+        timer = setInterval(() => {
+          fetchChartData(chainId);
+        }, 30000); // refresh every 30s
+      } catch {}
+    })();
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [chartTimeframe, tokenAddress]);
 
   const updateBuyQuote = async () => {
     if (!tokenAddress || !amount || parsedAmount <= 0) return;
@@ -661,7 +702,8 @@ const TradePage = () => {
         }),
       ]);
 
-      setUserBalance(formatEther(ethBalance));
+      // Do not set userBalance here to avoid racing with wagmi's useBalance which is reactive and accurate
+      // setUserBalance(formatEther(ethBalance));
       setUserTokenBalance(formatEther(tokenBalance as bigint));
     } catch (err: any) {
       console.error("Error fetching user balances:", err);
@@ -1186,6 +1228,60 @@ const TradePage = () => {
     );
   }
 
+  // Compute dynamic 24h change for chart header
+  const priceChangeStr = tokenData?.priceChange || "0%";
+  const changeVal = parseFloat((priceChangeStr || "0").replace("%", ""));
+  const isChangeUp = !Number.isNaN(changeVal) && changeVal >= 0;
+  const changeAbsStr = Number.isNaN(changeVal)
+    ? "0.0"
+    : Math.abs(changeVal).toFixed(1);
+
+  // Build realtime chart path and axis labels from chartData
+  const svgWidth = 600;
+  const svgHeight = 200;
+  const topY = 20;
+  const bottomY = 170; // leave padding for labels
+
+  const prices = chartData.map((d) => d.price);
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 1;
+  const pad = (maxPrice - minPrice) * 0.1 || 1; // ensure non-zero
+  const yRangeMin = minPrice - pad;
+  const yRangeMax = maxPrice + pad;
+
+  const yFor = (v: number) => {
+    if (yRangeMax === yRangeMin) return (topY + bottomY) / 2;
+    const t = (v - yRangeMin) / (yRangeMax - yRangeMin);
+    return bottomY - t * (bottomY - topY);
+  };
+
+  const xFor = (i: number) => {
+    if (chartData.length <= 1) return 0;
+    return (i * svgWidth) / (chartData.length - 1);
+  };
+
+  let pathD = "";
+  let fillD = "";
+  if (chartData.length > 0) {
+    pathD = chartData
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)},${yFor(p.price).toFixed(2)}`)
+      .join(" ");
+    const lastX = xFor(chartData.length - 1).toFixed(2);
+    fillD = `${pathD} L ${lastX},${bottomY} L 0,${bottomY} Z`;
+  }
+
+  const formatTick = (ts: number, position: "start" | "middle" | "end") => {
+    const d = new Date(ts);
+    if (position === "middle") {
+      return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+    }
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  };
+
+  const firstTs = chartData[0]?.timestamp;
+  const midTs = chartData[Math.floor(chartData.length / 2)]?.timestamp;
+  const lastTs = chartData[chartData.length - 1]?.timestamp;
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -1204,8 +1300,84 @@ const TradePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Token Info + Chart */}
           <div className="lg:col-span-2 space-y-4">
+          <Card className="border-gray-200 bg-[#303030]">
+              <CardContent className="p-5 md:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={tokenData?.logoUrl} alt={tokenData?.name} className="h-6 w-6 rounded-full" />
+                        <AvatarFallback className="h-6 w-6 rounded-full">
+                          {tokenData?.symbol?.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-lg leading-none font-semibold text-white">${tokenData?.symbol}</span>
+                    </div>
+                    <span className="text-sm leading-none font-medium text-[#FFFFFF80]">
+                      {isChangeUp ? "is up" : "is down"}
+                      {" "}
+                      <span
+                        className={`${isChangeUp ? "text-emerald-400" : "text-red-400"} font-semibold`}
+                      >
+                        {changeAbsStr}%
+                      </span>{" "}
+                      in 24hrs
+                    </span>
+                  </div>
+                  <div className="flex gap-2" />
+                </div>
+                <div className="h-64 bg-[#303030] rounded-[22px] relative p-5">
+                  {/* Inset panel */}
+                  <div className="h-full w-full rounded-[22px] bg-[#FFFFFF0D] border border-black/10 shadow-inner p-5 relative">
+                    {/* Dynamic path from chartData */}
+                    <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      {chartData.length > 1 ? (
+                        <>
+                          <path d={fillD} fill="url(#chartFill)" />
+                          <path d={pathD} stroke="#22c55e" strokeWidth="3" fill="none" strokeLinecap="round" />
+                        </>
+                      ) : null}
+                    </svg>
+                    {/* Axis labels (mock) */}
+                    <div className="absolute bottom-4 left-5 right-5 flex justify-between text-xs text-white/40">
+                      <span>{firstTs ? formatTick(firstTs, "start") : ""}</span>
+                      <span>{midTs ? formatTick(midTs, "middle") : ""}</span>
+                      <span>{lastTs ? formatTick(lastTs, "end") : ""}</span>
+                    </div>
+                  </div>
+                </div>
+                {/* Timeframe chips at the card bottom (outside inner panel) */}
+                <div className="mt-4 px-5 w-full flex items-center justify-center gap-3">
+                  {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map((timeframe) => (
+                    <button
+                      key={timeframe}
+                      onClick={() => {
+                        // Map 5m/All to nearest supported timeframe for now
+                        const mapped = timeframe === "5m" ? "1h" : timeframe === "All" ? "30d" : (timeframe as typeof chartTimeframe);
+                        setChartTimeframe(mapped);
+                        if (tokenData) fetchChartData(31);
+                      }}
+                      className={`${
+                        (chartTimeframe === timeframe || (timeframe === "5m" && chartTimeframe === "1h") || (timeframe === "All" && chartTimeframe === "30d"))
+                          ? "bg-[#4B4B4B] text-white shadow-sm"
+                          : "text-gray-400"
+                      } px-3 py-1 rounded-full text-sm font-medium`}
+                    >
+                      {timeframe}
+                    </button>
+                  ))}
+                </div>
+                
+              </CardContent>
+            </Card>
             {/* Token header */}
-            <Card className="border-gray-200">
+            {/* <Card className="border-gray-200">
               <CardContent className="p-5 md:p-6 flex gap-4 items-center">
                 <div className="h-12 w-12 rounded-xl bg-gray-100 border border-[#0000001A] overflow-hidden">
                   <Avatar className="h-full w-full rounded-xl">
@@ -1249,17 +1421,24 @@ const TradePage = () => {
                             -4
                           )}`}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSetup(true)}
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black text-white cursor-pointer"
-                    >
-                      Go Live
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled
+                          onClick={(e) => e.preventDefault()}
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black text-white opacity-60 cursor-not-allowed"
+                          aria-disabled
+                        >
+                          Go Live
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={6}>Coming soon</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Video player (shown after permissions) */}
             {permissionsGranted ? (
@@ -1294,7 +1473,7 @@ const TradePage = () => {
             )}
 
             {/* Price and stats */}
-            <Card className="border-gray-200">
+            {/* <Card className="border-gray-200">
               <CardContent className="p-5 md:p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
@@ -1331,88 +1510,14 @@ const TradePage = () => {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Price Chart */}
-            <Card className="border-gray-200">
-              <CardContent className="p-5 md:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Price Chart
-                  </h3>
-                  <div className="flex gap-2">
-                    {(["1h", "24h", "7d", "30d"] as const).map((timeframe) => (
-                      <button
-                        key={timeframe}
-                        onClick={() => {
-                          setChartTimeframe(timeframe);
-                          if (tokenData) fetchChartData(31);
-                        }}
-                        className={`px-3 py-1 rounded text-sm ${
-                          chartTimeframe === timeframe
-                            ? "bg-purple-600 text-white"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        {timeframe}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="h-64 bg-gray-50 rounded-lg relative">
-                  {chartData.length > 0 ? (
-                    <svg className="w-full h-full" viewBox="0 0 400 200">
-                      {chartData.map((point, index) => {
-                        if (index === 0) return null;
-                        const prevPoint = chartData[index - 1];
-                        const x1 = (index - 1) * (400 / (chartData.length - 1));
-                        const y1 =
-                          180 -
-                          ((prevPoint.price -
-                            Math.min(...chartData.map((d) => d.price))) /
-                            (Math.max(...chartData.map((d) => d.price)) -
-                              Math.min(...chartData.map((d) => d.price)))) *
-                            160;
-                        const x2 = index * (400 / (chartData.length - 1));
-                        const y2 =
-                          180 -
-                          ((point.price -
-                            Math.min(...chartData.map((d) => d.price))) /
-                            (Math.max(...chartData.map((d) => d.price)) -
-                              Math.min(...chartData.map((d) => d.price)))) *
-                            160;
-                        return (
-                          <line
-                            key={index}
-                            x1={x1}
-                            y1={y1}
-                            x2={x2}
-                            y2={y2}
-                            stroke="#8B5CF6"
-                            strokeWidth="2"
-                            fill="none"
-                          />
-                        );
-                      })}
-                    </svg>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-gray-500">Loading chart data...</p>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 text-sm text-gray-500 text-center">
-                  Current Price:{" "}
-                  {tokenData ? formatEther(tokenData.currentPrice) : "0"} ETH
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right: Sidebar - Same order as Livestream: Boss Battle -> Trade -> Live Chat */}
           <div className="space-y-4">
-            {/* Boss Battle card (always visible) */}
-            <Card className="border-gray-200 mt-0">
+            {/* <Card className="border-gray-200 mt-0">
               <CardHeader className="">
                 <CardTitle className="flex items-center justify-between text-base">
                   <div className="flex items-center gap-2">
@@ -1507,7 +1612,6 @@ const TradePage = () => {
                   </div>
                 </div>
 
-                {/* Slide-down content */}
                 <div
                   className={`transition-all duration-500 ease-in-out overflow-hidden ${
                     bossOpen
@@ -1516,7 +1620,6 @@ const TradePage = () => {
                   }`}
                 >
                   <div className="space-y-4">
-                    {/* Token Selection Section */}
                     <div>
                       {selectedToken ? (
                         <p className="text-sm text-gray-600 mb-2">
@@ -1529,7 +1632,6 @@ const TradePage = () => {
                         </p>
                       )}
 
-                      {/* Token Stats (WHALE/ARROW) */}
                       <div className="flex gap-3">
                         <TokenStat
                           name="WHALE"
@@ -1550,7 +1652,6 @@ const TradePage = () => {
                       </div>
                     </div>
 
-                    {/* Stake/Vote Section */}
                     <div className="space-y-3 pt-2">
                       <Input
                         type="number"
@@ -1564,206 +1665,116 @@ const TradePage = () => {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            {/* Trade card with real functionality */}
-            <Card className="border-gray-200 mt-2">
-              <CardContent className="p-2 md:p-3 space-y-3">
-                {/* Tabs container */}
-                <div
-                  className="p-0 flex gap-1"
-                  style={{ borderColor: "#0000001A" }}
-                >
-                  <button
-                    onClick={() => setTradeMode("Buy")}
-                    className={`flex-1 px-6 py-2 rounded-2xl font-semibold transition-colors duration-200 cursor-pointer ${
-                      tradeMode === "Buy"
-                        ? "bg-[#B65FFF] text-white hover:bg-[#A24EE6]"
-                        : "bg-[#F2F2F2] text-gray-700 border hover:bg-[#DAADFF] hover:text-white"
-                    }`}
-                    style={
-                      tradeMode === "Buy"
-                        ? undefined
-                        : { borderColor: "#0000001A" }
-                    }
-                  >
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => setTradeMode("Sell")}
-                    className={`flex-1 px-6 py-2 rounded-2xl font-semibold transition-colors duration-200 cursor-pointer ${
-                      tradeMode === "Sell"
-                        ? "bg-[#B65FFF] text-white hover:bg-[#A24EE6]"
-                        : "bg-[#F2F2F2] text-gray-700 border hover:bg-[#DAADFF] hover:text-white"
-                    }`}
-                    style={
-                      tradeMode === "Sell"
-                        ? undefined
-                        : { borderColor: "#0000001A" }
-                    }
-                  >
-                    Sell
-                  </button>
-                </div>
-
-                {/* Balance Display */}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
-                    {tradeMode === "Buy" ? "ETH Balance:" : "Token Balance:"}
-                  </span>
-                  <span className="font-semibold">
-                    {tradeMode === "Buy"
-                      ? `${parseFloat(userBalance).toFixed(4)} ETH`
-                      : `${parseFloat(userTokenBalance).toFixed(4)} ${
-                          tokenData?.symbol || "TOKEN"
-                        }`}
-                  </span>
-                </div>
-
-                {/* Amount field */}
-                <div
-                  className="border rounded-xl px-3 py-2 flex items-center justify-between bg-white"
-                  style={{ borderColor: "#0000001A" }}
-                >
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Ensure we don't have scientific notation or other formatting issues
-                      if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                        setAmount(value);
-                      }
-                    }}
-                    placeholder="0.00"
-                    className="w-full bg-transparent outline-none text-2xl font-medium placeholder:text-gray-400"
-                  />
-                  <span className="text-sm font-medium text-gray-600 ml-2">
-                    {tradeMode === "Buy"
-                      ? tokenData?.symbol || "TOKEN"
-                      : "TOKEN"}
-                  </span>
-                </div>
-
-                {/* Preset chips */}
-                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                  <button
-                    onClick={() => setAmount("")}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                    style={{ borderColor: "#0000001A" }}
-                  >
-                    Reset
-                  </button>
-                  {[0.1, 0.5, 10].map((val, i) => (
+            {/* Trade card with real functionality (mock-accurate) */}
+            <Card className="mt-2 rounded-2xl bg-[#2B2B2B] text-white border-none shadow-lg">
+              <CardContent className="px-4 pt-2 pb-4 space-y-2.5">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-sm">
                     <button
-                      key={i}
-                      onClick={() => setAmount(String(val))}
-                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                      style={{ borderColor: "#0000001A" }}
+                      onClick={() => {
+                        setTradeMode("Buy");
+                        setAmount((prev) => (prev ? prev : "0.1"));
+                      }}
+                      className={`${tradeMode === "Buy" ? "text-white" : "text-white/60"} font-semibold`}
                     >
-                      {val}
+                      Buy
                     </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const maxAmount =
-                        tradeMode === "Buy"
-                          ? (parseFloat(userBalance) * 0.95).toFixed(4)
-                          : userTokenBalance;
-                      setAmount(maxAmount);
-                    }}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                    style={{ borderColor: "#0000001A" }}
-                  >
-                    Max
-                  </button>
+                    <button
+                      onClick={() => setTradeMode("Sell")}
+                      className={`${tradeMode === "Sell" ? "text-white" : "text-white/60"} font-semibold`}
+                    >
+                      Sell
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white/90 bg-[#3A3A3A] rounded-full px-2.5 py-0.5">
+                    <Avatar className="h-4 w-4">
+                      <AvatarImage src={tokenData?.logoUrl} alt={tokenData?.name} />
+                      <AvatarFallback>{tokenData?.symbol?.slice(0,2)}</AvatarFallback>
+                    </Avatar>
+                    {tokenData?.symbol}
+                    <span className="opacity-70">▾</span>
+                  </div>
                 </div>
 
-                {sellQuote && tradeMode === "Sell" && (
-                  <div className="bg-green-50 p-3 rounded-lg text-sm">
-                    <div className="flex justify-between mb-1">
-                      <span>You&apos;ll receive:</span>
-                      <span className="font-semibold">
-                        {formatEther(sellQuote.proceeds)} ETH
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Price Impact:</span>
-                      <span
-                        className={`font-semibold ${
-                          sellQuote.priceImpact > 5
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {sellQuote.priceImpact.toFixed(2)}%
-                      </span>
+                {/* Inset panel */}
+                <div className="rounded-2xl bg-[#1F1F1F] p-3.5">
+                  <div className="flex items-center justify-between">
+                    {/* Big amount on left */}
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d*\.?\d*$/.test(v)) setAmount(v);
+                      }}
+                      placeholder="0.0"
+                      className="bg-transparent outline-none text-3xl font-semibold w-[55%] placeholder:text-white/40"
+                    />
+                    {/* Currency selector on right */}
+                    <div className="flex items-center gap-2 bg-[#2B2B2B] rounded-full px-2.5 py-1 text-xs">
+                      <span className="inline-flex h-4 w-4 rounded-full bg-blue-500" />
+                      <span className="font-semibold">{tradeMode === "Buy" ? "ETH" : tokenData?.symbol || "TOKEN"}</span>
+                      <span className="opacity-70">▾</span>
                     </div>
                   </div>
-                )}
 
-                {/* Preset chips */}
-                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                  <button
-                    onClick={() => setAmount("")}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                    style={{ borderColor: "#0000001A" }}
-                  >
-                    Reset
-                  </button>
-                  {[0.01, 0.1, 0.5].map((val, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setAmount(String(val))}
-                      className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                      style={{ borderColor: "#0000001A" }}
+                  {/* Chips + available */}
+                  <div className="mt-4 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-4 text-white/60">
+                      {["10%", "25%", "50%", "Max"].map((label) => (
+                        <button
+                          key={label}
+                          onClick={() => {
+                            if (label === "Max") {
+                              const maxAmount =
+                                tradeMode === "Buy"
+                                  ? (parseFloat(userBalance) * 0.95).toFixed(4)
+                                  : parseFloat(userTokenBalance).toFixed(6);
+                              setAmount(maxAmount);
+                            } else {
+                              const pct = parseInt(label) / 100;
+                              const base =
+                                tradeMode === "Buy"
+                                  ? parseFloat(userBalance)
+                                  : parseFloat(userTokenBalance);
+                              setAmount((base * pct).toFixed(4));
+                            }
+                          }}
+                          className="hover:text-white"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-white/60">
+                      Available <span className="text-white/90 font-medium">{tradeMode === "Buy" ? parseFloat(userBalance || "0").toFixed(2) : parseFloat(userTokenBalance || "0").toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Primary CTA */}
+                  <div className="mt-4">
+                    <Button
+                      onClick={executeTrade}
+                      disabled={!amount || parsedAmount <= 0 || tradingLoading || !isConnected}
+                      className={`w-full h-11 rounded-full text-sm font-semibold ${
+                        !amount || parsedAmount <= 0 || tradingLoading || !isConnected
+                          ? "bg-white/40 text-black/50 cursor-not-allowed"
+                          : "bg-white text-black hover:bg-white/90"
+                      }`}
                     >
-                      {val}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const maxAmount =
-                        tradeMode === "Buy"
-                          ? (parseFloat(userBalance) * 0.95).toFixed(4)
-                          : parseFloat(userTokenBalance).toFixed(6); // Ensure proper formatting for sell
-                      setAmount(maxAmount);
-                    }}
-                    className="px-3 py-1 rounded-full bg-white text-gray-800 border shadow-sm text-sm cursor-pointer"
-                    style={{ borderColor: "#0000001A" }}
-                  >
-                    Max
-                  </button>
+                      {tradingLoading ? "Processing..." : `${tradeMode} $${tokenData?.symbol || "TOKEN"}`}
+                    </Button>
+                  </div>
                 </div>
-
-                {/* Primary action */}
-                <Button
-                  onClick={executeTrade}
-                  disabled={
-                    !amount ||
-                    parsedAmount <= 0 ||
-                    tradingLoading ||
-                    !isConnected
-                  }
-                  className={`w-full h-12 rounded-2xl text-lg font-semibold text-white cursor-pointer ${
-                    !amount ||
-                    parsedAmount <= 0 ||
-                    tradingLoading ||
-                    !isConnected
-                      ? "bg-black/60 cursor-not-allowed"
-                      : "bg-black hover:bg-gray-800"
-                  }`}
-                >
-                  {tradingLoading
-                    ? "Processing..."
-                    : `${tradeMode} ${tokenData?.symbol || "TOKEN"}`}
-                </Button>
               </CardContent>
             </Card>
 
             {/* Live Chat (always visible) */}
-            <Card className="border-gray-200 mt-6">
+            {/* <Card className="border-gray-200 mt-6">
               <CardHeader className="pb-0">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold">
@@ -1777,7 +1788,6 @@ const TradePage = () => {
               <CardContent className="pt-4 space-y-4">
                 <hr className="border-[#0000001A]" />
                 <div className="space-y-4">
-                  {/* Right aligned message */}
                   <div className="flex justify-end">
                     <div className="max-w-[70%] bg-[#EAD6FF] text-gray-900 px-4 py-3 rounded-2xl shadow-sm">
                       <div className="flex items-center gap-3">
@@ -1786,7 +1796,6 @@ const TradePage = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Left aligned message */}
                   <div className="flex items-start gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback>A</AvatarFallback>
@@ -1819,7 +1828,7 @@ const TradePage = () => {
                   />
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Token Info */}
             <Card className="border-gray-200">

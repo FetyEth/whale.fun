@@ -320,13 +320,6 @@ contract TokenGraduation is ReentrancyGuard, Ownable {
             return 0x0fE9B43625fA7EdD663aDcEC0728DD635e4AbF7c; // 0G WETH
         }
         
-        // Rootstock networks
-        if (chainId == 30) {
-            return 0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0; // Rootstock Mainnet WRBTC
-        } else if (chainId == 31) {
-            return 0x09B6Ca5E4496238a1F176aEA6bB607db96C2286E; // Rootstock Testnet WRBTC
-        }
-        
         // Base networks
         if (chainId == 8453 || chainId == 84532) {
             return 0x4200000000000000000000000000000000000006; // Base WETH

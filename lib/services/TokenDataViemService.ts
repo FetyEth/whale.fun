@@ -10,6 +10,9 @@ export interface TokenData {
   symbol: string;
   description: string;
   logoUrl: string;
+  website?: string;
+  telegram?: string;
+  twitter?: string;
   creator: string;
   launchTime: bigint;
   currentPrice: bigint;

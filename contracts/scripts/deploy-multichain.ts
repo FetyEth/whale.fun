@@ -18,18 +18,6 @@ const SUPPORTED_NETWORKS: NetworkConfig[] = [
     blockExplorer: "https://etherscan.io",
   },
   {
-    name: "rootstock",
-    chainId: 30,
-    rpcUrl: "https://public-node.rsk.co",
-    blockExplorer: "https://explorer.rsk.co",
-  },
-  {
-    name: "rootstock-testnet",
-    chainId: 31,
-    rpcUrl: "https://public-node.testnet.rsk.co",
-    blockExplorer: "https://explorer.testnet.rsk.co",
-  },
-  {
     name: "filecoin",
     chainId: 314,
     rpcUrl: "https://api.node.glif.io/rpc/v1",

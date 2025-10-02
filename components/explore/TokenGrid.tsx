@@ -25,9 +25,9 @@ const TokenGrid = ({ tokens }: TokenGridProps) => {
   }))
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative ">
-      {formattedTokens.map((token) => (
-        <TokenCard key={token.id} token={token} />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative ">
+      {formattedTokens.map((token, idx) => (
+        <TokenCard key={token.id} token={token} index={idx} />
       ))}
     </div>
   )

@@ -1,8 +1,6 @@
 "use client";
-
-import React from "react";
+import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 interface TokenCardProps {
   token: {
@@ -20,114 +18,100 @@ interface TokenCardProps {
     isExternal?: boolean;
     chainId?: number;
   };
+  index?: number;
 }
 
-const TokenCard = ({ token }: TokenCardProps) => {
+const TokenCard = ({ token, index }: TokenCardProps) => {
   const router = useRouter();
 
   const handleCardClick = () => {
-    // Route to external token trading page for external tokens
     if (token.isExternal) {
       router.push(`/trade/external/${token.id}`);
     } else {
-      // Route to regular platform token trading page
       router.push(`/trade/${token.id}`);
     }
   };
 
+  const bgIndex = useMemo(() => {
+    if (typeof index === "number") return index % 4; // cycle in order and repeat
+    const s = token.id || token.name || "";
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 4;
+  }, [index, token.id, token.name]);
+
+  const themes = [
+    { // Blue
+      bg: "#6EC2FF",
+      heading: "text-white",
+      text: "text-white/80",
+      priceChange: token.priceChange.startsWith("-") ? "text-red-200" : "text-green-200",
+      quickBuy: "bg-black/80 text-white hover:bg-black hover:cursor-pointer",
+    },
+    { // Purple
+      bg: "#7962D9",
+      heading: "text-white",
+      text: "text-white/80",
+      priceChange: token.priceChange.startsWith("-") ? "text-red-200" : "text-green-200",
+      quickBuy: "bg-black/80 text-white hover:bg-black hover:cursor-pointer",
+    },
+    { // Beige
+      bg: "linear-gradient(135deg, #E8DFD0, #AF9C82)",
+      heading: "text-black",
+      text: "text-black/70",
+      priceChange: token.priceChange.startsWith("-") ? "text-red-600" : "text-green-600",
+      quickBuy: "bg-black text-white hover:bg-gray-800 hover:cursor-pointer",
+    },
+    { // Grey
+      bg: "#F3F4F6", // A light grey base
+      heading: "text-black",
+      text: "text-black/70",
+      priceChange: token.priceChange.startsWith("-") ? "text-red-600" : "text-green-600",
+      quickBuy: "bg-black text-white hover:bg-gray-800 hover:cursor-pointer",
+    }
+  ];
+
+  const theme = themes[bgIndex];
+  const overlayBg = `linear-gradient(0deg, rgba(0,0,0,0.28), rgba(0,0,0,0.28)), ${theme.bg}`;
+  const headingClass = "text-white";
+  const textClass = "text-white/80";
+  const priceChangeClass = token.priceChange.startsWith("-") ? "text-red-200" : "text-green-200";
+
   return (
     <div
+      style={{ background: overlayBg }}
+      className="relative rounded-2xl p-5 shadow-md cursor-pointer transition-transform hover:scale-[1.01] flex flex-col justify-between h-[237px] w-[364px] overflow-hidden"
       onClick={handleCardClick}
-      className="border-2 border-dashed border-purple-200 rounded-xl p-5 bg-stone-50 hover:border-purple-300 transition-colors cursor-pointer shadow-sm"
     >
-      {/* Top Section: Image on left, Name and Price boxes on right */}
-      <div className="flex items-start justify-between mb-4">
-        {/* Token Image - Left side with LIVE badge overlay */}
-        <div className="relative w-1/2 max-w-[110px] h-20 rounded-lg bg-stone-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img
-            src={token.image}
-            alt={token.name}
-            width={150}
-            height={120}
-            className="w-full h-[120px] max-w-[150px] rounded-lg object-cover"
-          />
-          {token.isLive && (
-            <span className="absolute bottom-0 left-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-bl-lg rounded-tr-lg font-medium">
-              LIVE
-            </span>
-          )}
-          {token.isExternal && (
-            <span className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-tr-lg rounded-bl-lg font-medium">
-              EXT
-            </span>
-          )}
-        </div>
-
-        {/* Right side content */}
-        <div className="flex flex-col items-center">
-          {/* Token Name */}
-          <div className="mb-2">
-            <span className=" text-[#B65FFF] text-[18px] font-bold">
-              {token.name}
-            </span>
-          </div>
-
-          {/* Price Information - Stacked vertically */}
-          <div className="flex flex-col gap-1">
-            <div className="bg-blue-100 text-blue-900 px-3 py-1 rounded-lg text-sm font-medium w-fit">
-              {token.priceValue.slice(0, 5)}{" "}
-            </div>
-            <div className="bg-purple-200 text-purple-900 px-3 py-1 rounded-lg text-sm font-medium w-fit">
-              {token.priceChange}
-            </div>
-            {/* //immediate buy */}
-            <div className="bg-gray-900 text-white px-3 py-1 rounded-lg text-sm font-medium w-fit">
-              +0.01
-            </div>
+      {/* Content on the left */}
+      <div className="flex-1 min-w-0 pr-[170px] z-10">
+        <div className={`text-xl font-extrabold tracking-tight truncate ${headingClass}`}>${token.symbol.toUpperCase()}</div>
+        <div className={`mt-1 text-sm/5 ${textClass}`}>Market Cap</div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <div className={`text-2xl font-bold truncate ${headingClass}`}>{token.marketCap}</div>
+          <div className={`text-sm font-medium ${priceChangeClass}`}>
+            {token.priceChange}
           </div>
         </div>
+        <button
+          className={`mt-4 inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-4 ${textClass} hover:${headingClass}`}>
+          View Token →
+        </button>
       </div>
 
-      {/* Market Cap */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <span className="text-md font-medium text-black">Market Cap: </span>
-          </div>
-          <div>{token.marketCap}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full"
-              style={{ width: "60%" }}
-            ></div>
-          </div>
-          <div className="text-green-600 text-md font-medium whitespace-nowrap">
-            {token.volume} vol
-          </div>
-        </div>
+      {/* Quick Buy Button at the bottom */}
+      <div className="mt-auto z-10">
+        <button
+          onClick={(e) => { e.stopPropagation(); }}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm ${theme.quickBuy}`}>
+          + Quick buy 0.01
+        </button>
       </div>
 
-      {/* Volume */}
-
-      {/* Age and View Token */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1 text-md  text-gray-500">
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          {token.age}
+      {/* Image on the right (vertically centered, fixed 146.2px square) */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[150px] w-[150px]">
+        <div className="relative h-full w-full rounded-l-2xl overflow-hidden">
+          <img src={token.image} alt={token.name} className="w-full h-full object-cover" />
         </div>
       </div>
     </div>
