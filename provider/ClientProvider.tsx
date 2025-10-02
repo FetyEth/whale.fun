@@ -36,10 +36,7 @@ const zeroGNetwork = {
 const config = getDefaultConfig({
   appName: "Whale.fun",
   projectId: "YOUR_PROJECT_ID",
-  chains: [
-    zeroGNetwork, // Custom 0G Network configuration
-    rootstockTestnet,
-  ],
+  chains: [zeroGNetwork],
   ssr: true,
 });
 

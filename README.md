@@ -4,14 +4,6 @@ A decentralized platform for creating and trading meme tokens with bonding curve
 
 ## 🌐 Deployed Contract Addresses
 
-### Rootstock Testnet (Chain ID: 31)
-
-- **WhaleToken**: `0x7906f9a13728e65d60aa8f8baee2a4f1ccd96c5e`
-- **TokenFactory**: `0x76f96e2acbc39d7d9620a607ac099bb9687e2207`
-- **Network**: Rootstock Testnet
-- **RPC URL**: https://public-node.testnet.rsk.co
-- **Explorer**: https://explorer.testnet.rsk.co
-
 ### 0G Testnet (Chain ID: 16602)
 
 - **WhaleToken**: Not yet deployed
@@ -26,12 +18,12 @@ A decentralized platform for creating and trading meme tokens with bonding curve
 - **Trading Interface**: Buy/sell tokens with real-time price calculations
 - **Battle Arena**: Gamified token competitions and leaderboards
 - **Portfolio Management**: Track your token holdings and performance
-- **Multi-Chain Support**: Deploy on Rootstock, 0G, Celo, and Polygon networks
+- **Multi-Chain Support**: Deploy on 0G network.
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Blockchain**: Ethereum-compatible networks (Rootstock, 0G, Celo, Polygon)
+- **Blockchain**: Ethereum-compatible networks (0G)
 - **Smart Contracts**: Solidity with Hardhat framework
 - **Web3 Integration**: Viem, Wagmi, RainbowKit
 - **State Management**: React Query, Context API
@@ -71,10 +63,7 @@ Edit `.env.local` with your configuration:
 
 ```env
 # RPC URLs (optional - fallbacks are provided)
-NEXT_PUBLIC_ROOTSTOCK_TESTNET_RPC_URL=https://public-node.testnet.rsk.co
 NEXT_PUBLIC_0G_RPC_URL=https://evmrpc-testnet.0g.ai
-NEXT_PUBLIC_CELO_ALFAJORES_RPC_URL=https://alfajores-forno.celo-testnet.org
-NEXT_PUBLIC_POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
 
 # Database (if using backend features)
 DATABASE_URL=your_database_url
@@ -116,9 +105,6 @@ npx hardhat compile
 4. **Deploy to testnet**
 
 ```bash
-# Deploy to Rootstock Testnet
-npx hardhat run scripts/deploy-multichain.ts --network rootstock-testnet
-
 # Deploy to 0G Testnet
 npx hardhat run scripts/deploy-multichain.ts --network zeroG-testnet
 ```
@@ -162,12 +148,9 @@ npx hardhat run scripts/deploy-multichain.ts --network zeroG-testnet
 
 ## 🌍 Supported Networks
 
-| Network           | Chain ID | Status     | Features                |
-| ----------------- | -------- | ---------- | ----------------------- |
-| Rootstock Testnet | 31       | ✅ Active  | Full platform support   |
-| 0G Testnet        | 16602    | ✅ Active  | Token creation, trading |
-| Celo Alfajores    | 44787    | ✅ Active  | Full platform support   |
-| Polygon Amoy      | 80002    | ⚠️ Limited | Token creation only     |
+| Network    | Chain ID | Status    | Features                |
+| ---------- | -------- | --------- | ----------------------- |
+| 0G Testnet | 16602    | ✅ Active | Token creation, trading |
 
 ## 🔐 Security Features
 

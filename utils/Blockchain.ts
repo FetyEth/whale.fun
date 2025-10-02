@@ -14,6 +14,7 @@ export interface NetworkConfig {
   name: string;
   rpcUrl: string;
   blockExplorerUrl: string;
+  currencySymbol: string;
 }
 
 /**
@@ -49,47 +50,15 @@ export interface ContractInstance<T = Contract> {
  * Supported networks configuration
  */
 export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
-  // Polygon Amoy Testnet
-  80002: {
-    chainId: 80002,
-    name: "Polygon Amoy",
-    rpcUrl:
-      (process.env.NEXT_PUBLIC_POLYGON_AMOY_RPC_URL as string) ||
-      "https://rpc-amoy.polygon.technology", // fallback public RPC
-    blockExplorerUrl: "https://amoy.polygonscan.com",
-  },
-  44787: {
-    chainId: 44787,
-    name: "Celo Alfajores",
-    rpcUrl:
-      (process.env.NEXT_PUBLIC_CELO_ALFAJORES_RPC_URL as string) ||
-      "https://celo-alfajores.g.alchemy.com/v2/1BTCZ0n--PQOn68XlkU6pClh0vpdJMLb", // Alchemy RPC
-    blockExplorerUrl: "https://alfajores.celoscan.io",
-  },
-  // Base Testnet (Base Sepolia)
-  84532: {
-    chainId: 84532,
-    name: "Base Sepolia",
-    rpcUrl:
-      (process.env.NEXT_PUBLIC_BASE_TESTNET_RPC_URL as string) ||
-      "https://sepolia.base.org", // fallback public RPC (lower reliability)
-    blockExplorerUrl: "https://sepolia.basescan.org",
-  },
   // 0G Network
   16602: {
     chainId: 16602,
-    name: "0G Testnet",
+    name: "0G Testnet Network",
     rpcUrl:
-      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) || "https://evmrpc-testnet.0g.ai", // 0G testnet RPC
+      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) ||
+      "https://evmrpc-testnet.0g.ai", // 0G testnet RPC
     blockExplorerUrl: "https://chainscan.0g.ai",
-  },
-  31: {
-    chainId: 31,
-    name: "Rootstock Testnet",
-    rpcUrl:
-      (process.env.NEXT_PUBLIC_ROOTSTOCK_TESTNET_RPC_URL as string) ||
-      "https://public-node.testnet.rsk.co",
-    blockExplorerUrl: "https://explorer.testnet.rsk.co",
+    currencySymbol: "0G",
   },
 };
 
