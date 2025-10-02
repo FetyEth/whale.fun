@@ -40,10 +40,6 @@ export class TokenDataViemService {
 
     // Map chain ID to chain object and contract address
     const chainMap: Record<number, { chain: any; factoryAddress: string }> = {
-      31: {
-        chain: (await import("viem/chains")).rootstockTestnet,
-        factoryAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
-      },
       16602: {
         chain: {
           id: 16602,
@@ -51,7 +47,9 @@ export class TokenDataViemService {
           network: "0g-testnet",
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
-          blockExplorers: { default: { name: "0G Explorer", url: "https://chainscan.0g.ai" } },
+          blockExplorers: {
+            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+          },
           testnet: true,
         },
         factoryAddress: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",

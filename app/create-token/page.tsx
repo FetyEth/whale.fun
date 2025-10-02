@@ -159,13 +159,7 @@ const CreatePage: FC = () => {
 
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
-      const {
-        celoAlfajores,
-        rootstock,
-        rootstockTestnet,
-        zeroG,
-        zeroGGalileoTestnet,
-      } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Create wallet client to get current chain dynamically
       const tempWalletClient = createWalletClient({
@@ -178,10 +172,6 @@ const CreatePage: FC = () => {
       // Map chain ID to chain object and contract address
       const chainMap: Record<number, { chain: any; contractAddress: string }> =
         {
-          31: {
-            chain: rootstockTestnet,
-            contractAddress: "0x2aa101937824aea2b88d8464e00cfa823573688a",
-          },
           16602: {
             chain: {
               id: 16602,

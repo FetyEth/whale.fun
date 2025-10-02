@@ -6,6 +6,7 @@ import {
   EXTERNAL_TOKENS,
   type ExternalTokenInfo,
 } from "./ExternalTokenService";
+import { zeroGGalileoTestnet } from "viem/chains";
 
 /**
  * Token data interface for explore page
@@ -109,10 +110,7 @@ export class TokenDataService {
       console.log(`Fetching data for token: ${tokenAddress}`);
       // Create public client for read operations based on current chain
       const { createPublicClient, http } = await import("viem");
-      const { celoAlfajores, polygonAmoy, rootstockTestnet } = await import(
-        "viem/chains"
-      );
-      let targetChain = rootstockTestnet; // Default to Rootstock Testnet
+      const { zeroGGalileoTestnet } = await import("viem/chains");
       try {
         // Prefer provided chainId, else read from wallet
         if (!chainId) {
@@ -122,8 +120,6 @@ export class TokenDataService {
 
         // Map chainId to appropriate chain
         const chainMap: Record<number, any> = {
-          80002: polygonAmoy,
-          31: rootstockTestnet,
           16602: {
             id: 16602,
             name: "0G Testnet",
@@ -149,15 +145,13 @@ export class TokenDataService {
             },
             testnet: true,
           },
-          44787: celoAlfajores,
         };
-        targetChain = chainMap[Number(chainId)] || rootstockTestnet; // Default fallback
       } catch (error) {
-        console.warn("Could not determine chain, using Rootstock Testnet:", error);
+        console.warn("Could not determine chain, using 0G Testnet:", error);
       }
 
       const publicClient = createPublicClient({
-        chain: targetChain,
+        chain: zeroGGalileoTestnet,
         transport: http(),
       });
 

@@ -527,12 +527,7 @@ export class TokenGraduationService extends BaseContractService {
   private getBaseTokenForChain(chainId: number): string {
     const baseTokens: Record<number, string> = {
       16661: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on 0G Mainnet
-      16600: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on 0G Testnet
-      84532: "0x4200000000000000000000000000000000000006", // WETH on Base Sepolia
-      8453: "0x4200000000000000000000000000000000000006", // WETH on Base Mainnet
-      30: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on Rootstock Mainnet
-      31: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on Rootstock Testnet
-      1: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH on Ethereum Mainnet
+      16602: "0x967F8799aF07dF1534d48A95a5C9FEBE92c53AE0", // WRBTC on 0G Testnet
     };
 
     const baseToken = baseTokens[chainId];

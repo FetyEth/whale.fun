@@ -76,9 +76,7 @@ export default function PortfolioPage() {
       // Get dynamic chain info from wallet
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
-      const { celoAlfajores, rootstock, rootstockTestnet } = await import(
-        "viem/chains"
-      );
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Create wallet client to get current chain
       const walletClient = createWalletClient({
@@ -90,7 +88,7 @@ export default function PortfolioPage() {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",

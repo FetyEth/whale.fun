@@ -193,7 +193,7 @@ const TradePage = () => {
 
     try {
       const { createPublicClient, http } = await import("viem");
-      const { rootstockTestnet } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Get current chain dynamically
       const connection = await getBlockchainConnection();
@@ -201,7 +201,7 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -215,7 +215,7 @@ const TradePage = () => {
         },
       };
 
-      const currentChain = chainMap[chainId] || rootstockTestnet;
+      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -366,7 +366,7 @@ const TradePage = () => {
 
     try {
       const { createPublicClient, http } = await import("viem");
-      const { rootstockTestnet } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Get current chain
       const connection = await getBlockchainConnection();
@@ -374,7 +374,7 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -388,7 +388,7 @@ const TradePage = () => {
         },
       };
 
-      const currentChain = chainMap[chainId] || rootstockTestnet;
+      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -621,7 +621,7 @@ const TradePage = () => {
       const { createWalletClient, createPublicClient, http } = await import(
         "viem"
       );
-      const { rootstockTestnet } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Get current chain dynamically
       const connection = await getBlockchainConnection();
@@ -629,7 +629,7 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -644,7 +644,7 @@ const TradePage = () => {
       };
 
       console.log("chainId", chainId);
-      const currentChain = chainMap[chainId] || rootstockTestnet;
+      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -671,11 +671,11 @@ const TradePage = () => {
   const fetchChartData = async (chainId: number) => {
     try {
       const { createPublicClient, http } = await import("viem");
-      const { rootstockTestnet } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -689,7 +689,7 @@ const TradePage = () => {
         },
       };
 
-      const currentChain = chainMap[chainId] || rootstockTestnet;
+      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
       const publicClient = createPublicClient({
         chain: currentChain,
@@ -870,7 +870,7 @@ const TradePage = () => {
       const { createWalletClient, http, custom, formatEther } = await import(
         "viem"
       );
-      const { rootstockTestnet } = await import("viem/chains");
+      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       // Get current chain
       const connection = await getBlockchainConnection();
@@ -878,7 +878,7 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: rootstockTestnet,
+        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -892,7 +892,7 @@ const TradePage = () => {
         },
       };
 
-      const currentChain = chainMap[chainId] || rootstockTestnet;
+      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
       // Create wallet client without account (let it use the connected account)
       const walletClient = createWalletClient({

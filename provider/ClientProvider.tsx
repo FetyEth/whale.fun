@@ -4,7 +4,6 @@ import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode } from "react";
-import { rootstockTestnet } from "viem/chains";
 
 // Custom 0G Network chain configuration
 const zeroGNetwork = {

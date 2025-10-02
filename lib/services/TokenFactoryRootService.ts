@@ -66,31 +66,6 @@ const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
   name: "TokenFactoryRoot",
   abi: TokenFactoryRootABI,
   deployments: {
-    // Add your deployment addresses here
-    84532: {
-      // Base Sepolia
-      address: "0x...", // Replace with actual deployment address
-      deployedAt: 0, // Replace with deployment block number
-      verified: false,
-    },
-    80002: {
-      // Polygon Amoy
-      address: "0xBdfD745164Cd42Af9F00803a40405b01f019621d",
-      deployedAt: 26957976,
-      verified: false,
-    },
-    44787: {
-      // Celo Alfajores - Debug version with detailed error messages
-      address: "0x0bb4da9a543d0c8482843f49f80222f936310637",
-      deployedAt: 0, // Update with actual block number if needed
-      verified: false,
-    },
-    31: {
-      // Rootstock Testnet
-      address: "0x2aa101937824aea2b88d8464e00cfa823573688a",
-      deployedAt: 0,
-      verified: false,
-    },
     16602: {
       // 0G Testnet
       address: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
