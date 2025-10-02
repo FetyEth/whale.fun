@@ -3,14 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import TradingViewChart from "@/components/TradingViewChart";
-import { Copy, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { Copy, ArrowLeft } from "lucide-react";
+import { FaGlobe, FaTelegramPlane } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 import {
   tokenDataViemService,
   type TokenData,
@@ -18,6 +17,7 @@ import {
 import { getBlockchainConnection } from "@/utils/Blockchain";
 import { formatEther, parseEther } from "ethers";
 import tokenDataService from "@/lib/services/TokenDataService";
+import SimilarTokens from "@/components/trade/SimilarTokens";
 import StreamPlayer from "@/components/StreamPlayer";
 import {
   Dialog,
@@ -128,8 +128,9 @@ const TradePage = () => {
     { timestamp: number; price: number }[]
   >([]);
   const [chartTimeframe, setChartTimeframe] = useState<
-    "1h" | "24h" | "7d" | "30d"
+    "5m" | "1h" | "24h" | "7d" | "30d" | "All"
   >("24h");
+  const [showStatsTf, setShowStatsTf] = useState(false);
 
   // Wallet connection
   const { address: userAddress, isConnected, chain } = useAccount();
@@ -228,6 +229,19 @@ const TradePage = () => {
       if (timer) clearInterval(timer);
     };
   }, [chartTimeframe, tokenAddress]);
+
+  // Realtime refresh for Coin Stats (volume/market cap/holders)
+  useEffect(() => {
+    if (!tokenAddress) return;
+    const statsTimer: any = setInterval(async () => {
+      try {
+        await fetchTokenData();
+      } catch (e) {
+        console.warn("stats refresh failed", e);
+      }
+    }, 30000);
+    return () => clearInterval(statsTimer);
+  }, [tokenAddress, chartTimeframe]);
 
   const updateBuyQuote = async () => {
     if (!tokenAddress || !amount || parsedAmount <= 0) return;
@@ -741,13 +755,17 @@ const TradePage = () => {
       // Get current block number
       const currentBlock = await publicClient.getBlockNumber();
       const blocksToFetch =
-        chartTimeframe === "1h"
+        chartTimeframe === "5m"
+          ? 25
+          : chartTimeframe === "1h"
           ? 300
           : chartTimeframe === "24h"
           ? 7200
           : chartTimeframe === "7d"
           ? 50400
-          : 216000;
+          : chartTimeframe === "30d"
+          ? 216000
+          : 432000; // All ~ 60d
       const fromBlock = currentBlock - BigInt(blocksToFetch);
 
       try {
@@ -794,13 +812,17 @@ const TradePage = () => {
           // Build candlestick data from events
           const candleData = [];
           const intervalMs =
-            chartTimeframe === "1h"
+            chartTimeframe === "5m"
+              ? 15000
+              : chartTimeframe === "1h"
               ? 60000
               : chartTimeframe === "24h"
               ? 600000
               : chartTimeframe === "7d"
               ? 3600000
-              : 3600000;
+              : chartTimeframe === "30d"
+              ? 4 * 3600000
+              : 6 * 3600000; // All
 
           for (const event of allEvents) {
             const block = await publicClient.getBlock({
@@ -1282,11 +1304,32 @@ const TradePage = () => {
   const midTs = chartData[Math.floor(chartData.length / 2)]?.timestamp;
   const lastTs = chartData[chartData.length - 1]?.timestamp;
 
+  // Coin Stats: compute displayed volume for current timeframe from dailyVolume as an approximation
+  const volumeFactor =
+    chartTimeframe === "5m"
+      ? 1 / (24 * 12)
+      : chartTimeframe === "1h"
+      ? 1 / 24
+      : chartTimeframe === "24h"
+      ? 1
+      : chartTimeframe === "7d"
+      ? 7
+      : chartTimeframe === "30d"
+      ? 30
+      : 60; // All ~ 60d
+  const displayedVolume = Number(tokenData.dailyVolume || 0) * volumeFactor;
+
+  // Local compact formatter for number inputs (to avoid bigint type issues)
+  const formatCompactNumber = (v: number) =>
+    new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(
+      isFinite(v) ? v : 0
+    );
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
 
-      <main className="px-6 md:px-10 lg:px-16 xl:px-24 py-6 mt-5">
+      <main className="px-44 py-6 mt-5">
         {/* Back button */}
         <Button
           variant="ghost"
@@ -1358,15 +1401,11 @@ const TradePage = () => {
                     <button
                       key={timeframe}
                       onClick={() => {
-                        // Map 5m/All to nearest supported timeframe for now
-                        const mapped = timeframe === "5m" ? "1h" : timeframe === "All" ? "30d" : (timeframe as typeof chartTimeframe);
-                        setChartTimeframe(mapped);
+                        setChartTimeframe(timeframe as typeof chartTimeframe);
                         if (tokenData) fetchChartData(31);
                       }}
                       className={`${
-                        (chartTimeframe === timeframe || (timeframe === "5m" && chartTimeframe === "1h") || (timeframe === "All" && chartTimeframe === "30d"))
-                          ? "bg-[#4B4B4B] text-white shadow-sm"
-                          : "text-gray-400"
+                        chartTimeframe === timeframe ? "bg-[#4B4B4B] text-white shadow-sm" : "text-gray-400"
                       } px-3 py-1 rounded-full text-sm font-medium`}
                     >
                       {timeframe}
@@ -1376,6 +1415,10 @@ const TradePage = () => {
                 
               </CardContent>
             </Card>
+
+            {/* Similar Tokens panel */}
+            <SimilarTokens currentTokenAddress={tokenAddress} chainId={chain?.id} />
+
             {/* Token header */}
             {/* <Card className="border-gray-200">
               <CardContent className="p-5 md:p-6 flex gap-4 items-center">
@@ -1689,12 +1732,12 @@ const TradePage = () => {
                       Sell
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-white/90 bg-[#3A3A3A] rounded-full px-2.5 py-0.5">
-                    <Avatar className="h-4 w-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white/90 bg-[#3A3A3A] rounded-full px-3 py-1">
+                    <Avatar className="h-6 w-6">
                       <AvatarImage src={tokenData?.logoUrl} alt={tokenData?.name} />
                       <AvatarFallback>{tokenData?.symbol?.slice(0,2)}</AvatarFallback>
                     </Avatar>
-                    {tokenData?.symbol}
+                    ${tokenData?.symbol}
                     <span className="opacity-70">▾</span>
                   </div>
                 </div>
@@ -1715,8 +1758,8 @@ const TradePage = () => {
                       className="bg-transparent outline-none text-3xl font-semibold w-[55%] placeholder:text-white/40"
                     />
                     {/* Currency selector on right */}
-                    <div className="flex items-center gap-2 bg-[#2B2B2B] rounded-full px-2.5 py-1 text-xs">
-                      <span className="inline-flex h-4 w-4 rounded-full bg-blue-500" />
+                    <div className="flex items-center gap-2 bg-[#2B2B2B] rounded-full px-3.5 py-1.5 text-sm">
+                      <span className="inline-flex h-5 w-5 rounded-full bg-blue-500" />
                       <span className="font-semibold">{tradeMode === "Buy" ? "ETH" : tokenData?.symbol || "TOKEN"}</span>
                       <span className="opacity-70">▾</span>
                     </div>
@@ -1830,41 +1873,121 @@ const TradePage = () => {
               </CardContent>
             </Card> */}
 
-            {/* Token Info */}
-            <Card className="border-gray-200">
-              <CardContent className="p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  About {tokenData.name}
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {tokenData.description}
-                </p>
+            {/* Token Info (mock-accurate) */}
+            <Card className="rounded-2xl bg-[#2B2B2B] text-white border-none shadow-lg">
+              <CardContent className="p-4 space-y-4">
+                {/* Big token image */}
+                <div className="rounded-2xl overflow-hidden bg-black">
+                  <img
+                    src={tokenData?.logoUrl || "/placeholder.png"}
+                    alt={tokenData?.name}
+                    className="w-full h-72"
+                  />
+                </div>
 
-                <Separator className="my-4" />
+                <div className="space-y-3">
+                  <h3 className="text-xl font-semibold">${tokenData?.symbol}</h3>
+                  {/* CA row */}
+                  <div className="flex items-center gap-2 text-sm text-white/70">
+                    <span className="px-2 py-0.5">CA</span>
+                    <span className="opacity-60">•</span>
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage
+                        src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(
+                          tokenData?.creator || tokenAddress || "0x"
+                        )}`}
+                        alt={tokenData?.creator || tokenAddress || "owner"}
+                      />
+                      <AvatarFallback>{tokenData?.symbol?.slice(0,2)}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium opacity-80">{tokenAddress?.slice(0,4)}...{tokenAddress?.slice(-4)}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(tokenAddress || "")}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/15"
+                      title="Copy address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* Description */}
+                  <p className="text-sm text-white/70 leading-6">
+                    {tokenData?.description || "Launch and trade the hottest coins on OG."}
+                  </p>
+                </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Creator:</span>
-                    <span className="font-medium">
-                      {tokenData.creator.slice(0, 6)}...
-                      {tokenData.creator.slice(-4)}
-                    </span>
+                {/* Social row */}
+                <div className="flex items-center gap-3 pt-1">
+                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="Website">
+                    <FaGlobe size={18} />
+                  </button>
+                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="X (Twitter)">
+                    <FaXTwitter size={18} />
+                  </button>
+                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="Telegram">
+                    <FaTelegramPlane size={18} />
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-0 rounded-2xl bg-[#2B2B2B] text-white border-none shadow-lg">
+              <CardContent className="px-3.5 pt-0 pb-0">
+                <div className="flex items-center justify-between mb-1.5 relative">
+                  <div className="flex items-center gap-1.5 text-white/80">
+                    <FaGlobe className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">Coin Stats</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Launched:</span>
-                    <span className="font-medium">{tokenData.age}</span>
+                  <div className="relative">
+                    <button
+                      className="px-2.5 py-0.5 rounded-full bg-black/20 text-xs text-white/80"
+                      onClick={() => setShowStatsTf((s) => !s)}
+                    >
+                      {chartTimeframe} ▾
+                    </button>
+                    {showStatsTf && (
+                      <div className="absolute right-0 bottom-full mb-1 w-24 bg-[#2B2B2B] border border-white/10 rounded-xl shadow-lg z-10 overflow-hidden">
+                        {["5m","1h","24h","7d","30d","All"].map((tf) => (
+                          <button
+                            key={tf}
+                            className={`w-full text-left px-3 py-1.5 text-xs ${chartTimeframe===tf?"bg-white/10 text-white":"text-white/80 hover:bg-white/5"}`}
+                            onClick={() => { setChartTimeframe(tf as typeof chartTimeframe); setShowStatsTf(false); if (tokenData) fetchChartData(31); }}
+                          >
+                            {tf}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Supply:</span>
-                    <span className="font-medium">
-                      {formatEther(tokenData.totalSupply)}
-                    </span>
+                </div>
+
+                <div className="flex items-center gap-6 text-sm">
+                  {/* 24h Volume */}
+                  <div className="flex items-center gap-1.5">
+                    <img src="/icons/arrow-trending-up.svg" alt="Volume" width={16} height={16} className="opacity-70" />
+                    <div className="text-base font-semibold">{formatCompactNumber(displayedVolume)}</div>
+                    <span className="text-emerald-500 text-[10px]">▲</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Total Sold:</span>
-                    <span className="font-medium">
-                      {formatEther(tokenData.totalSold)}
-                    </span>
+
+                  {/* Market cap */}
+                  <div className="flex items-center gap-1.5 text-white/80">
+                    <img src="/icons/fire.svg" alt="Market cap" width={16} height={16} className="opacity-70" />
+                    <div className="text-base font-medium">
+                      {tokenData.marketCap
+                        ? tokenDataService.formatVolume(tokenData.marketCap)
+                        : (() => {
+                            const supplyNum = Number(formatEther(tokenData.totalSupply));
+                            const priceNum = typeof tokenData.currentPrice === "bigint"
+                              ? Number(formatEther(tokenData.currentPrice))
+                              : Number(tokenData.currentPrice || 0);
+                            return formatCompactNumber(supplyNum * priceNum);
+                          })()}
+                    </div>
+                  </div>
+
+                  {/* Holders */}
+                  <div className="flex items-center gap-1.5 text-white/80">
+                    <img src="/icons/user-group.svg" alt="Holders" width={16} height={16} className="opacity-70" />
+                    <div className="text-base font-medium">{Number(tokenData.holderCount).toLocaleString()}</div>
                   </div>
                 </div>
               </CardContent>
