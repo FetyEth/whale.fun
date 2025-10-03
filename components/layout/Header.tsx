@@ -29,7 +29,7 @@ function Header() {
   const navItems = [
     { name: "Explore", href: "/explore" },
     { name: "Launch", href: "/create-token" },
-    { name: "Arena", href: "/dex" },
+    { name: "Dex", href: "/dex" },
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (

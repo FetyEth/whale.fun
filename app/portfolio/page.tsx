@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface TokenPortfolioItem {
   address: string;
@@ -62,13 +63,7 @@ export default function PortfolioPage() {
   });
   const [activeTab, setActiveTab] = useState("holdings");
 
-  useEffect(() => {
-    if (isConnected && address) {
-      loadPortfolioData();
-    }
-  }, [isConnected, address]);
-
-  const loadPortfolioData = async () => {
+  const loadPortfolioData = useCallback(async () => {
     if (!address) return;
 
     setLoading(true);
@@ -126,15 +121,19 @@ export default function PortfolioPage() {
         address
       );
 
+      // Get all tokens from the factory to check holdings
+      const allTokenAddresses = await factoryService.getAllTokens();
+
       // Get creator stats
       const creatorStats = await factoryService.getCreatorStats(address);
 
       console.log("Created token addresses:", createdTokenAddresses);
+      console.log("All token addresses:", allTokenAddresses);
       console.log("Creator stats:", creatorStats);
 
-      // Load real token data from individual contracts
-      const createdTokensData = await Promise.all(
-        createdTokenAddresses.map(async (tokenAddress, index) => {
+      // Load token data for all tokens to check holdings
+      const allTokensData = await Promise.all(
+        allTokenAddresses.map(async (tokenAddress, index) => {
           try {
             // Create public client for reading contract data
             const publicClient = createPublicClient({
@@ -261,15 +260,32 @@ export default function PortfolioPage() {
             const currentValue =
               (balance * stats.currentPrice) / BigInt(10 ** 18);
 
+            let tokenCreator = address; // Default to current user
+            try {
+              tokenCreator = (await publicClient.readContract({
+                address: tokenAddress as `0x${string}`,
+                abi: CreatorTokenABI,
+                functionName: "creator",
+              })) as `0x${string}`;
+            } catch (error) {
+              console.warn(
+                `Could not get creator for token ${tokenAddress}:`,
+                error
+              );
+            }
+
             return {
               address: tokenAddress,
               name: name as string,
               symbol: symbol as string,
               balance,
               stats,
-              creator: address,
+              creator: tokenCreator,
               launchTime: BigInt(Date.now() - index * 86400000), // Approximate
-              description: `Token ${name} created by you`,
+              description:
+                tokenCreator === address
+                  ? `Token ${name} created by you`
+                  : `Token ${name}`,
               logoUrl: "",
               currentValue,
             };
@@ -302,24 +318,32 @@ export default function PortfolioPage() {
         })
       );
 
-      // For now, portfolio tokens are the same as created tokens
-      const allTokens = createdTokensData;
+      // Filter tokens with non-zero balance for portfolio holdings
+      const tokensWithBalance = allTokensData.filter(
+        (token) => token.balance > BigInt(0)
+      );
+
+      // Filter only tokens created by the user
+      const createdTokensData = tokensWithBalance.filter(
+        (token) => token.creator === address
+      );
 
       // Calculate portfolio statistics
-      const totalValue = allTokens.reduce(
-        (sum, token) => sum + token.currentValue,
+      const totalValue = tokensWithBalance.reduce(
+        (sum: bigint, token: TokenPortfolioItem) => sum + token.currentValue,
         BigInt(0)
       );
       const totalFees = createdTokensData.reduce(
-        (sum, token) => sum + token.stats.creatorFees,
+        (sum: bigint, token: TokenPortfolioItem) =>
+          sum + token.stats.creatorFees,
         BigInt(0)
       );
 
       setCreatedTokens(createdTokensData);
-      setPortfolioTokens(allTokens);
+      setPortfolioTokens(tokensWithBalance);
       setPortfolioStats({
         totalValue,
-        totalTokens: allTokens.length,
+        totalTokens: tokensWithBalance.length,
         createdTokens: createdTokensData.length,
         totalGains: BigInt(0), // Would need historical data to calculate
         totalFees,
@@ -340,7 +364,13 @@ export default function PortfolioPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [address]);
+
+  useEffect(() => {
+    if (isConnected && address) {
+      loadPortfolioData();
+    }
+  }, [isConnected, address, loadPortfolioData]);
 
   const formatCurrency = (value: bigint) => {
     return `${parseFloat(formatEther(value)).toFixed(4)} ETH`;
@@ -356,9 +386,11 @@ export default function PortfolioPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {token.logoUrl ? (
-              <img
+              <Image
                 src={token.logoUrl}
                 alt={token.name}
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-full"
               />
             ) : (
