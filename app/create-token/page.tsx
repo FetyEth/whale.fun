@@ -189,8 +189,8 @@ const CreatePage: FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
-  const [currentStep, setCurrentStep] = useState(1); // 1: Basics, 2: Supply & Fees, 3: Story
-  const totalSteps = 3;
+  const [currentStep, setCurrentStep] = useState(1); // 1: Basics, 2: Story
+  const totalSteps = 2;
 
   const stepMeta: Record<number, { title: string; subtitle: string }> = {
     1: {
@@ -198,10 +198,6 @@ const CreatePage: FC = () => {
       subtitle: "Upload a logo, name your token, and set a short symbol.",
     },
     2: {
-      title: "Set your supply & fees",
-      subtitle: "Define how many tokens exist and your creator fee.",
-    },
-    3: {
       title: "Tell your story",
       subtitle: "Add a concise thesis and optional links.",
     },
@@ -685,36 +681,9 @@ const CreatePage: FC = () => {
                           </div>
                         )}
 
-                        {currentStep === 2 && (
-                          <div className="space-y-6">
-                            <InputField
-                              label="Total Supply"
-                              id="totalSupply"
-                              placeholder="1,000,000"
-                              value={formData.totalSupply}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                            <InputField
-                              label="Target Market Cap (in native token)"
-                              id="targetMarketCap"
-                              placeholder="0.1"
-                              value={formData.targetMarketCap}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                            <InputField
-                              label="Creator Fee (bps)"
-                              id="creatorFeeBps"
-                              placeholder="50"
-                              value={formData.creatorFeeBps}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                          </div>
-                        )}
+                        {/** Step 2 (Supply & Fees) removed; values are hardcoded via defaults in formData */}
 
-                        {currentStep === 3 && (
+                        {currentStep === 2 && (
                           <div className="space-y-6">
                             <InputField
                               label="Description"
@@ -747,14 +716,14 @@ const CreatePage: FC = () => {
                               value={formData.twitter}
                               onChange={handleChange}
                             />
-                            <InputField
+                            {/* <InputField
                               label="Logo URL (optional)"
                               id="logoUrl"
                               placeholder="https://example.com/logo.png"
                               value={formData.logoUrl}
                               onChange={handleChange}
                               infoText="Direct link to your token logo image"
-                            />
+                            /> */}
                           </div>
                         )}
                         </div>
