@@ -4,6 +4,7 @@ import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode } from "react";
+import { Toaster } from "@/components/ui/sonner";
 
 // Custom 0G Network chain configuration
 const zeroGNetwork = {
@@ -26,7 +27,7 @@ const zeroGNetwork = {
   blockExplorers: {
     default: {
       name: "0G Explorer",
-      url: "https://chainscan.0g.ai",
+      url: "https://chainscan-galileo.0g.ai",
     },
   },
   testnet: true,
@@ -45,7 +46,10 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>{children}</RainbowKitProvider>
+        <RainbowKitProvider>
+          {children}
+          <Toaster />
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

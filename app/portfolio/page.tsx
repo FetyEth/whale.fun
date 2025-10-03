@@ -73,12 +73,10 @@ export default function PortfolioPage() {
 
     setLoading(true);
     try {
-      // Get dynamic chain info from wallet
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
       const { zeroGGalileoTestnet } = await import("viem/chains");
 
-      // Create wallet client to get current chain
       const walletClient = createWalletClient({
         transport: custom(window.ethereum),
       });
@@ -109,7 +107,7 @@ export default function PortfolioPage() {
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan.0g.ai",
+              url: "https://chainscan-galileo.0g.ai",
             },
           },
           testnet: true,
