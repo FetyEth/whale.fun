@@ -127,10 +127,14 @@ const TradePage = () => {
   const [chartData, setChartData] = useState<
     { timestamp: number; price: number }[]
   >([]);
+  const [chartLoading, setChartLoading] = useState<boolean>(false);
   const [chartTimeframe, setChartTimeframe] = useState<
     "5m" | "1h" | "24h" | "7d" | "30d" | "All"
   >("24h");
   const [showStatsTf, setShowStatsTf] = useState(false);
+  // Chart type toggle
+  const [chartType, setChartType] = useState<"line" | "candle">("line");
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   // Wallet connection
   const { address: userAddress, isConnected, chain } = useAccount();
@@ -235,7 +239,7 @@ const TradePage = () => {
     if (!tokenAddress) return;
     const statsTimer: any = setInterval(async () => {
       try {
-        await fetchTokenData();
+        await fetchTokenData({ silent: true });
       } catch (e) {
         console.warn("stats refresh failed", e);
       }
@@ -640,13 +644,17 @@ const TradePage = () => {
 
   // Refresh token data after successful trade
   const handleTradeSuccess = () => {
-    fetchTokenData();
+    // Refresh silently after a trade to avoid flicker
+    fetchTokenData({ silent: true });
   };
 
-  const fetchTokenData = async () => {
+  const fetchTokenData = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
-      setError(null);
+      const silent = Boolean(opts?.silent);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
 
       const connection = await getBlockchainConnection();
       const chainId = Number(connection.network.chainId);
@@ -659,13 +667,13 @@ const TradePage = () => {
         setTokenData(data);
         await fetchChartData(chainId);
       } else {
-        setError("Token not found");
+        if (!silent) setError("Token not found");
       }
     } catch (err: any) {
       console.error("Error fetching token data:", err);
-      setError(err.message || "Failed to fetch token data");
+      if (!opts?.silent) setError(err.message || "Failed to fetch token data");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -726,6 +734,7 @@ const TradePage = () => {
 
   const fetchChartData = async (chainId: number) => {
     try {
+      setChartLoading(true);
       const { createPublicClient, http } = await import("viem");
       const { zeroGGalileoTestnet } = await import("viem/chains");
 
@@ -809,30 +818,39 @@ const TradePage = () => {
         );
 
         if (allEvents.length > 0) {
-          // Build candlestick data from events
-          const candleData = [];
-          const intervalMs =
-            chartTimeframe === "5m"
-              ? 15000
-              : chartTimeframe === "1h"
-              ? 60000
-              : chartTimeframe === "24h"
-              ? 600000
-              : chartTimeframe === "7d"
-              ? 3600000
-              : chartTimeframe === "30d"
-              ? 4 * 3600000
-              : 6 * 3600000; // All
-
-          for (const event of allEvents) {
-            const block = await publicClient.getBlock({
-              blockNumber: event.blockNumber,
-            });
-            const timestamp = Number(block.timestamp) * 1000;
-            const price = Number(formatEther(event.args.price as bigint));
-
-            candleData.push({ timestamp, price });
+          // Downsample to ~60 buckets and interpolate timestamps using only two block calls
+          const n = allEvents.length;
+          const target = 60;
+          const stride = Math.max(1, Math.ceil(n / target));
+          const bucketHeads: typeof allEvents = [];
+          const bucketTails: typeof allEvents = [];
+          for (let i = 0; i < n; i += stride) {
+            const group = allEvents.slice(i, i + stride);
+            if (group.length === 0) continue;
+            bucketHeads.push(group[0]);
+            bucketTails.push(group[group.length - 1]);
           }
+
+          const firstBlock = bucketHeads[0].blockNumber;
+          const lastBlock = bucketHeads[bucketHeads.length - 1].blockNumber;
+          const [firstBlk, lastBlk] = await Promise.all([
+            publicClient.getBlock({ blockNumber: firstBlock }),
+            publicClient.getBlock({ blockNumber: lastBlock }),
+          ]);
+          const firstTs = Number(firstBlk.timestamp) * 1000;
+          const lastTs = Number(lastBlk.timestamp) * 1000;
+          const firstBN = Number(firstBlock);
+          const lastBN = Number(lastBlock);
+          const denom = Math.max(1, lastBN - firstBN);
+
+          const candleData: { timestamp: number; price: number }[] = bucketHeads.map((head, i) => {
+            const bn = Number(head.blockNumber);
+            const t = (bn - firstBN) / denom;
+            const timestamp = Math.round(firstTs + t * (lastTs - firstTs));
+            const tail = bucketTails[i];
+            const price = Number(formatEther(tail.args.price as bigint));
+            return { timestamp, price };
+          });
 
           setChartData(candleData);
         } else {
@@ -874,6 +892,8 @@ const TradePage = () => {
       }
     } catch (err: any) {
       console.error("Error fetching chart data:", err);
+    } finally {
+      setChartLoading(false);
     }
   };
 
@@ -1292,6 +1312,56 @@ const TradePage = () => {
     fillD = `${pathD} L ${lastX},${bottomY} L 0,${bottomY} Z`;
   }
 
+  // Determine real-time direction from last price delta
+  const lastDelta = chartData.length > 1 ? chartData[chartData.length - 1].price - chartData[chartData.length - 2].price : 0;
+  const upColor = "#22c55e"; // emerald-500
+  const downColor = "#ef4444"; // red-500
+  const strokeColor = lastDelta >= 0 ? upColor : downColor;
+  const fillStart = strokeColor; // start color for gradient
+  const gridLines = 4;
+
+  // Build OHLC candles from chartData (approx 60 candles)
+  const buildOhlc = (points: {timestamp:number; price:number}[]) => {
+    if (!points || points.length === 0) return [] as { time:number; open:number; high:number; low:number; close:number }[];
+    const sorted = [...points].sort((a,b) => a.timestamp - b.timestamp);
+    const minTs = sorted[0].timestamp;
+    const maxTs = sorted[sorted.length-1].timestamp;
+    const totalMs = Math.max(1, maxTs - minTs);
+    const target = 60;
+    const bucketMs = Math.max(1, Math.floor(totalMs / target));
+    const buckets: Record<number, {price:number; timestamp:number}[]> = {};
+    for (const p of sorted) {
+      const idx = Math.floor((p.timestamp - minTs) / bucketMs);
+      const key = minTs + idx * bucketMs;
+      (buckets[key] ||= []).push(p);
+    }
+    const candles: { time:number; open:number; high:number; low:number; close:number }[] = [];
+    Object.keys(buckets).map(k=>Number(k)).sort((a,b)=>a-b).forEach((key) => {
+      const pts = buckets[key];
+      if (!pts || pts.length === 0) return;
+      const open = pts[0].price;
+      const close = pts[pts.length-1].price;
+      let high = -Infinity; let low = Infinity;
+      for (const p of pts) { if (p.price>high) high=p.price; if (p.price<low) low=p.price; }
+      candles.push({ time: key, open, high, low, close });
+    });
+    return candles;
+  };
+
+  const ohlc = buildOhlc(chartData);
+  const ohlcMin = ohlc.length ? Math.min(...ohlc.map(c=>c.low)) : minPrice;
+  const ohlcMax = ohlc.length ? Math.max(...ohlc.map(c=>c.high)) : maxPrice;
+
+  // Candle-specific y mapper with its own padding
+  const candlePad = (ohlcMax - ohlcMin) * 0.1 || 1;
+  const cyMin = ohlcMin - candlePad;
+  const cyMax = ohlcMax + candlePad;
+  const yForCandle = (v: number) => {
+    if (cyMax === cyMin) return (topY + bottomY) / 2;
+    const t = (v - cyMin) / (cyMax - cyMin);
+    return bottomY - t * (bottomY - topY);
+  };
+
   const formatTick = (ts: number, position: "start" | "middle" | "end") => {
     const d = new Date(ts);
     if (position === "middle") {
@@ -1300,9 +1370,9 @@ const TradePage = () => {
     return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   };
 
-  const firstTs = chartData[0]?.timestamp;
-  const midTs = chartData[Math.floor(chartData.length / 2)]?.timestamp;
-  const lastTs = chartData[chartData.length - 1]?.timestamp;
+  const firstTs = chartType === "candle" ? (ohlc[0]?.time) : chartData[0]?.timestamp;
+  const midTs = chartType === "candle" ? (ohlc[Math.floor(ohlc.length/2)]?.time) : chartData[Math.floor(chartData.length / 2)]?.timestamp;
+  const lastTs = chartType === "candle" ? (ohlc[ohlc.length - 1]?.time) : chartData[chartData.length - 1]?.timestamp;
 
   // Coin Stats: compute displayed volume for current timeframe from dailyVolume as an approximation
   const volumeFactor =
@@ -1372,45 +1442,130 @@ const TradePage = () => {
                 <div className="h-64 bg-[#303030] rounded-[22px] relative p-5">
                   {/* Inset panel */}
                   <div className="h-full w-full rounded-[22px] bg-[#FFFFFF0D] border border-black/10 shadow-inner p-5 relative">
-                    {/* Dynamic path from chartData */}
-                    <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      {chartData.length > 1 ? (
-                        <>
-                          <path d={fillD} fill="url(#chartFill)" />
-                          <path d={pathD} stroke="#22c55e" strokeWidth="3" fill="none" strokeLinecap="round" />
-                        </>
-                      ) : null}
-                    </svg>
+                    {chartLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-white/30 border-t-white" />
+                      </div>
+                    )}
+                    {/* Dynamic chart from chartData */}
+                    {chartType === "line" ? (
+                        <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={fillStart} stopOpacity="0.35" />
+                              <stop offset="100%" stopColor={fillStart} stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          {/* Gridlines */}
+                          {Array.from({ length: gridLines + 1 }).map((_, i) => (
+                            <line
+                              key={i}
+                              x1={0}
+                              x2={svgWidth}
+                              y1={topY + ((bottomY - topY) * i) / gridLines}
+                              y2={topY + ((bottomY - topY) * i) / gridLines}
+                              stroke="#ffffff22"
+                              strokeWidth={1}
+                            />
+                          ))}
+                          {chartData.length > 1 ? (
+                            <>
+                              <path d={fillD} fill="url(#chartFill)" />
+                              <path d={pathD} stroke={strokeColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+                            </>
+                          ) : null}
+                        </svg>
+                      ) : (
+                        // Native Candlesticks (OHLC)
+                        <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
+                          {/* Gridlines */}
+                          {Array.from({ length: gridLines + 1 }).map((_, i) => (
+                            <line
+                              key={i}
+                              x1={0}
+                              x2={svgWidth}
+                              y1={topY + ((bottomY - topY) * i) / gridLines}
+                              y2={topY + ((bottomY - topY) * i) / gridLines}
+                              stroke="#ffffff22"
+                              strokeWidth={1}
+                            />
+                          ))}
+                          {ohlc.map((c, i) => {
+                            const n = Math.max(1, ohlc.length);
+                            const bandwidth = svgWidth / n;
+                            const centerX = (i + 0.5) * bandwidth;
+                            const candleW = Math.max(5, bandwidth * 0.6);
+                            const yHigh = yForCandle(c.high);
+                            const yLow = yForCandle(c.low);
+                            const yOpen = yForCandle(c.open);
+                            const yClose = yForCandle(c.close);
+                            const isUp = c.close >= c.open;
+                            const bodyY = Math.min(yOpen, yClose);
+                            const bodyH = Math.max(2, Math.abs(yClose - yOpen));
+                            const color = isUp ? upColor : downColor;
+                            return (
+                              <g key={i}>
+                                {/* Wick */}
+                                <line x1={centerX.toFixed(2)} x2={centerX.toFixed(2)} y1={yHigh.toFixed(2)} y2={yLow.toFixed(2)} stroke={color} strokeWidth={2} />
+                                {/* Body */}
+                                <rect x={(centerX - candleW / 2).toFixed(2)} y={bodyY.toFixed(2)} width={candleW.toFixed(2)} height={bodyH.toFixed(2)} fill={color} rx={2} />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      )}
                     {/* Axis labels (mock) */}
                     <div className="absolute bottom-4 left-5 right-5 flex justify-between text-xs text-white/40">
                       <span>{firstTs ? formatTick(firstTs, "start") : ""}</span>
                       <span>{midTs ? formatTick(midTs, "middle") : ""}</span>
                       <span>{lastTs ? formatTick(lastTs, "end") : ""}</span>
                     </div>
+                    {/* Y-axis min/max */}
+                    <div className="absolute top-6 left-6 text-[10px] text-white/50">
+                      {prices.length ? minPrice.toFixed(6) : ""}
+                    </div>
+                    <div className="absolute top-6 right-6 text-[10px] text-white/50">
+                      {prices.length ? maxPrice.toFixed(6) : ""}
+                    </div>
                   </div>
                 </div>
                 {/* Timeframe chips at the card bottom (outside inner panel) */}
-                <div className="mt-4 px-5 w-full flex items-center justify-center gap-3">
-                  {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map((timeframe) => (
+                <div className="mt-4 px-5 w-full flex items-center justify-between gap-3">
+                  <div className="flex items-center justify-center gap-3">
+                    {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map((timeframe) => (
+                      <button
+                        key={timeframe}
+                        onClick={() => {
+                          setChartTimeframe(timeframe as typeof chartTimeframe);
+                          if (tokenData) fetchChartData(31);
+                        }}
+                        className={`${
+                          chartTimeframe === timeframe ? "bg-[#4B4B4B] text-white shadow-sm" : "text-gray-400"
+                        } px-3 py-1 rounded-full text-sm font-medium`}
+                      >
+                        {timeframe}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Chart type toggle */}
+                  <div className="flex bg-[#1F1F1F] rounded-full p-1 text-xs">
                     <button
-                      key={timeframe}
-                      onClick={() => {
-                        setChartTimeframe(timeframe as typeof chartTimeframe);
-                        if (tokenData) fetchChartData(31);
-                      }}
-                      className={`${
-                        chartTimeframe === timeframe ? "bg-[#4B4B4B] text-white shadow-sm" : "text-gray-400"
-                      } px-3 py-1 rounded-full text-sm font-medium`}
+                      onClick={() => setChartType("line")}
+                      className={`px-3 py-1 rounded-full font-medium ${
+                        chartType === "line" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                      }`}
                     >
-                      {timeframe}
+                      Line
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setChartType("candle")}
+                      className={`px-3 py-1 rounded-full font-medium ${
+                        chartType === "candle" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                      }`}
+                    >
+                      Candle
+                    </button>
+                  </div>
                 </div>
                 
               </CardContent>
