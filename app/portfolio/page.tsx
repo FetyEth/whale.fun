@@ -107,7 +107,7 @@ export default function PortfolioPage() {
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan.0g.ai",
+              url: "https://chainscan-galileo.0g.ai",
             },
           },
           testnet: true,

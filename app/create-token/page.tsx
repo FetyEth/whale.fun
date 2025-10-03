@@ -13,7 +13,16 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useAccount } from "wagmi";
-import { ChevronLeft, UploadCloud, X, Globe, Send, User, Trash2, FileText } from "lucide-react";
+import {
+  ChevronLeft,
+  UploadCloud,
+  X,
+  Globe,
+  Send,
+  User,
+  Trash2,
+  FileText,
+} from "lucide-react";
 
 interface InputFieldProps {
   label: string;
@@ -71,7 +80,10 @@ const InputField: FC<InputFieldProps> = ({
   </div>
 );
 
-const StepIndicator: FC<{ current: number; total: number }> = ({ current, total }) => {
+const StepIndicator: FC<{ current: number; total: number }> = ({
+  current,
+  total,
+}) => {
   return (
     <div className="flex items-center gap-3 my-4" aria-label="progress">
       {Array.from({ length: total }).map((_, i) => {
@@ -80,7 +92,9 @@ const StepIndicator: FC<{ current: number; total: number }> = ({ current, total 
         return (
           <div
             key={idx}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${active ? "bg-purple-500" : "bg-gray-200"}`}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              active ? "bg-purple-500" : "bg-gray-200"
+            }`}
           />
         );
       })}
@@ -97,19 +111,43 @@ const PreviewCard: FC<{
   twitter?: string;
   telegram?: string;
   address?: string | undefined;
-}> = ({ name, symbol, description, logo, website, twitter, telegram, address }) => {
-  const short = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "0x…";
-  const siteUrl = website && website.trim() ? (website.startsWith("http") ? website : `https://${website}`) : null;
-  const twitterUrl = twitter && twitter.trim()
-    ? (twitter.startsWith("http") ? twitter : `https://twitter.com/${twitter.replace(/^@/, "")}`)
-    : null;
-  const telegramUrl = telegram && telegram.trim()
-    ? (telegram.startsWith("http") ? telegram : `https://t.me/${telegram.replace(/^@/, "")}`)
-    : null;
+}> = ({
+  name,
+  symbol,
+  description,
+  logo,
+  website,
+  twitter,
+  telegram,
+  address,
+}) => {
+  const short = address
+    ? `${address.slice(0, 4)}...${address.slice(-4)}`
+    : "0x…";
+  const siteUrl =
+    website && website.trim()
+      ? website.startsWith("http")
+        ? website
+        : `https://${website}`
+      : null;
+  const twitterUrl =
+    twitter && twitter.trim()
+      ? twitter.startsWith("http")
+        ? twitter
+        : `https://twitter.com/${twitter.replace(/^@/, "")}`
+      : null;
+  const telegramUrl =
+    telegram && telegram.trim()
+      ? telegram.startsWith("http")
+        ? telegram
+        : `https://t.me/${telegram.replace(/^@/, "")}`
+      : null;
   return (
     <div className="sticky top-8 rounded-2xl bg-black text-white shadow-lg w-[340px] md:w-[360px] min-h-[520px] flex flex-col">
       <div
-        className={`relative aspect-square w-full ${logo ? "rounded-t-2xl" : "rounded-2xl"} overflow-hidden flex items-center justify-center`}
+        className={`relative aspect-square w-full ${
+          logo ? "rounded-t-2xl" : "rounded-2xl"
+        } overflow-hidden flex items-center justify-center`}
         style={{ backgroundColor: logo ? undefined : "#E4D3F3" }}
       >
         {logo ? (
@@ -119,7 +157,9 @@ const PreviewCard: FC<{
         )}
       </div>
       <div className="flex flex-col p-4 space-y-2 flex-grow">
-        <div className="text-2xl font-bold">{symbol ? `$${symbol.toUpperCase()}` : "$YOURCOIN"}</div>
+        <div className="text-2xl font-bold">
+          {symbol ? `$${symbol.toUpperCase()}` : "$YOURCOIN"}
+        </div>
         <div className="text-sm text-gray-400">{name || "Your Token"}</div>
         <div className="text-xs text-gray-500 flex items-center gap-1.5">
           <span className="uppercase">CA:</span>
@@ -136,7 +176,9 @@ const PreviewCard: FC<{
             target="_blank"
             rel="noreferrer"
             className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
-            onClick={(e) => { if (!siteUrl) e.preventDefault(); }}
+            onClick={(e) => {
+              if (!siteUrl) e.preventDefault();
+            }}
             aria-label="Website"
           >
             <Globe className="w-4 h-4 text-gray-300" />
@@ -147,11 +189,23 @@ const PreviewCard: FC<{
             target="_blank"
             rel="noreferrer"
             className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
-            onClick={(e) => { if (!twitterUrl) e.preventDefault(); }}
+            onClick={(e) => {
+              if (!twitterUrl) e.preventDefault();
+            }}
             aria-label="Twitter (X)"
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path fillRule="evenodd" clipRule="evenodd" d="M18.244 3H21l-7.42 8.486L22 21h-6.59l-5.16-6.034L4.9 21H2l7.94-9.08L2 3h6.59l4.73 5.53L18.244 3Zm-1.038 16.2h2.06L8.91 4.8H6.85l10.356 14.4Z" className="text-gray-300" />
+            <svg
+              viewBox="0 0 24 24"
+              className="w-4 h-4"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M18.244 3H21l-7.42 8.486L22 21h-6.59l-5.16-6.034L4.9 21H2l7.94-9.08L2 3h6.59l4.73 5.53L18.244 3Zm-1.038 16.2h2.06L8.91 4.8H6.85l10.356 14.4Z"
+                className="text-gray-300"
+              />
             </svg>
           </a>
           {/* Telegram */}
@@ -160,7 +214,9 @@ const PreviewCard: FC<{
             target="_blank"
             rel="noreferrer"
             className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#F1F1F11A] opacity-40`}
-            onClick={(e) => { if (!telegramUrl) e.preventDefault(); }}
+            onClick={(e) => {
+              if (!telegramUrl) e.preventDefault();
+            }}
             aria-label="Telegram"
           >
             <Send className="w-4 h-4 text-gray-300" />
@@ -213,6 +269,9 @@ const CreatePage: FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isTokenCreated, setIsTokenCreated] = useState(false);
   const [createdTokenHash, setCreatedTokenHash] = useState<string | null>(null);
+  const [createdTokenAddress, setCreatedTokenAddress] = useState<string | null>(
+    null
+  );
   const [creationCost, setCreationCost] = useState<{
     launchFee: bigint;
     liquidity: bigint;
@@ -268,7 +327,12 @@ const CreatePage: FC = () => {
     if (formData.logoFile) {
       URL.revokeObjectURL(formData.logoPreview);
     }
-    setFormData((prev) => ({ ...prev, logoPreview: "", logoFile: null, logoUrl: "" }));
+    setFormData((prev) => ({
+      ...prev,
+      logoPreview: "",
+      logoFile: null,
+      logoUrl: "",
+    }));
     setUploadStatus(null);
   };
 
@@ -369,7 +433,7 @@ const CreatePage: FC = () => {
               blockExplorers: {
                 default: {
                   name: "0G Explorer",
-                  url: "https://chainscan.0g.ai",
+                  url: "https://chainscan-galileo.0g.ai",
                 },
               },
               testnet: true,
@@ -422,7 +486,10 @@ const CreatePage: FC = () => {
         targetMarketCap: parseEther(formData.targetMarketCap || "0"),
         creatorFeePercent: BigInt(Number(formData.creatorFeeBps || "0")),
         description: formData.description || "Token created via Whale.fun",
-        logoUrl: formData.logoUrl || formData.logoPreview || "https://example.com/logo.png",
+        logoUrl:
+          formData.logoUrl ||
+          formData.logoPreview ||
+          "https://example.com/logo.png",
         value: totalCost.toString(),
       });
 
@@ -439,7 +506,9 @@ const CreatePage: FC = () => {
           parseEther(formData.targetMarketCap || "0"),
           BigInt(Number(formData.creatorFeeBps || "0")),
           formData.description || "Token created via Whale.fun",
-          formData.logoUrl || formData.logoPreview || "https://example.com/logo.png",
+          formData.logoUrl ||
+            formData.logoPreview ||
+            "https://example.com/logo.png",
         ],
         value: totalCost,
         chain: chainConfig.chain,
@@ -447,27 +516,87 @@ const CreatePage: FC = () => {
 
       console.log("Transaction hash:", txHash);
 
-      // Wait for confirmation using public client
+      // Wait for confirmation using public client with better error handling
       const publicClient = createPublicClient({
         chain: chainConfig.chain,
         transport: http(),
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        timeout: 60000,
-      });
+      console.log("Waiting for transaction receipt...");
+
+      let receipt;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          receipt = await publicClient.waitForTransactionReceipt({
+            hash: txHash,
+            timeout: 120000, // Increased timeout to 2 minutes
+            retryCount: 5,
+            retryDelay: 5000, // 5 second delay between retries
+          });
+          break; // Success, exit retry loop
+        } catch (receiptError: any) {
+          retryCount++;
+          console.warn(
+            `Receipt fetch attempt ${retryCount} failed:`,
+            receiptError.message
+          );
+
+          if (retryCount === maxRetries) {
+            // Last attempt failed, but we have a transaction hash
+            console.warn(
+              "Could not get transaction receipt, but transaction was submitted"
+            );
+            setSuccess(
+              `Token creation transaction submitted! Transaction hash: ${txHash}. Please check the explorer to confirm status.`
+            );
+            setCreatedTokenHash(txHash);
+            // We don't have the token address without the receipt
+            setCreatedTokenAddress(null);
+            setIsTokenCreated(true);
+            return; // Exit the function here
+          }
+
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 second delay
+        }
+      }
 
       console.log("Transaction confirmed:", receipt);
 
       if (receipt?.status === "success") {
+        // Extract token contract address from logs
+        let tokenContractAddress = null;
+        if (receipt.logs && receipt.logs.length > 0) {
+          // Look for TokenCreated event log (usually the first log)
+          // The contract address is typically in the first log's address field
+          for (const log of receipt.logs) {
+            if (log.topics && log.topics.length > 0) {
+              // This is likely the TokenCreated event from the new token contract
+              tokenContractAddress = log.address;
+              break;
+            }
+          }
+        }
+
+        console.log("Extracted token contract address:", tokenContractAddress);
         setSuccess(`Token created successfully! Transaction hash: ${txHash}`);
         setCreatedTokenHash(txHash);
+        setCreatedTokenAddress(tokenContractAddress);
         setIsTokenCreated(true);
         // Reset form data but keep it for potential reuse
         // setFormData({ ... }) - removed to keep data for success display
+      } else if (receipt?.status === "reverted") {
+        throw new Error(`Transaction failed (reverted). Hash: ${txHash}`);
       } else {
-        throw new Error("Transaction failed");
+        // Unknown status or no receipt
+        setSuccess(
+          `Transaction submitted with hash: ${txHash}. Please check the explorer to confirm the status.`
+        );
+        setCreatedTokenHash(txHash);
+        setIsTokenCreated(true);
       }
     } catch (err: any) {
       console.error("Token creation error:", err);
@@ -536,7 +665,7 @@ const CreatePage: FC = () => {
       </div>
       <div className="flex items-center justify-center gap-4 mt-8">
         <Link
-          href={`/trade/${createdTokenHash}`}
+          href={`/trade/${createdTokenAddress || createdTokenHash}`}
           type="button"
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
         >
@@ -544,13 +673,13 @@ const CreatePage: FC = () => {
         </Link>
         <button
           type="button"
-          className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+          className="px-6 py-3 cursor-pointer bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
           onClick={() => {
             if (createdTokenHash && currentNetwork) {
               const networkConfig = SUPPORTED_NETWORKS[currentNetwork.chainId];
               if (networkConfig) {
                 window.open(
-                  `${networkConfig.blockExplorerUrl}/tx/${createdTokenHash}`,
+                  `https://chainscan-galileo.0g.ai/tx/${createdTokenHash}`,
                   "_blank"
                 );
               }
@@ -562,10 +691,11 @@ const CreatePage: FC = () => {
       </div>
       <button
         type="button"
-        className="mt-4 text-sm text-gray-500 hover:text-gray-700 underline"
+        className="mt-4 text-sm cursor-pointer text-gray-500 hover:text-gray-700 underline"
         onClick={() => {
           setIsTokenCreated(false);
           setCreatedTokenHash(null);
+          setCreatedTokenAddress(null);
           setSuccess(null);
           setFormData({
             tokenName: "",
@@ -595,7 +725,10 @@ const CreatePage: FC = () => {
       <div className="flex items-center justify-center w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4">
         <div className="w-full max-w-6xl mx-auto">
           {isTokenCreated ? (
-            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border" style={{ borderColor: "#B65FFF33" }}>
+            <div
+              className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border"
+              style={{ borderColor: "#B65FFF33" }}
+            >
               <TokenCreatedMessage />
             </div>
           ) : (
@@ -619,151 +752,176 @@ const CreatePage: FC = () => {
                         <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
                           {stepMeta[currentStep].title}
                         </h2>
-                        <p className="text-gray-600 mt-1">{stepMeta[currentStep].subtitle}</p>
-                        <StepIndicator current={currentStep} total={totalSteps} />
+                        <p className="text-gray-600 mt-1">
+                          {stepMeta[currentStep].subtitle}
+                        </p>
+                        <StepIndicator
+                          current={currentStep}
+                          total={totalSteps}
+                        />
 
                         <div className="min-h-[26rem] sm:min-h-[28rem] flex flex-col">
-                        {currentStep === 1 && (
-                          <div className="space-y-5">
-                            <div className="border-2 border-dashed border-gray-300 rounded-xl bg-black/5">
-                              <label className="cursor-pointer flex min-h-40 sm:min-h-48 flex-col items-center justify-center gap-4 transition-colors">
-                                <span className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-[#1018280D] text-[#101828]">
-                                  <UploadCloud className="w-6 h-6" />
-                                </span>
-                                <p className="text-base">
-                                  <span className="font-semibold text-gray-900">Click to upload</span>
-                                  <span className="text-gray-500"> or drag and drop</span>
-                                </p>
-                                <p className="text-xs text-gray-400 tracking-wide">SVG, PNG, JPG or GIF</p>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={handleFileChange}
-                                />
-                              </label>
-                            </div>
-
-                            {formData.logoFile && (
-                              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-black/5 text-gray-700">
-                                    <FileText className="w-5 h-5" />
+                          {currentStep === 1 && (
+                            <div className="space-y-5">
+                              <div className="border-2 border-dashed border-gray-300 rounded-xl bg-black/5">
+                                <label className="cursor-pointer flex min-h-40 sm:min-h-48 flex-col items-center justify-center gap-4 transition-colors">
+                                  <span className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-[#1018280D] text-[#101828]">
+                                    <UploadCloud className="w-6 h-6" />
                                   </span>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{formData.logoFile.name}</p>
-                                    <p className="text-xs text-gray-500 truncate">
-                                      {(formData.logoFile.size / (1024 * 1024)).toFixed(2)}MB
-                                      {" "}| {uploadingLogo ? "Uploading..." : uploadStatus || (formData.logoUrl ? "Uploaded Successfully" : "Pending")}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={removeLogo}
-                                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 p-2 text-gray-600 hover:bg-black/5 hover:text-red-600"
-                                  aria-label="Remove file"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
+                                  <p className="text-base">
+                                    <span className="font-semibold text-gray-900">
+                                      Click to upload
+                                    </span>
+                                    <span className="text-gray-500">
+                                      {" "}
+                                      or drag and drop
+                                    </span>
+                                  </p>
+                                  <p className="text-xs text-gray-400 tracking-wide">
+                                    SVG, PNG, JPG or GIF
+                                  </p>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                  />
+                                </label>
                               </div>
-                            )}
-                            <InputField
-                              label="Token Name"
-                              id="tokenName"
-                              placeholder="Your Token"
-                              value={formData.tokenName}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Token Symbol"
-                              id="tokenSymbol"
-                              placeholder="$ YOURCOIN"
-                              value={formData.tokenSymbol}
-                              onChange={handleChange}
-                            />
-                          </div>
-                        )}
 
-                        {currentStep === 2 && (
-                          <div className="space-y-6">
-                            <InputField
-                              label="Total Supply"
-                              id="totalSupply"
-                              placeholder="1,000,000"
-                              value={formData.totalSupply}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                            <InputField
-                              label="Target Market Cap (in native token)"
-                              id="targetMarketCap"
-                              placeholder="0.1"
-                              value={formData.targetMarketCap}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                            <InputField
-                              label="Creator Fee (bps)"
-                              id="creatorFeeBps"
-                              placeholder="50"
-                              value={formData.creatorFeeBps}
-                              onChange={handleChange}
-                              type="number"
-                            />
-                          </div>
-                        )}
+                              {formData.logoFile && (
+                                <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-black/5 text-gray-700">
+                                      <FileText className="w-5 h-5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {formData.logoFile.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 truncate">
+                                        {(
+                                          formData.logoFile.size /
+                                          (1024 * 1024)
+                                        ).toFixed(2)}
+                                        MB |{" "}
+                                        {uploadingLogo
+                                          ? "Uploading..."
+                                          : uploadStatus ||
+                                            (formData.logoUrl
+                                              ? "Uploaded Successfully"
+                                              : "Pending")}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={removeLogo}
+                                    className="inline-flex items-center justify-center rounded-xl border border-gray-200 p-2 text-gray-600 hover:bg-black/5 hover:text-red-600"
+                                    aria-label="Remove file"
+                                  >
+                                    <Trash2 className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              )}
+                              <InputField
+                                label="Token Name"
+                                id="tokenName"
+                                placeholder="Your Token"
+                                value={formData.tokenName}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Token Symbol"
+                                id="tokenSymbol"
+                                placeholder="$ YOURCOIN"
+                                value={formData.tokenSymbol}
+                                onChange={handleChange}
+                              />
+                            </div>
+                          )}
 
-                        {currentStep === 3 && (
-                          <div className="space-y-6">
-                            <InputField
-                              label="Description"
-                              id="description"
-                              placeholder="What's the thesis, utility, or story?"
-                              value={formData.description}
-                              onChange={handleChange}
-                              isTextArea
-                              maxLength={280}
-                              infoText="max 280 chars"
-                            />
-                            <InputField
-                              label="Website URL (optional)"
-                              id="website"
-                              placeholder="https://..."
-                              value={formData.website}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Telegram (optional)"
-                              id="telegram"
-                              placeholder="@yourchannel"
-                              value={formData.telegram}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Twitter/X (optional)"
-                              id="twitter"
-                              placeholder="@handle"
-                              value={formData.twitter}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Logo URL (optional)"
-                              id="logoUrl"
-                              placeholder="https://example.com/logo.png"
-                              value={formData.logoUrl}
-                              onChange={handleChange}
-                              infoText="Direct link to your token logo image"
-                            />
-                          </div>
-                        )}
+                          {currentStep === 2 && (
+                            <div className="space-y-6">
+                              <InputField
+                                label="Total Supply"
+                                id="totalSupply"
+                                placeholder="1,000,000"
+                                value={formData.totalSupply}
+                                onChange={handleChange}
+                                type="number"
+                              />
+                              <InputField
+                                label="Target Market Cap (in native token)"
+                                id="targetMarketCap"
+                                placeholder="0.1"
+                                value={formData.targetMarketCap}
+                                onChange={handleChange}
+                                type="number"
+                              />
+                              <InputField
+                                label="Creator Fee (bps)"
+                                id="creatorFeeBps"
+                                placeholder="50"
+                                value={formData.creatorFeeBps}
+                                onChange={handleChange}
+                                type="number"
+                              />
+                            </div>
+                          )}
+
+                          {currentStep === 3 && (
+                            <div className="space-y-6">
+                              <InputField
+                                label="Description"
+                                id="description"
+                                placeholder="What's the thesis, utility, or story?"
+                                value={formData.description}
+                                onChange={handleChange}
+                                isTextArea
+                                maxLength={280}
+                                infoText="max 280 chars"
+                              />
+                              <InputField
+                                label="Website URL (optional)"
+                                id="website"
+                                placeholder="https://..."
+                                value={formData.website}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Telegram (optional)"
+                                id="telegram"
+                                placeholder="@yourchannel"
+                                value={formData.telegram}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Twitter/X (optional)"
+                                id="twitter"
+                                placeholder="@handle"
+                                value={formData.twitter}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Logo URL (optional)"
+                                id="logoUrl"
+                                placeholder="https://example.com/logo.png"
+                                value={formData.logoUrl}
+                                onChange={handleChange}
+                                infoText="Direct link to your token logo image"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-4 mt-6">
                           <button
                             type="button"
                             disabled={isLoading || currentStep === 1}
-                            onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+                            onClick={() =>
+                              setCurrentStep((s) => Math.max(1, s - 1))
+                            }
                             className="w-10 h-10 flex items-center justify-center bg-black/5 text-gray-900 font-semibold rounded-xl hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <ChevronLeft className="w-5 h-5" />
@@ -772,8 +930,17 @@ const CreatePage: FC = () => {
                           {currentStep < totalSteps ? (
                             <button
                               type="button"
-                              disabled={isLoading || (currentStep === 1 && (!formData.tokenName || !formData.tokenSymbol))}
-                              onClick={() => setCurrentStep((s) => Math.min(totalSteps, s + 1))}
+                              disabled={
+                                isLoading ||
+                                (currentStep === 1 &&
+                                  (!formData.tokenName ||
+                                    !formData.tokenSymbol))
+                              }
+                              onClick={() =>
+                                setCurrentStep((s) =>
+                                  Math.min(totalSteps, s + 1)
+                                )
+                              }
                               className="px-8 py-3 w-full hover:cursor-pointer hover:text-white bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Next

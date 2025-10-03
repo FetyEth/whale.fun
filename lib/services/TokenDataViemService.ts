@@ -51,7 +51,10 @@ export class TokenDataViemService {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },

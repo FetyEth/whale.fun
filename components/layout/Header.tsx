@@ -28,14 +28,21 @@ function Header() {
 
   const navItems = [
     { name: "Explore", href: "/explore" },
-    { name: "Launch", href: "/launch" },
-    { name: "Arena", href: "/arena" },
+    { name: "Launch", href: "/create-token" },
+    { name: "Arena", href: "/dex" },
     { name: "Portfolio", href: "/portfolio" },
   ];
   return (
     <div className="flex items-center justify-between px-20 py-4 border-[#ebe3e8] bg-white border-b">
       <Link href="/" className="flex gap-x-2 cursor-pointer items-center">
-        <Image src="/logo.svg" alt="Logo" width={56} height={28} className="h-7 w-14" priority />
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          width={56}
+          height={28}
+          className="h-7 w-14"
+          priority
+        />
         <p className="font-satoshi text-3xl font-bold">Whale.fun</p>
       </Link>
       <div className="flex gap-x-8 text-lg font-instrument font-medium items-center">
@@ -117,7 +124,9 @@ function Header() {
                           <WalletMenu
                             address={account.address as `0x${string}`}
                             displayBalance={account.displayBalance}
-                            onCopy={() => navigator.clipboard.writeText(account.address)}
+                            onCopy={() =>
+                              navigator.clipboard.writeText(account.address)
+                            }
                             onSwitchNetwork={openChainModal}
                             onClose={() => setMenuOpen(false)}
                           />

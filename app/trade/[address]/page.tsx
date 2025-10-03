@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Copy, ArrowLeft } from "lucide-react";
+import { Copy, ArrowLeft, ExternalLink } from "lucide-react";
 import { FaGlobe, FaTelegramPlane } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import {
@@ -29,7 +29,11 @@ import {
 } from "@/components/ui/dialog";
 import { useAccount, useBalance } from "wagmi";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 const TokenStat = ({
   name,
@@ -198,7 +202,11 @@ const TradePage = () => {
   useEffect(() => {
     if (nativeBal) {
       // nativeBal.formatted is a string like "0.093"
-      console.log("wagmi native balance:", nativeBal.formatted, nativeBal.symbol);
+      console.log(
+        "wagmi native balance:",
+        nativeBal.formatted,
+        nativeBal.symbol
+      );
       setUserBalance(nativeBal.formatted);
     }
   }, [nativeBal]);
@@ -268,7 +276,10 @@ const TradePage = () => {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },
@@ -441,7 +452,10 @@ const TradePage = () => {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },
@@ -700,7 +714,10 @@ const TradePage = () => {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },
@@ -748,7 +765,10 @@ const TradePage = () => {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },
@@ -843,14 +863,15 @@ const TradePage = () => {
           const lastBN = Number(lastBlock);
           const denom = Math.max(1, lastBN - firstBN);
 
-          const candleData: { timestamp: number; price: number }[] = bucketHeads.map((head, i) => {
-            const bn = Number(head.blockNumber);
-            const t = (bn - firstBN) / denom;
-            const timestamp = Math.round(firstTs + t * (lastTs - firstTs));
-            const tail = bucketTails[i];
-            const price = Number(formatEther(tail.args.price as bigint));
-            return { timestamp, price };
-          });
+          const candleData: { timestamp: number; price: number }[] =
+            bucketHeads.map((head, i) => {
+              const bn = Number(head.blockNumber);
+              const t = (bn - firstBN) / denom;
+              const timestamp = Math.round(firstTs + t * (lastTs - firstTs));
+              const tail = bucketTails[i];
+              const price = Number(formatEther(tail.args.price as bigint));
+              return { timestamp, price };
+            });
 
           setChartData(candleData);
         } else {
@@ -970,7 +991,10 @@ const TradePage = () => {
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
           rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
           blockExplorers: {
-            default: { name: "0G Explorer", url: "https://chainscan.0g.ai" },
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
           },
           testnet: true,
         },
@@ -1169,7 +1193,10 @@ const TradePage = () => {
           setBuyQuote(null);
           setSellQuote(null);
 
-          alert(`${tradeMode} successful! Transaction hash: ${txHash}`);
+          toast.success(`${tradeMode} successful!`, {
+            description: `Transaction hash: ${txHash}`,
+            duration: 5000,
+          });
         } else {
           throw new Error(`Transaction failed with status: ${receipt.status}`);
         }
@@ -1199,9 +1226,10 @@ const TradePage = () => {
           setBuyQuote(null);
           setSellQuote(null);
 
-          alert(
-            `${tradeMode} transaction submitted! Hash: ${txHash}\n\nNote: Receipt verification failed on 0G Testnet, but your transaction may have succeeded. Please check your balance.`
-          );
+          toast.warning(`${tradeMode} transaction submitted!`, {
+            description: `Hash: ${txHash}\n\nNote: Receipt verification failed on 0G Testnet, but your transaction may have succeeded. Please check your balance.`,
+            duration: 8000,
+          });
         } else {
           throw receiptError; // Re-throw other receipt errors
         }
@@ -1306,14 +1334,23 @@ const TradePage = () => {
   let fillD = "";
   if (chartData.length > 0) {
     pathD = chartData
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)},${yFor(p.price).toFixed(2)}`)
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(2)},${yFor(p.price).toFixed(
+            2
+          )}`
+      )
       .join(" ");
     const lastX = xFor(chartData.length - 1).toFixed(2);
     fillD = `${pathD} L ${lastX},${bottomY} L 0,${bottomY} Z`;
   }
 
   // Determine real-time direction from last price delta
-  const lastDelta = chartData.length > 1 ? chartData[chartData.length - 1].price - chartData[chartData.length - 2].price : 0;
+  const lastDelta =
+    chartData.length > 1
+      ? chartData[chartData.length - 1].price -
+        chartData[chartData.length - 2].price
+      : 0;
   const upColor = "#22c55e"; // emerald-500
   const downColor = "#ef4444"; // red-500
   const strokeColor = lastDelta >= 0 ? upColor : downColor;
@@ -1321,36 +1358,56 @@ const TradePage = () => {
   const gridLines = 4;
 
   // Build OHLC candles from chartData (approx 60 candles)
-  const buildOhlc = (points: {timestamp:number; price:number}[]) => {
-    if (!points || points.length === 0) return [] as { time:number; open:number; high:number; low:number; close:number }[];
-    const sorted = [...points].sort((a,b) => a.timestamp - b.timestamp);
+  const buildOhlc = (points: { timestamp: number; price: number }[]) => {
+    if (!points || points.length === 0)
+      return [] as {
+        time: number;
+        open: number;
+        high: number;
+        low: number;
+        close: number;
+      }[];
+    const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
     const minTs = sorted[0].timestamp;
-    const maxTs = sorted[sorted.length-1].timestamp;
+    const maxTs = sorted[sorted.length - 1].timestamp;
     const totalMs = Math.max(1, maxTs - minTs);
     const target = 60;
     const bucketMs = Math.max(1, Math.floor(totalMs / target));
-    const buckets: Record<number, {price:number; timestamp:number}[]> = {};
+    const buckets: Record<number, { price: number; timestamp: number }[]> = {};
     for (const p of sorted) {
       const idx = Math.floor((p.timestamp - minTs) / bucketMs);
       const key = minTs + idx * bucketMs;
       (buckets[key] ||= []).push(p);
     }
-    const candles: { time:number; open:number; high:number; low:number; close:number }[] = [];
-    Object.keys(buckets).map(k=>Number(k)).sort((a,b)=>a-b).forEach((key) => {
-      const pts = buckets[key];
-      if (!pts || pts.length === 0) return;
-      const open = pts[0].price;
-      const close = pts[pts.length-1].price;
-      let high = -Infinity; let low = Infinity;
-      for (const p of pts) { if (p.price>high) high=p.price; if (p.price<low) low=p.price; }
-      candles.push({ time: key, open, high, low, close });
-    });
+    const candles: {
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }[] = [];
+    Object.keys(buckets)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b)
+      .forEach((key) => {
+        const pts = buckets[key];
+        if (!pts || pts.length === 0) return;
+        const open = pts[0].price;
+        const close = pts[pts.length - 1].price;
+        let high = -Infinity;
+        let low = Infinity;
+        for (const p of pts) {
+          if (p.price > high) high = p.price;
+          if (p.price < low) low = p.price;
+        }
+        candles.push({ time: key, open, high, low, close });
+      });
     return candles;
   };
 
   const ohlc = buildOhlc(chartData);
-  const ohlcMin = ohlc.length ? Math.min(...ohlc.map(c=>c.low)) : minPrice;
-  const ohlcMax = ohlc.length ? Math.max(...ohlc.map(c=>c.high)) : maxPrice;
+  const ohlcMin = ohlc.length ? Math.min(...ohlc.map((c) => c.low)) : minPrice;
+  const ohlcMax = ohlc.length ? Math.max(...ohlc.map((c) => c.high)) : maxPrice;
 
   // Candle-specific y mapper with its own padding
   const candlePad = (ohlcMax - ohlcMin) * 0.1 || 1;
@@ -1365,14 +1422,27 @@ const TradePage = () => {
   const formatTick = (ts: number, position: "start" | "middle" | "end") => {
     const d = new Date(ts);
     if (position === "middle") {
-      return d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+      return d.toLocaleDateString(undefined, {
+        month: "short",
+        day: "2-digit",
+      });
     }
-    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
   };
 
-  const firstTs = chartType === "candle" ? (ohlc[0]?.time) : chartData[0]?.timestamp;
-  const midTs = chartType === "candle" ? (ohlc[Math.floor(ohlc.length/2)]?.time) : chartData[Math.floor(chartData.length / 2)]?.timestamp;
-  const lastTs = chartType === "candle" ? (ohlc[ohlc.length - 1]?.time) : chartData[chartData.length - 1]?.timestamp;
+  const firstTs =
+    chartType === "candle" ? ohlc[0]?.time : chartData[0]?.timestamp;
+  const midTs =
+    chartType === "candle"
+      ? ohlc[Math.floor(ohlc.length / 2)]?.time
+      : chartData[Math.floor(chartData.length / 2)]?.timestamp;
+  const lastTs =
+    chartType === "candle"
+      ? ohlc[ohlc.length - 1]?.time
+      : chartData[chartData.length - 1]?.timestamp;
 
   // Coin Stats: compute displayed volume for current timeframe from dailyVolume as an approximation
   const volumeFactor =
@@ -1391,9 +1461,10 @@ const TradePage = () => {
 
   // Local compact formatter for number inputs (to avoid bigint type issues)
   const formatCompactNumber = (v: number) =>
-    new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(
-      isFinite(v) ? v : 0
-    );
+    new Intl.NumberFormat(undefined, {
+      notation: "compact",
+      maximumFractionDigits: 2,
+    }).format(isFinite(v) ? v : 0);
 
   return (
     <div className="min-h-screen bg-white">
@@ -1413,24 +1484,31 @@ const TradePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Token Info + Chart */}
           <div className="lg:col-span-2 space-y-4">
-          <Card className="border-gray-200 bg-[#303030]">
+            <Card className="border-gray-200 bg-[#303030]">
               <CardContent className="p-5 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={tokenData?.logoUrl} alt={tokenData?.name} className="h-6 w-6 rounded-full" />
+                        <AvatarImage
+                          src={tokenData?.logoUrl}
+                          alt={tokenData?.name}
+                          className="h-6 w-6 rounded-full"
+                        />
                         <AvatarFallback className="h-6 w-6 rounded-full">
                           {tokenData?.symbol?.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-lg leading-none font-semibold text-white">${tokenData?.symbol}</span>
+                      <span className="text-lg leading-none font-semibold text-white">
+                        ${tokenData?.symbol}
+                      </span>
                     </div>
                     <span className="text-sm leading-none font-medium text-[#FFFFFF80]">
-                      {isChangeUp ? "is up" : "is down"}
-                      {" "}
+                      {isChangeUp ? "is up" : "is down"}{" "}
                       <span
-                        className={`${isChangeUp ? "text-emerald-400" : "text-red-400"} font-semibold`}
+                        className={`${
+                          isChangeUp ? "text-emerald-400" : "text-red-400"
+                        } font-semibold`}
                       >
                         {changeAbsStr}%
                       </span>{" "}
@@ -1449,71 +1527,113 @@ const TradePage = () => {
                     )}
                     {/* Dynamic chart from chartData */}
                     {chartType === "line" ? (
-                        <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
-                          <defs>
-                            <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={fillStart} stopOpacity="0.35" />
-                              <stop offset="100%" stopColor={fillStart} stopOpacity="0" />
-                            </linearGradient>
-                          </defs>
-                          {/* Gridlines */}
-                          {Array.from({ length: gridLines + 1 }).map((_, i) => (
-                            <line
-                              key={i}
-                              x1={0}
-                              x2={svgWidth}
-                              y1={topY + ((bottomY - topY) * i) / gridLines}
-                              y2={topY + ((bottomY - topY) * i) / gridLines}
-                              stroke="#ffffff22"
-                              strokeWidth={1}
+                      <svg
+                        className="absolute inset-0 m-5"
+                        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                        preserveAspectRatio="none"
+                      >
+                        <defs>
+                          <linearGradient
+                            id="chartFill"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0%"
+                              stopColor={fillStart}
+                              stopOpacity="0.35"
                             />
-                          ))}
-                          {chartData.length > 1 ? (
-                            <>
-                              <path d={fillD} fill="url(#chartFill)" />
-                              <path d={pathD} stroke={strokeColor} strokeWidth="3" fill="none" strokeLinecap="round" />
-                            </>
-                          ) : null}
-                        </svg>
-                      ) : (
-                        // Native Candlesticks (OHLC)
-                        <svg className="absolute inset-0 m-5" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
-                          {/* Gridlines */}
-                          {Array.from({ length: gridLines + 1 }).map((_, i) => (
-                            <line
-                              key={i}
-                              x1={0}
-                              x2={svgWidth}
-                              y1={topY + ((bottomY - topY) * i) / gridLines}
-                              y2={topY + ((bottomY - topY) * i) / gridLines}
-                              stroke="#ffffff22"
-                              strokeWidth={1}
+                            <stop
+                              offset="100%"
+                              stopColor={fillStart}
+                              stopOpacity="0"
                             />
-                          ))}
-                          {ohlc.map((c, i) => {
-                            const n = Math.max(1, ohlc.length);
-                            const bandwidth = svgWidth / n;
-                            const centerX = (i + 0.5) * bandwidth;
-                            const candleW = Math.max(5, bandwidth * 0.6);
-                            const yHigh = yForCandle(c.high);
-                            const yLow = yForCandle(c.low);
-                            const yOpen = yForCandle(c.open);
-                            const yClose = yForCandle(c.close);
-                            const isUp = c.close >= c.open;
-                            const bodyY = Math.min(yOpen, yClose);
-                            const bodyH = Math.max(2, Math.abs(yClose - yOpen));
-                            const color = isUp ? upColor : downColor;
-                            return (
-                              <g key={i}>
-                                {/* Wick */}
-                                <line x1={centerX.toFixed(2)} x2={centerX.toFixed(2)} y1={yHigh.toFixed(2)} y2={yLow.toFixed(2)} stroke={color} strokeWidth={2} />
-                                {/* Body */}
-                                <rect x={(centerX - candleW / 2).toFixed(2)} y={bodyY.toFixed(2)} width={candleW.toFixed(2)} height={bodyH.toFixed(2)} fill={color} rx={2} />
-                              </g>
-                            );
-                          })}
-                        </svg>
-                      )}
+                          </linearGradient>
+                        </defs>
+                        {/* Gridlines */}
+                        {Array.from({ length: gridLines + 1 }).map((_, i) => (
+                          <line
+                            key={i}
+                            x1={0}
+                            x2={svgWidth}
+                            y1={topY + ((bottomY - topY) * i) / gridLines}
+                            y2={topY + ((bottomY - topY) * i) / gridLines}
+                            stroke="#ffffff22"
+                            strokeWidth={1}
+                          />
+                        ))}
+                        {chartData.length > 1 ? (
+                          <>
+                            <path d={fillD} fill="url(#chartFill)" />
+                            <path
+                              d={pathD}
+                              stroke={strokeColor}
+                              strokeWidth="3"
+                              fill="none"
+                              strokeLinecap="round"
+                            />
+                          </>
+                        ) : null}
+                      </svg>
+                    ) : (
+                      // Native Candlesticks (OHLC)
+                      <svg
+                        className="absolute inset-0 m-5"
+                        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                        preserveAspectRatio="none"
+                      >
+                        {/* Gridlines */}
+                        {Array.from({ length: gridLines + 1 }).map((_, i) => (
+                          <line
+                            key={i}
+                            x1={0}
+                            x2={svgWidth}
+                            y1={topY + ((bottomY - topY) * i) / gridLines}
+                            y2={topY + ((bottomY - topY) * i) / gridLines}
+                            stroke="#ffffff22"
+                            strokeWidth={1}
+                          />
+                        ))}
+                        {ohlc.map((c, i) => {
+                          const n = Math.max(1, ohlc.length);
+                          const bandwidth = svgWidth / n;
+                          const centerX = (i + 0.5) * bandwidth;
+                          const candleW = Math.max(5, bandwidth * 0.6);
+                          const yHigh = yForCandle(c.high);
+                          const yLow = yForCandle(c.low);
+                          const yOpen = yForCandle(c.open);
+                          const yClose = yForCandle(c.close);
+                          const isUp = c.close >= c.open;
+                          const bodyY = Math.min(yOpen, yClose);
+                          const bodyH = Math.max(2, Math.abs(yClose - yOpen));
+                          const color = isUp ? upColor : downColor;
+                          return (
+                            <g key={i}>
+                              {/* Wick */}
+                              <line
+                                x1={centerX.toFixed(2)}
+                                x2={centerX.toFixed(2)}
+                                y1={yHigh.toFixed(2)}
+                                y2={yLow.toFixed(2)}
+                                stroke={color}
+                                strokeWidth={2}
+                              />
+                              {/* Body */}
+                              <rect
+                                x={(centerX - candleW / 2).toFixed(2)}
+                                y={bodyY.toFixed(2)}
+                                width={candleW.toFixed(2)}
+                                height={bodyH.toFixed(2)}
+                                fill={color}
+                                rx={2}
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    )}
                     {/* Axis labels (mock) */}
                     <div className="absolute bottom-4 left-5 right-5 flex justify-between text-xs text-white/40">
                       <span>{firstTs ? formatTick(firstTs, "start") : ""}</span>
@@ -1532,27 +1652,35 @@ const TradePage = () => {
                 {/* Timeframe chips at the card bottom (outside inner panel) */}
                 <div className="mt-4 px-5 w-full flex items-center justify-between gap-3">
                   <div className="flex items-center justify-center gap-3">
-                    {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map((timeframe) => (
-                      <button
-                        key={timeframe}
-                        onClick={() => {
-                          setChartTimeframe(timeframe as typeof chartTimeframe);
-                          if (tokenData) fetchChartData(31);
-                        }}
-                        className={`${
-                          chartTimeframe === timeframe ? "bg-[#4B4B4B] text-white shadow-sm" : "text-gray-400"
-                        } px-3 py-1 rounded-full text-sm font-medium`}
-                      >
-                        {timeframe}
-                      </button>
-                    ))}
+                    {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map(
+                      (timeframe) => (
+                        <button
+                          key={timeframe}
+                          onClick={() => {
+                            setChartTimeframe(
+                              timeframe as typeof chartTimeframe
+                            );
+                            if (tokenData) fetchChartData(31);
+                          }}
+                          className={`${
+                            chartTimeframe === timeframe
+                              ? "bg-[#4B4B4B] text-white shadow-sm"
+                              : "text-gray-400"
+                          } px-3 py-1 rounded-full text-sm font-medium`}
+                        >
+                          {timeframe}
+                        </button>
+                      )
+                    )}
                   </div>
                   {/* Chart type toggle */}
                   <div className="flex bg-[#1F1F1F] rounded-full p-1 text-xs">
                     <button
                       onClick={() => setChartType("line")}
                       className={`px-3 py-1 rounded-full font-medium ${
-                        chartType === "line" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                        chartType === "line"
+                          ? "bg-white text-black"
+                          : "text-white/70 hover:text-white"
                       }`}
                     >
                       Line
@@ -1560,19 +1688,23 @@ const TradePage = () => {
                     <button
                       onClick={() => setChartType("candle")}
                       className={`px-3 py-1 rounded-full font-medium ${
-                        chartType === "candle" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                        chartType === "candle"
+                          ? "bg-white text-black"
+                          : "text-white/70 hover:text-white"
                       }`}
                     >
                       Candle
                     </button>
                   </div>
                 </div>
-                
               </CardContent>
             </Card>
 
             {/* Similar Tokens panel */}
-            <SimilarTokens currentTokenAddress={tokenAddress} chainId={chain?.id} />
+            <SimilarTokens
+              currentTokenAddress={tokenAddress}
+              chainId={chain?.id}
+            />
 
             {/* Token header */}
             {/* <Card className="border-gray-200">
@@ -1876,21 +2008,30 @@ const TradePage = () => {
                         setTradeMode("Buy");
                         setAmount((prev) => (prev ? prev : "0.1"));
                       }}
-                      className={`${tradeMode === "Buy" ? "text-white" : "text-white/60"} font-semibold`}
+                      className={`${
+                        tradeMode === "Buy" ? "text-white" : "text-white/60"
+                      } font-semibold`}
                     >
                       Buy
                     </button>
                     <button
                       onClick={() => setTradeMode("Sell")}
-                      className={`${tradeMode === "Sell" ? "text-white" : "text-white/60"} font-semibold`}
+                      className={`${
+                        tradeMode === "Sell" ? "text-white" : "text-white/60"
+                      } font-semibold`}
                     >
                       Sell
                     </button>
                   </div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white/90 bg-[#3A3A3A] rounded-full px-3 py-1">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={tokenData?.logoUrl} alt={tokenData?.name} />
-                      <AvatarFallback>{tokenData?.symbol?.slice(0,2)}</AvatarFallback>
+                      <AvatarImage
+                        src={tokenData?.logoUrl}
+                        alt={tokenData?.name}
+                      />
+                      <AvatarFallback>
+                        {tokenData?.symbol?.slice(0, 2)}
+                      </AvatarFallback>
                     </Avatar>
                     ${tokenData?.symbol}
                     <span className="opacity-70">▾</span>
@@ -1915,7 +2056,11 @@ const TradePage = () => {
                     {/* Currency selector on right */}
                     <div className="flex items-center gap-2 bg-[#2B2B2B] rounded-full px-3.5 py-1.5 text-sm">
                       <span className="inline-flex h-5 w-5 rounded-full bg-blue-500" />
-                      <span className="font-semibold">{tradeMode === "Buy" ? "ETH" : tokenData?.symbol || "TOKEN"}</span>
+                      <span className="font-semibold">
+                        {tradeMode === "Buy"
+                          ? "ETH"
+                          : tokenData?.symbol || "TOKEN"}
+                      </span>
                       <span className="opacity-70">▾</span>
                     </div>
                   </div>
@@ -1949,7 +2094,12 @@ const TradePage = () => {
                       ))}
                     </div>
                     <div className="text-white/60">
-                      Available <span className="text-white/90 font-medium">{tradeMode === "Buy" ? parseFloat(userBalance || "0").toFixed(2) : parseFloat(userTokenBalance || "0").toFixed(2)}</span>
+                      Available{" "}
+                      <span className="text-white/90 font-medium">
+                        {tradeMode === "Buy"
+                          ? parseFloat(userBalance || "0").toFixed(2)
+                          : parseFloat(userTokenBalance || "0").toFixed(2)}
+                      </span>
                     </div>
                   </div>
 
@@ -1957,14 +2107,24 @@ const TradePage = () => {
                   <div className="mt-4">
                     <Button
                       onClick={executeTrade}
-                      disabled={!amount || parsedAmount <= 0 || tradingLoading || !isConnected}
+                      disabled={
+                        !amount ||
+                        parsedAmount <= 0 ||
+                        tradingLoading ||
+                        !isConnected
+                      }
                       className={`w-full h-11 rounded-full text-sm font-semibold ${
-                        !amount || parsedAmount <= 0 || tradingLoading || !isConnected
+                        !amount ||
+                        parsedAmount <= 0 ||
+                        tradingLoading ||
+                        !isConnected
                           ? "bg-white/40 text-black/50 cursor-not-allowed"
                           : "bg-white text-black hover:bg-white/90"
                       }`}
                     >
-                      {tradingLoading ? "Processing..." : `${tradeMode} $${tokenData?.symbol || "TOKEN"}`}
+                      {tradingLoading
+                        ? "Processing..."
+                        : `${tradeMode} $${tokenData?.symbol || "TOKEN"}`}
                     </Button>
                   </div>
                 </div>
@@ -2041,7 +2201,9 @@ const TradePage = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="text-xl font-semibold">${tokenData?.symbol}</h3>
+                  <h3 className="text-xl font-semibold">
+                    ${tokenData?.symbol}
+                  </h3>
                   {/* CA row */}
                   <div className="flex items-center gap-2 text-sm text-white/70">
                     <span className="px-2 py-0.5">CA</span>
@@ -2053,32 +2215,60 @@ const TradePage = () => {
                         )}`}
                         alt={tokenData?.creator || tokenAddress || "owner"}
                       />
-                      <AvatarFallback>{tokenData?.symbol?.slice(0,2)}</AvatarFallback>
+                      <AvatarFallback>
+                        {tokenData?.symbol?.slice(0, 2)}
+                      </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium opacity-80">{tokenAddress?.slice(0,4)}...{tokenAddress?.slice(-4)}</span>
+                    <span className="font-medium opacity-80">
+                      {tokenAddress?.slice(0, 4)}...{tokenAddress?.slice(-4)}
+                    </span>
                     <button
-                      onClick={() => navigator.clipboard.writeText(tokenAddress || "")}
-                      className="p-1 rounded-full bg-white/10 hover:bg-white/15"
+                      onClick={() =>
+                        navigator.clipboard.writeText(tokenAddress || "")
+                      }
+                      className="p-1 rounded-full cursor-pointer bg-white/10 hover:bg-white/15"
                       title="Copy address"
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `https://chainscan-galileo.0g.ai/address/${tokenAddress}`,
+                          "_blank"
+                        )
+                      }
+                      className="p-1 rounded-full cursor-pointer bg-white/10 hover:bg-white/15"
+                      title="Copy address"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                   {/* Description */}
                   <p className="text-sm text-white/70 leading-6">
-                    {tokenData?.description || "Launch and trade the hottest coins on OG."}
+                    {tokenData?.description ||
+                      "Launch and trade the hottest coins on OG."}
                   </p>
                 </div>
 
                 {/* Social row */}
                 <div className="flex items-center gap-3 pt-1">
-                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="Website">
+                  <button
+                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                    title="Website"
+                  >
                     <FaGlobe size={18} />
                   </button>
-                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="X (Twitter)">
+                  <button
+                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                    title="X (Twitter)"
+                  >
                     <FaXTwitter size={18} />
                   </button>
-                  <button className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80" title="Telegram">
+                  <button
+                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                    title="Telegram"
+                  >
                     <FaTelegramPlane size={18} />
                   </button>
                 </div>
@@ -2101,11 +2291,19 @@ const TradePage = () => {
                     </button>
                     {showStatsTf && (
                       <div className="absolute right-0 bottom-full mb-1 w-24 bg-[#2B2B2B] border border-white/10 rounded-xl shadow-lg z-10 overflow-hidden">
-                        {["5m","1h","24h","7d","30d","All"].map((tf) => (
+                        {["5m", "1h", "24h", "7d", "30d", "All"].map((tf) => (
                           <button
                             key={tf}
-                            className={`w-full text-left px-3 py-1.5 text-xs ${chartTimeframe===tf?"bg-white/10 text-white":"text-white/80 hover:bg-white/5"}`}
-                            onClick={() => { setChartTimeframe(tf as typeof chartTimeframe); setShowStatsTf(false); if (tokenData) fetchChartData(31); }}
+                            className={`w-full text-left px-3 py-1.5 text-xs ${
+                              chartTimeframe === tf
+                                ? "bg-white/10 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                            onClick={() => {
+                              setChartTimeframe(tf as typeof chartTimeframe);
+                              setShowStatsTf(false);
+                              if (tokenData) fetchChartData(31);
+                            }}
                           >
                             {tf}
                           </button>
@@ -2118,22 +2316,39 @@ const TradePage = () => {
                 <div className="flex items-center gap-6 text-sm">
                   {/* 24h Volume */}
                   <div className="flex items-center gap-1.5">
-                    <img src="/icons/arrow-trending-up.svg" alt="Volume" width={16} height={16} className="opacity-70" />
-                    <div className="text-base font-semibold">{formatCompactNumber(displayedVolume)}</div>
+                    <img
+                      src="/icons/arrow-trending-up.svg"
+                      alt="Volume"
+                      width={16}
+                      height={16}
+                      className="opacity-70"
+                    />
+                    <div className="text-base font-semibold">
+                      {formatCompactNumber(displayedVolume)}
+                    </div>
                     <span className="text-emerald-500 text-[10px]">▲</span>
                   </div>
 
                   {/* Market cap */}
                   <div className="flex items-center gap-1.5 text-white/80">
-                    <img src="/icons/fire.svg" alt="Market cap" width={16} height={16} className="opacity-70" />
+                    <img
+                      src="/icons/fire.svg"
+                      alt="Market cap"
+                      width={16}
+                      height={16}
+                      className="opacity-70"
+                    />
                     <div className="text-base font-medium">
                       {tokenData.marketCap
                         ? tokenDataService.formatVolume(tokenData.marketCap)
                         : (() => {
-                            const supplyNum = Number(formatEther(tokenData.totalSupply));
-                            const priceNum = typeof tokenData.currentPrice === "bigint"
-                              ? Number(formatEther(tokenData.currentPrice))
-                              : Number(tokenData.currentPrice || 0);
+                            const supplyNum = Number(
+                              formatEther(tokenData.totalSupply)
+                            );
+                            const priceNum =
+                              typeof tokenData.currentPrice === "bigint"
+                                ? Number(formatEther(tokenData.currentPrice))
+                                : Number(tokenData.currentPrice || 0);
                             return formatCompactNumber(supplyNum * priceNum);
                           })()}
                     </div>
@@ -2141,8 +2356,16 @@ const TradePage = () => {
 
                   {/* Holders */}
                   <div className="flex items-center gap-1.5 text-white/80">
-                    <img src="/icons/user-group.svg" alt="Holders" width={16} height={16} className="opacity-70" />
-                    <div className="text-base font-medium">{Number(tokenData.holderCount).toLocaleString()}</div>
+                    <img
+                      src="/icons/user-group.svg"
+                      alt="Holders"
+                      width={16}
+                      height={16}
+                      className="opacity-70"
+                    />
+                    <div className="text-base font-medium">
+                      {Number(tokenData.holderCount).toLocaleString()}
+                    </div>
                   </div>
                 </div>
               </CardContent>
