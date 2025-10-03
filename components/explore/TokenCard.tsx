@@ -333,10 +333,11 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       {/* Image on the right (vertically centered, fixed 146.2px square) */}
       <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[150px] w-[150px]">
         <div className="relative h-full w-full rounded-l-2xl overflow-hidden">
-          <img
+          <Image
             src={token.image}
             alt={token.name}
             className="w-full h-full object-cover"
+            fill
           />
         </div>
       </div>
