@@ -368,11 +368,10 @@ const TokenCard = ({ token, index, compact = false }: TokenCardProps) => {
         style={{ height: imgSize, width: imgSize }}
       >
         <div className="relative h-full w-full rounded-l-2xl overflow-hidden">
-          <Image
+          <img
             src={token.image}
             alt={token.name}
             className="w-full h-full object-cover"
-            fill
           />
         </div>
       </div>
