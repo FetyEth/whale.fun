@@ -73,12 +73,10 @@ export default function PortfolioPage() {
 
     setLoading(true);
     try {
-      // Get dynamic chain info from wallet
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
       const { zeroGGalileoTestnet } = await import("viem/chains");
 
-      // Create wallet client to get current chain
       const walletClient = createWalletClient({
         transport: custom(window.ethereum),
       });
