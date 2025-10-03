@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 const TokenStat = ({
   name,

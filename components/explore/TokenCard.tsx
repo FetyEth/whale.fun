@@ -186,7 +186,9 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       if (receipt.status === "success") {
         console.log("Quick buy successful:", receipt);
         toast.success("Quick buy successful!", {
-          description: `Bought ${formatEther(bestTokenAmount)} ${token.symbol} for ${formatEther(bestCost)} ETH`,
+          description: `Bought ${formatEther(bestTokenAmount)} ${
+            token.symbol
+          } for ${formatEther(bestCost)} ETH`,
           duration: 5000,
         });
       } else {
