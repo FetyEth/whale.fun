@@ -111,6 +111,9 @@ const TradePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [userBalance, setUserBalance] = useState<string>("0");
   const [userTokenBalance, setUserTokenBalance] = useState<string>("0");
+  const [userTokenBalanceRaw, setUserTokenBalanceRaw] = useState<bigint>(
+    BigInt(0)
+  );
   const [copied, setCopied] = useState(false);
   const account = useAccount();
   console.log("chainId", account?.chain?.id);
@@ -120,6 +123,7 @@ const TradePage = () => {
   const [sellAmount, setSellAmount] = useState<string>("");
   const [buyQuote, setBuyQuote] = useState<{
     cost: bigint;
+    tokensReceived: bigint;
     priceImpact: number;
   } | null>(null);
   const [sellQuote, setSellQuote] = useState<{
@@ -296,62 +300,119 @@ const TradePage = () => {
         transport: http(),
       });
 
-      // Token amount should be in token units (18 decimals)
-      // User enters number of tokens they want to buy (e.g., "1" means 1 token)
-      const tokenAmount = parseEther(amount); // Convert to token wei (18 decimals)
+      // ETH amount the user wants to spend
+      // User enters ETH amount they want to spend (e.g., "0.1" means 0.1 ETH)
+      const ethAmount = parseEther(amount); // Convert to ETH wei (18 decimals)
 
       // Try contract calculation first (now with fixed BondingCurveLibrary)
       try {
         console.log("Attempting contract calculation for:", {
           tokenAddress,
-          tokenAmount: tokenAmount.toString(),
+          ethAmount: ethAmount.toString(),
           amount,
         });
 
-        const [cost, currentPrice] = await Promise.all([
-          publicClient.readContract({
-            address: tokenAddress as `0x${string}`,
-            abi: CreatorTokenABI,
-            functionName: "calculateBuyCost",
-            args: [tokenAmount],
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: tokenAddress as `0x${string}`,
-            abi: CreatorTokenABI,
-            functionName: "getCurrentPrice",
-          }) as Promise<bigint>,
-        ]);
+        // Instead of calculating cost for tokens, we need to find how many tokens we can buy with ETH
+        const currentPrice = (await publicClient.readContract({
+          address: tokenAddress as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "getCurrentPrice",
+        })) as bigint;
+
+        // Estimate initial token amount (convert to proper calculation for small prices)
+        // For currentPrice = 1002001000000n wei (0.001002 ETH), and ethAmount = 2000000000000000000n (2 ETH)
+        // We need to do: (2 ETH * 10^18) / (0.001002 ETH * 10^18) = 2 / 0.001002 = ~1996 tokens
+        const currentPriceEth = Number(formatEther(currentPrice));
+        const ethAmountEth = Number(formatEther(ethAmount));
+        const estimatedTokensFloat = ethAmountEth / currentPriceEth;
+        const estimatedTokens = parseEther(estimatedTokensFloat.toString());
+
+        console.log("Binary search initialization:", {
+          currentPrice: currentPrice.toString(),
+          currentPriceEth,
+          ethAmount: ethAmount.toString(),
+          ethAmountEth,
+          estimatedTokensFloat,
+          estimatedTokens: estimatedTokens.toString(),
+        });
+
+        // Use binary search to find exact token amount for this ETH
+        let low = BigInt(0);
+        let high = estimatedTokens * BigInt(2);
+        let bestTokenAmount = BigInt(0);
+        let bestCost = BigInt(0);
+
+        for (let i = 0; i < 15; i++) {
+          const mid = (low + high) / BigInt(2);
+          if (mid <= 0) break;
+
+          try {
+            const cost = (await publicClient.readContract({
+              address: tokenAddress as `0x${string}`,
+              abi: CreatorTokenABI,
+              functionName: "calculateBuyCost",
+              args: [mid],
+            })) as bigint;
+
+            if (cost <= ethAmount) {
+              bestTokenAmount = mid;
+              bestCost = cost;
+              low = mid + BigInt(1);
+            } else {
+              high = mid - BigInt(1);
+            }
+
+            // If we're close enough, break
+            const diff = cost > ethAmount ? cost - ethAmount : ethAmount - cost;
+            if (diff < ethAmount / BigInt(100)) {
+              // Within 1%
+              bestTokenAmount = mid;
+              bestCost = cost;
+              break;
+            }
+          } catch {
+            high = mid - BigInt(1);
+          }
+        }
 
         console.log("Contract calculation results:", {
-          cost: cost.toString(),
-          costEth: formatEther(cost),
+          bestCost: bestCost.toString(),
+          bestTokenAmount: bestTokenAmount.toString(),
+          costEth: formatEther(bestCost),
+          tokensReceived: formatEther(bestTokenAmount),
           currentPrice: currentPrice.toString(),
           currentPriceEth: formatEther(currentPrice),
         });
 
         // Calculate price impact based on bonding curve
-        const currentPriceEth = Number(formatEther(currentPrice));
-        const costEth = Number(formatEther(cost));
-        const tokenAmountNumber = parseFloat(amount);
+        const costEth = Number(formatEther(bestCost));
+        const tokensReceived = Number(formatEther(bestTokenAmount));
 
         // Check if contract returned reasonable values
-        if (costEth > 1000000) {
-          // If cost is more than 1M ETH, something is wrong
+        if (costEth > 1000000 || bestTokenAmount <= 0) {
           throw new Error(
-            `Contract returned unreasonable cost: ${costEth} ETH`
+            `Contract returned unreasonable values: cost=${costEth} ETH, tokens=${tokensReceived}`
           );
         }
 
-        // Simple price impact: how much more expensive per token compared to current price
+        // Price impact: how much more expensive per token compared to current price
         const avgPricePerToken =
-          tokenAmountNumber > 0 ? costEth / tokenAmountNumber : 0;
+          tokensReceived > 0 ? costEth / tokensReceived : 0;
         const priceImpact =
           currentPriceEth > 0
             ? ((avgPricePerToken - currentPriceEth) / currentPriceEth) * 100
             : 0;
 
-        console.log("Contract calculation success:", { costEth, priceImpact });
-        setBuyQuote({ cost, priceImpact: Math.max(0, priceImpact) });
+        console.log("Contract calculation success:", {
+          costEth,
+          tokensReceived,
+          priceImpact,
+        });
+        setBuyQuote({
+          cost: bestCost,
+          tokensReceived: bestTokenAmount,
+          priceImpact: Math.max(0, priceImpact),
+        });
         return;
       } catch (contractError) {
         console.warn(
@@ -367,65 +428,88 @@ const TradePage = () => {
         functionName: "getCurrentPrice",
       })) as bigint;
 
-      const tokenAmountNumber = parseFloat(amount);
-      const currentPriceEth = Number(formatEther(currentPrice));
+      const ethAmountNumber = parseFloat(amount);
+      const fallbackCurrentPriceEth = Number(formatEther(currentPrice));
 
       // Handle very small prices (like 0.000001 ETH)
-      if (currentPriceEth === 0) {
-        setBuyQuote({ cost: parseEther("0.001"), priceImpact: 0 }); // Minimum cost
+      if (fallbackCurrentPriceEth === 0) {
+        const tokensReceived = parseEther("1000"); // Give 1000 tokens for minimum cost
+        setBuyQuote({
+          cost: parseEther("0.001"),
+          tokensReceived,
+          priceImpact: 0,
+        });
         return;
       }
 
-      // Simple linear bonding curve: price increases with each token bought
-      // For very small prices, use a more conservative approach
+      // Simple estimation: tokens = ETH / currentPrice
+      const estimatedTokens = ethAmountNumber / fallbackCurrentPriceEth;
+      const tokensReceived = parseEther(estimatedTokens.toString());
+
       console.log("Frontend fallback calculation:", {
-        currentPriceEth,
-        tokenAmountNumber,
+        fallbackCurrentPriceEth,
+        ethAmountNumber,
+        estimatedTokens,
       });
 
-      if (currentPriceEth < 0.000001) {
-        // For very small prices, use a fixed small cost
-        const cost = parseEther((tokenAmountNumber * 0.000001).toString());
-        setBuyQuote({ cost, priceImpact: 10 }); // 10% impact
+      if (fallbackCurrentPriceEth < 0.000001) {
+        // For very small prices, give generous token amount
+        const tokensReceived = parseEther(
+          (ethAmountNumber * 1000000).toString()
+        );
+        setBuyQuote({
+          cost: ethAmount,
+          tokensReceived,
+          priceImpact: 10,
+        });
         return;
       }
 
-      const priceIncrement = Math.max(currentPriceEth * 0.01, 0.000001); // 1% price increase per token or minimum
+      // Calculate average price with bonding curve effect
+      const priceIncrement = Math.max(fallbackCurrentPriceEth * 0.01, 0.000001);
       const avgPricePerToken =
-        currentPriceEth + (tokenAmountNumber * priceIncrement) / 2; // Average price over the range
-      const totalCostEth = tokenAmountNumber * avgPricePerToken;
+        fallbackCurrentPriceEth + (estimatedTokens * priceIncrement) / 2;
+      const actualCostEth = estimatedTokens * avgPricePerToken;
 
       console.log("Calculation details:", {
         priceIncrement,
         avgPricePerToken,
-        totalCostEth,
+        actualCostEth,
+        estimatedTokens,
       });
 
-      // Ensure totalCostEth is reasonable before parsing
-      if (totalCostEth > 1000000) {
-        // Cap at 1M ETH
-        console.warn("Cost too high, capping at 1000 ETH");
-        setBuyQuote({ cost: parseEther("1000"), priceImpact: 100 });
+      // Ensure values are reasonable
+      if (actualCostEth > ethAmountNumber * 2) {
+        // If calculated cost is more than 2x the input, just use simple division
+        const simpleTokens = parseEther(
+          (ethAmountNumber / fallbackCurrentPriceEth).toString()
+        );
+        setBuyQuote({
+          cost: ethAmount,
+          tokensReceived: simpleTokens,
+          priceImpact: 5,
+        });
         return;
       }
 
-      if (totalCostEth < 0.000000001) {
-        // Minimum cost
-        console.warn("Cost too low, setting minimum");
-        setBuyQuote({ cost: parseEther("0.000001"), priceImpact: 1 });
-        return;
-      }
-
-      // Convert to wei safely
-      const cost = parseEther(totalCostEth.toFixed(18)); // Fix precision issues
+      // Use the actual calculated cost, but cap tokens at what we can afford
+      const finalCost = parseEther(
+        Math.min(actualCostEth, ethAmountNumber).toString()
+      );
 
       // Calculate price impact
       const priceImpact =
-        currentPriceEth > 0
-          ? ((avgPricePerToken - currentPriceEth) / currentPriceEth) * 100
+        fallbackCurrentPriceEth > 0
+          ? ((avgPricePerToken - fallbackCurrentPriceEth) /
+              fallbackCurrentPriceEth) *
+            100
           : 0;
 
-      setBuyQuote({ cost, priceImpact: Math.max(0, priceImpact) });
+      setBuyQuote({
+        cost: finalCost,
+        tokensReceived,
+        priceImpact: Math.max(0, priceImpact),
+      });
     } catch (err: any) {
       console.error("Error updating buy quote:", err);
       setBuyQuote(null);
@@ -747,7 +831,10 @@ const TradePage = () => {
 
       // Do not set userBalance here to avoid racing with wagmi's useBalance which is reactive and accurate
       // setUserBalance(formatEther(ethBalance));
-      setUserTokenBalance(formatEther(tokenBalance as bigint));
+      // Store token balance as bigint and format it like portfolio page
+      const tokenBalanceBigInt = tokenBalance as bigint;
+      setUserTokenBalanceRaw(tokenBalanceBigInt);
+      setUserTokenBalance(tokenBalanceBigInt.toLocaleString());
     } catch (err: any) {
       console.error("Error fetching user balances:", err);
     }
@@ -960,13 +1047,14 @@ const TradePage = () => {
 
       const userEthBalance = parseFloat(userBalance);
       const costInEth = Number(formatEther(buyQuote.cost));
+      const gasBufferEth = 0.001; // Reserve for gas fees
+      const totalRequired = costInEth + gasBufferEth;
 
-      if (costInEth > userEthBalance * 0.98) {
-        // Leave some ETH for gas
+      if (totalRequired > userEthBalance) {
         setTradingError(
-          `Insufficient ETH balance. Cost: ${costInEth.toFixed(
+          `Insufficient ETH balance. Need ${totalRequired.toFixed(
             6
-          )} ETH, Balance: ${userEthBalance.toFixed(6)} ETH`
+          )} ETH (including gas), have ${userEthBalance.toFixed(6)} ETH`
         );
         return;
       }
@@ -1019,11 +1107,10 @@ const TradePage = () => {
         transport: http(),
       });
 
-      // Token amount should be in token units (18 decimals)
+      // Parse amounts based on trade mode
       console.log("DEBUG: amount string:", amount);
       console.log("DEBUG: parsedAmount:", parsedAmount);
-      const tokenAmount = parseEther(amount);
-      console.log("DEBUG: tokenAmount wei:", tokenAmount.toString());
+
       let txHash;
 
       if (tradeMode === "Buy") {
@@ -1031,7 +1118,13 @@ const TradePage = () => {
           throw new Error("No buy quote available");
         }
 
+        // For buying, use the tokensReceived from the quote
+        const tokenAmount = buyQuote.tokensReceived;
+        console.log("DEBUG: ETH amount:", amount);
+        console.log("DEBUG: tokens to buy:", formatEther(tokenAmount));
+
         console.log("Executing buy:", {
+          ethAmount: amount,
           tokenAmount: tokenAmount.toString(),
           cost: buyQuote.cost.toString(),
           priceImpact: buyQuote.priceImpact,
@@ -1047,6 +1140,9 @@ const TradePage = () => {
           chain: currentChain,
         });
       } else {
+        // For selling, parse the amount as tokens
+        const tokenAmount = parseEther(amount);
+
         if (!sellQuote) {
           throw new Error("No sell quote available");
         }
@@ -1478,7 +1574,7 @@ const TradePage = () => {
         {/* Back button */}
         <Link
           href="/explore"
-          className="mb-4 text-gray-600 hover:text-gray-900"
+          className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Explore
@@ -2079,14 +2175,14 @@ const TradePage = () => {
                               const maxAmount =
                                 tradeMode === "Buy"
                                   ? (parseFloat(userBalance) * 0.95).toFixed(4)
-                                  : parseFloat(userTokenBalance).toFixed(6);
+                                  : formatEther(userTokenBalanceRaw);
                               setAmount(maxAmount);
                             } else {
                               const pct = parseInt(label) / 100;
                               const base =
                                 tradeMode === "Buy"
                                   ? parseFloat(userBalance)
-                                  : parseFloat(userTokenBalance);
+                                  : Number(formatEther(userTokenBalanceRaw));
                               setAmount((base * pct).toFixed(4));
                             }
                           }}
@@ -2100,11 +2196,76 @@ const TradePage = () => {
                       Available{" "}
                       <span className="text-white/90 font-medium">
                         {tradeMode === "Buy"
-                          ? parseFloat(userBalance || "0").toFixed(2)
-                          : parseFloat(userTokenBalance || "0").toFixed(2)}
+                          ? `${parseFloat(userBalance || "0").toFixed(4)} ETH`
+                          : `${userTokenBalance} ${tokenData?.symbol}`}
                       </span>
                     </div>
                   </div>
+
+                  {/* Amount calculation display */}
+                  {amount && parsedAmount > 0 && (
+                    <div className="mt-3 p-3 bg-[#161616] rounded-xl border border-white/10">
+                      {tradeMode === "Buy" && buyQuote && (
+                        <div className="text-sm space-y-1">
+                          <div className="flex justify-between text-white/60">
+                            <span>You&apos;re spending:</span>
+                            <span className="text-white font-medium">
+                              {amount} ETH
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-white/60">
+                            <span>You&apos;ll receive:</span>
+                            <span className="text-white font-medium">
+                              {buyQuote.tokensReceived
+                                ? formatEther(buyQuote.tokensReceived)
+                                : "Calculating..."}{" "}
+                              {tokenData?.symbol}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-white/60">
+                            <span>Price Impact:</span>
+                            <span
+                              className={`font-medium ${
+                                buyQuote.priceImpact > 5
+                                  ? "text-red-400"
+                                  : "text-green-400"
+                              }`}
+                            >
+                              {buyQuote.priceImpact.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {tradeMode === "Sell" && sellQuote && (
+                        <div className="text-sm space-y-1">
+                          <div className="flex justify-between text-white/60">
+                            <span>You&apos;re selling:</span>
+                            <span className="text-white font-medium">
+                              {amount} {tokenData?.symbol}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-white/60">
+                            <span>You&apos;ll receive:</span>
+                            <span className="text-white font-medium">
+                              {formatEther(sellQuote.proceeds)} ETH
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-white/60">
+                            <span>Price Impact:</span>
+                            <span
+                              className={`font-medium ${
+                                sellQuote.priceImpact > 5
+                                  ? "text-red-400"
+                                  : "text-green-400"
+                              }`}
+                            >
+                              -{sellQuote.priceImpact.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Primary CTA */}
                   <div className="mt-4">

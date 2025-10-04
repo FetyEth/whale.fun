@@ -54,6 +54,58 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       return;
     }
 
+    // Check user's ETH balance before buying
+    try {
+      const { createPublicClient, http } = await import("viem");
+      const connection = await getBlockchainConnection();
+      const chainId = Number(connection.network.chainId);
+
+      const chainMap: Record<number, any> = {
+        16602: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          blockExplorers: {
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
+          },
+          testnet: true,
+        },
+      };
+
+      const currentChain = chainMap[chainId];
+      if (!currentChain) {
+        throw new Error(`Unsupported chain ID: ${chainId}`);
+      }
+
+      const publicClient = createPublicClient({
+        chain: currentChain,
+        transport: http(),
+      });
+
+      const userBalance = await publicClient.getBalance({
+        address: userAddress as `0x${string}`,
+      });
+
+      const requiredAmount = parseEther("0.01");
+      if (userBalance < requiredAmount) {
+        setQuickBuyError(
+          `Insufficient balance. Need ${formatEther(
+            requiredAmount
+          )} ETH, have ${formatEther(userBalance)} ETH`
+        );
+        return;
+      }
+    } catch (balanceError) {
+      console.error("Balance check error:", balanceError);
+      setQuickBuyError("Could not verify balance. Please try again.");
+      return;
+    }
+
     setIsQuickBuying(true);
     setQuickBuyError(null);
 
@@ -177,22 +229,45 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
 
       console.log("Quick buy transaction submitted:", txHash);
 
-      // Wait for confirmation
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        timeout: 60000,
+      // Show immediate success message since transaction was submitted
+      toast.success("Transaction submitted!", {
+        description: `Buying ${formatEther(bestTokenAmount)} ${
+          token.symbol
+        } for ${formatEther(bestCost)} ETH`,
+        duration: 3000,
       });
 
-      if (receipt.status === "success") {
-        console.log("Quick buy successful:", receipt);
-        toast.success("Quick buy successful!", {
-          description: `Bought ${formatEther(bestTokenAmount)} ${
-            token.symbol
-          } for ${formatEther(bestCost)} ETH`,
+      // Try to wait for confirmation with proper error handling
+      try {
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 30000, // Reduced timeout
+          retryCount: 3,
+          retryDelay: 2000,
+        });
+
+        if (receipt.status === "success") {
+          console.log("Quick buy confirmed:", receipt);
+          toast.success("Quick buy confirmed!", {
+            description: `Successfully bought ${formatEther(bestTokenAmount)} ${
+              token.symbol
+            }`,
+            duration: 5000,
+          });
+        } else {
+          toast.error("Transaction failed", {
+            description: "The transaction was reverted",
+            duration: 5000,
+          });
+        }
+      } catch (receiptError: any) {
+        // If we can't get the receipt, the transaction might still succeed
+        console.warn("Could not get transaction receipt:", receiptError);
+        toast.info("Transaction pending", {
+          description:
+            "Your transaction is processing. Check your wallet for updates.",
           duration: 5000,
         });
-      } else {
-        throw new Error("Transaction failed");
       }
     } catch (error: any) {
       console.error("Quick buy error:", error);
