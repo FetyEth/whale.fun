@@ -71,18 +71,55 @@ export default function PortfolioPage() {
     try {
       const { createWalletClient, createPublicClient, http, custom } =
         await import("viem");
-      const { zeroGGalileoTestnet } = await import("viem/chains");
 
       const walletClient = createWalletClient({
+        chain: {
+          id: 16602,
+          name: "0G Testnet",
+          network: "0g-testnet",
+          nativeCurrency: {
+            decimals: 18,
+            name: "0G",
+            symbol: "0G",
+          },
+          rpcUrls: {
+            default: {
+              http: ["https://evmrpc-testnet.0g.ai"],
+            },
+            public: {
+              http: ["https://evmrpc-testnet.0g.ai"],
+            },
+          },
+          blockExplorers: {
+            default: {
+              name: "0G Explorer",
+              url: "https://chainscan-galileo.0g.ai",
+            },
+          },
+          testnet: true,
+        },
         transport: custom(window.ethereum),
       });
-
       const chainId = await walletClient.getChainId();
       console.log("Current chain ID:", chainId);
 
+      // Ensure we're on the correct network
+      if (chainId !== 16602) {
+        console.warn(`Wrong network detected. Expected 16602, got ${chainId}`);
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x40da' }], // 16602 in hex
+          });
+          console.log("Switched to 0G Testnet");
+        } catch (switchError) {
+          console.error("Failed to switch network:", switchError);
+          // Continue with current network but add warning
+        }
+      }
+
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
         16602: {
           id: 16602,
           name: "0G Testnet",
@@ -118,19 +155,44 @@ export default function PortfolioPage() {
       const factoryService = new TokenFactoryRootService();
 
       // Get tokens created by user
-      const createdTokenAddresses = await factoryService.getCreatorTokens(
-        address
-      );
+      let createdTokenAddresses: string[] = [];
+      try {
+        createdTokenAddresses = await factoryService.getCreatorTokens(address);
+        console.log("Successfully got created tokens:", createdTokenAddresses);
+      } catch (error) {
+        console.error("Error getting created tokens:", error);
+        createdTokenAddresses = [];
+      }
 
       // Get all tokens from the factory to check holdings
-      const allTokenAddresses = await factoryService.getAllTokens();
+      let allTokenAddresses: string[] = [];
+      try {
+        allTokenAddresses = await factoryService.getAllTokens();
+        console.log("Successfully got all tokens:", allTokenAddresses);
+      } catch (error) {
+        console.error("Error getting all tokens:", error);
+        allTokenAddresses = [];
+      }
 
       // Get creator stats
-      const creatorStats = await factoryService.getCreatorStats(address);
+      let creatorStats;
+      try {
+        creatorStats = await factoryService.getCreatorStats(address);
+        console.log("Successfully got creator stats:", creatorStats);
+      } catch (error) {
+        console.error("Error getting creator stats:", error);
+        creatorStats = null;
+      }
 
-      console.log("Created token addresses:", createdTokenAddresses);
-      console.log("All token addresses:", allTokenAddresses);
-      console.log("Creator stats:", creatorStats);
+      // If we couldn't get tokens from factory, try to scan for common token patterns
+      if (allTokenAddresses.length === 0) {
+        console.log("No tokens found from factory, using fallback token detection...");
+        // For now, we'll use an empty array, but you could add logic here to:
+        // 1. Check known token addresses from your app's database
+        // 2. Scan recent blockchain events for token creations by this user
+        // 3. Use a predefined list of test tokens
+        allTokenAddresses = [];
+      }
 
       // Load token data for all tokens to check holdings
       const allTokensData = await Promise.all(
@@ -324,28 +386,45 @@ export default function PortfolioPage() {
         (token) => token.balance > BigInt(0)
       );
 
-      // Filter only tokens created by the user
-      const createdTokensData = tokensWithBalance.filter(
-        (token) => token.creator === address
+      // Filter tokens created by the user using the addresses from getCreatorTokens
+      const createdTokensData = allTokensData.filter(
+        (token) => createdTokenAddresses.includes(token.address)
       );
+
+      // If no created tokens found from factory but we have tokens with high balance,
+      // also check by reading creator field from contract as fallback
+      let fallbackCreatedTokens: TokenPortfolioItem[] = [];
+      if (createdTokensData.length === 0 && allTokensData.length > 0) {
+        console.log("No created tokens found from factory, checking by creator field...");
+        fallbackCreatedTokens = allTokensData.filter(
+          (token) => token.creator === address
+        );
+        console.log("Fallback created tokens:", fallbackCreatedTokens.map(t => ({ address: t.address, name: t.name })));
+      }
+
+      const finalCreatedTokens = createdTokensData.length > 0 ? createdTokensData : fallbackCreatedTokens;
+
+      console.log("All tokens data:", allTokensData.map(t => ({ address: t.address, name: t.name, creator: t.creator })));
+      console.log("Final created tokens data:", finalCreatedTokens.map(t => ({ address: t.address, name: t.name })));
+      console.log("Tokens with balance:", tokensWithBalance.map(t => ({ address: t.address, name: t.name, balance: t.balance.toString() })));
 
       // Calculate portfolio statistics
       const totalValue = tokensWithBalance.reduce(
         (sum: bigint, token: TokenPortfolioItem) => sum + token.currentValue,
         BigInt(0)
       );
-      const totalFees = createdTokensData.reduce(
+      const totalFees = finalCreatedTokens.reduce(
         (sum: bigint, token: TokenPortfolioItem) =>
           sum + token.stats.creatorFees,
         BigInt(0)
       );
 
-      setCreatedTokens(createdTokensData);
+      setCreatedTokens(finalCreatedTokens);
       setPortfolioTokens(tokensWithBalance);
       setPortfolioStats({
         totalValue,
         totalTokens: tokensWithBalance.length,
-        createdTokens: createdTokensData.length,
+        createdTokens: finalCreatedTokens.length,
         totalGains: BigInt(0), // Would need historical data to calculate
         totalFees,
       });
