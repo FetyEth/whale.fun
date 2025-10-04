@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useBalance } from "wagmi";
 import { parseEther, formatEther } from "ethers";
@@ -345,6 +345,15 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
     ? "text-red-200"
     : "text-green-200";
 
+  const DEFAULT_IMG =
+    "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um";
+
+  const [imgSrc, setImgSrc] = useState<string>(token.image || DEFAULT_IMG);
+
+  useEffect(() => {
+    setImgSrc(token.image || DEFAULT_IMG);
+  }, [token.image]);
+
   return (
     <div
       style={{ background: overlayBg }}
@@ -409,9 +418,14 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[150px] w-[150px]">
         <div className="relative h-full w-full rounded-l-2xl overflow-hidden">
           <img
-            src={token.image}
+            src={imgSrc}
             alt={token.name}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              if ((e.target as HTMLImageElement).src !== DEFAULT_IMG) {
+                (e.target as HTMLImageElement).src = DEFAULT_IMG;
+              }
+            }}
           />
         </div>
       </div>

@@ -1591,11 +1591,14 @@ const TradePage = () => {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarImage
-                          src={tokenData?.logoUrl}
+                          src={
+                            tokenData?.logoUrl ||
+                            "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+                          }
                           alt={tokenData?.name}
                           className="h-6 w-6 rounded-full"
                         />
-                        <AvatarFallback className="h-6 w-6 rounded-full">
+                        <AvatarFallback>
                           {tokenData?.symbol?.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -1811,7 +1814,13 @@ const TradePage = () => {
               <CardContent className="p-5 md:p-6 flex gap-4 items-center">
                 <div className="h-12 w-12 rounded-xl bg-gray-100 border border-[#0000001A] overflow-hidden">
                   <Avatar className="h-full w-full rounded-xl">
-                    <AvatarImage src={tokenData.logoUrl} alt={tokenData.name} />
+                    <AvatarImage
+                      src={
+                        tokenData.logoUrl ||
+                        "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+                      }
+                      alt={tokenData.name}
+                    />
                     <AvatarFallback>
                       {tokenData.symbol.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
@@ -2126,11 +2135,14 @@ const TradePage = () => {
                   <div className="flex items-center gap-2 text-sm font-semibold text-white/90 bg-[#3A3A3A] rounded-full px-3 py-1">
                     <Avatar className="h-6 w-6">
                       <AvatarImage
-                        src={tokenData?.logoUrl}
+                        src={
+                          tokenData?.logoUrl ||
+                          "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+                        }
                         alt={tokenData?.name}
                       />
                       <AvatarFallback>
-                        {tokenData?.symbol?.slice(0, 2)}
+                        {tokenData?.symbol?.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     ${tokenData?.symbol}
