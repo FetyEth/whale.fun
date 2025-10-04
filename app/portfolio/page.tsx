@@ -519,7 +519,11 @@ export default function PortfolioPage() {
           </div>
           <div className="mt-4 pt-3 border-t border-gray-200">
             <Link href={`/token/${token.address}`}>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full cursor-pointer"
+              >
                 View Details <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -698,7 +702,7 @@ export default function PortfolioPage() {
                         <p className="text-gray-600 mb-6">
                           You haven&apos;t created any tokens yet.
                         </p>
-                        <Link href="/create-token">
+                        <Link href="/launch">
                           <Button className="bg-black text-white hover:bg-gray-800">
                             Create Your First Token
                           </Button>

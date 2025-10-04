@@ -6,7 +6,7 @@ import React from "react";
 const CreateTokenButton = () => {
   return (
     <Link
-      href="/create-token"
+      href="/launch"
       className="flex items-center cursor-pointer gap-2 bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
     >
       <svg

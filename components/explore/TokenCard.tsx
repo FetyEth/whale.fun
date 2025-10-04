@@ -35,9 +35,9 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
 
   const handleCardClick = () => {
     if (token.isExternal) {
-      router.push(`/trade/external/${token.id}`);
+      router.push(`/token/external/${token.id}`);
     } else {
-      router.push(`/trade/${token.id}`);
+      router.push(`/token/${token.id}`);
     }
   };
 

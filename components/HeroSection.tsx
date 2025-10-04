@@ -75,7 +75,7 @@ function HeroSection() {
                 Run quick polls for name, fees, and art—then mint in one click
                 with liquidity locks and audit checks.
               </p>
-              <Link href="/create-token">
+              <Link href="/launch">
                 <Button className="text-white cursor-pointer">
                   Go Live & Launch{" "}
                 </Button>

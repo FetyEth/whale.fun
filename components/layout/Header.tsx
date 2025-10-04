@@ -28,7 +28,7 @@ function Header() {
 
   const navItems = [
     { name: "Explore", href: "/explore" },
-    { name: "Launch", href: "/create-token" },
+    { name: "Launch", href: "/launch" },
     { name: "Dex", href: "/dex" },
     { name: "Portfolio", href: "/portfolio" },
   ];

@@ -672,7 +672,7 @@ const CreatePage: FC = () => {
       </div>
       <div className="flex items-center justify-center gap-4 mt-8">
         <Link
-          href={`/trade/${createdTokenAddress || createdTokenHash}`}
+          href={`/token/${createdTokenAddress || createdTokenHash}`}
           type="button"
           className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
         >
