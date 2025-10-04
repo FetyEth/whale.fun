@@ -10,6 +10,7 @@ import {
   switchNetwork,
   SUPPORTED_NETWORKS,
 } from "@/utils/Blockchain";
+import { combineTokenMetadata } from "@/utils/tokenMetadata";
 import Link from "next/link";
 import Image from "next/image";
 import { useAccount } from "wagmi";
@@ -481,7 +482,12 @@ const CreatePage: FC = () => {
         totalSupply: parseEther(formData.totalSupply || "0"),
         targetMarketCap: parseEther(formData.targetMarketCap || "0"),
         creatorFeePercent: BigInt(Number(formData.creatorFeeBps || "0")),
-        description: formData.description || "Token created via Whale.fun",
+        description: combineTokenMetadata({
+          description: formData.description || "Token created via Whale.fun",
+          website: formData.website,
+          telegram: formData.telegram,
+          twitter: formData.twitter
+        }),
         logoUrl:
           formData.logoUrl ||
           formData.logoPreview ||
@@ -501,7 +507,12 @@ const CreatePage: FC = () => {
           parseEther(formData.totalSupply || "0"),
           parseEther(formData.targetMarketCap || "0"),
           BigInt(Number(formData.creatorFeeBps || "0")),
-          formData.description || "Token created via Whale.fun",
+          combineTokenMetadata({
+            description: formData.description || "Token created via Whale.fun",
+            website: formData.website,
+            telegram: formData.telegram,
+            twitter: formData.twitter
+          }),
           formData.logoUrl ||
             formData.logoPreview ||
             "https://example.com/logo.png",

@@ -35,6 +35,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const TokenStat = ({
   name,
@@ -191,6 +192,8 @@ const TradePage = () => {
       fetchTokenData();
     }
   }, [tokenAddress]);
+
+  console.log("real token data", tokenData);
 
   // Fetch user balances when connected
   useEffect(() => {
@@ -1473,14 +1476,13 @@ const TradePage = () => {
 
       <main className="px-44 py-6 mt-5">
         {/* Back button */}
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
+        <Link
+          href="/explore"
           className="mb-4 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Explore
-        </Button>
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Token Info + Chart */}
@@ -2254,24 +2256,39 @@ const TradePage = () => {
 
                 {/* Social row */}
                 <div className="flex items-center gap-3 pt-1">
-                  <button
-                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
-                    title="Website"
-                  >
-                    <FaGlobe size={18} />
-                  </button>
-                  <button
-                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
-                    title="X (Twitter)"
-                  >
-                    <FaXTwitter size={18} />
-                  </button>
-                  <button
-                    className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
-                    title="Telegram"
-                  >
-                    <FaTelegramPlane size={18} />
-                  </button>
+                  {tokenData?.website && (
+                    <Link
+                      href={tokenData?.website || ""}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                      title="Website"
+                    >
+                      <FaGlobe size={18} />
+                    </Link>
+                  )}
+                  {tokenData?.twitter && (
+                    <Link
+                      href={`https://www.x.com/${tokenData?.twitter || ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                      title="X (Twitter)"
+                    >
+                      <FaXTwitter size={18} />
+                    </Link>
+                  )}
+                  {tokenData?.telegram && (
+                    <Link
+                      href={`https://t.me/${tokenData?.telegram || ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 grid place-items-center text-white/80"
+                      title="Telegram"
+                    >
+                      <FaTelegramPlane size={18} />
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>

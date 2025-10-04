@@ -3,6 +3,8 @@
  * Following the same pattern as create-token page for direct Viem integration
  */
 
+import { parseTokenMetadata } from "@/utils/tokenMetadata";
+
 export interface TokenData {
   id: string;
   address: string;
@@ -294,13 +296,19 @@ export class TokenDataViemService {
         100
       ).toFixed(3)}`;
 
+      // Parse the combined description to extract metadata
+      const tokenMetadata = parseTokenMetadata(description as string);
+
       const tokenData: TokenData = {
         id: tokenAddress,
         address: tokenAddress,
         name: name as string,
         symbol: symbol as string,
-        description: description as string,
+        description: tokenMetadata.description,
         logoUrl: logoUrl as string,
+        website: tokenMetadata.website,
+        telegram: tokenMetadata.telegram,
+        twitter: tokenMetadata.twitter,
         creator: creator as string,
         launchTime: launchTime as bigint,
         currentPrice: currentPrice as bigint,

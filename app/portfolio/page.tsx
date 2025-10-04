@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { parseTokenMetadata, getTokenDescription } from "@/utils/tokenMetadata";
 
 interface TokenPortfolioItem {
   address: string;
@@ -380,85 +381,137 @@ export default function PortfolioPage() {
     return value.toLocaleString();
   };
 
-  const TokenCard = ({ token }: { token: TokenPortfolioItem }) => (
-    <Card className="bg-gray-50 border-gray-200 hover:bg-gray-100 transition-all duration-200">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {token.logoUrl ? (
-              <Image
-                src={token.logoUrl}
-                alt={token.name}
-                width={40}
-                height={40}
-                className="w-10 h-10 rounded-full"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                {token.symbol.charAt(0)}
+  const TokenCard = ({ token }: { token: TokenPortfolioItem }) => {
+    // Parse the combined description to extract metadata
+    const tokenMetadata = parseTokenMetadata(token.description);
+    
+    return (
+      <Card className="bg-gray-50 border-gray-200 hover:bg-gray-100 transition-all duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {token.logoUrl ? (
+                <Image
+                  src={token.logoUrl}
+                  alt={token.name}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                  {token.symbol.charAt(0)}
+                </div>
+              )}
+              <div>
+                <CardTitle className="text-black text-lg">{token.name}</CardTitle>
+                <p className="text-gray-600 text-sm">{token.symbol}</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+              {token.creator === address ? "Created" : "Holding"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {/* Display token description if available */}
+            {tokenMetadata.description && (
+              <div className="mb-3 p-2 bg-gray-100 rounded">
+                <p className="text-xs text-gray-600 mb-1">Description</p>
+                <p className="text-sm text-gray-800">{tokenMetadata.description}</p>
               </div>
             )}
-            <div>
-              <CardTitle className="text-black text-lg">{token.name}</CardTitle>
-              <p className="text-gray-600 text-sm">{token.symbol}</p>
-            </div>
-          </div>
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-            {token.creator === address ? "Created" : "Holding"}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Balance</span>
-            <span className="text-black font-medium">
-              {formatNumber(token.balance)} {token.symbol}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Current Price</span>
-            <span className="text-black font-medium">
-              {formatCurrency(token.stats.currentPrice)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Value</span>
-            <span className="text-green-600 font-medium">
-              {formatCurrency(token.currentValue)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Market Cap</span>
-            <span className="text-black font-medium">
-              {formatCurrency(token.stats.marketCap)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Holders</span>
-            <span className="text-black font-medium">
-              {formatNumber(token.stats.holderCount)}
-            </span>
-          </div>
-          {token.creator === address && (
+            
+            {/* Display social links if available */}
+            {(tokenMetadata.website || tokenMetadata.telegram || tokenMetadata.twitter) && (
+              <div className="mb-3 p-2 bg-gray-100 rounded">
+                <p className="text-xs text-gray-600 mb-2">Links</p>
+                <div className="flex gap-2">
+                  {tokenMetadata.website && (
+                    <a 
+                      href={tokenMetadata.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      Website
+                    </a>
+                  )}
+                  {tokenMetadata.telegram && (
+                    <a 
+                      href={tokenMetadata.telegram.startsWith('@') ? `https://t.me/${tokenMetadata.telegram.slice(1)}` : tokenMetadata.telegram} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      Telegram
+                    </a>
+                  )}
+                  {tokenMetadata.twitter && (
+                    <a 
+                      href={tokenMetadata.twitter.startsWith('@') ? `https://twitter.com/${tokenMetadata.twitter.slice(1)}` : tokenMetadata.twitter} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      Twitter
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Fees Earned</span>
-              <span className="text-green-600 font-medium">
-                {formatCurrency(token.stats.creatorFees)}
+              <span className="text-gray-600">Balance</span>
+              <span className="text-black font-medium">
+                {formatNumber(token.balance)} {token.symbol}
               </span>
             </div>
-          )}
-        </div>
-        <div className="mt-4 pt-3 border-t border-gray-200">
-          <Link href={`/token/${token.address}`}>
-            <Button variant="outline" size="sm" className="w-full">
-              View Details <ExternalLink className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Current Price</span>
+              <span className="text-black font-medium">
+                {formatCurrency(token.stats.currentPrice)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Value</span>
+              <span className="text-green-600 font-medium">
+                {formatCurrency(token.currentValue)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Market Cap</span>
+              <span className="text-black font-medium">
+                {formatCurrency(token.stats.marketCap)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Holders</span>
+              <span className="text-black font-medium">
+                {formatNumber(token.stats.holderCount)}
+              </span>
+            </div>
+            {token.creator === address && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Fees Earned</span>
+                <span className="text-green-600 font-medium">
+                  {formatCurrency(token.stats.creatorFees)}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <Link href={`/token/${token.address}`}>
+              <Button variant="outline" size="sm" className="w-full">
+                View Details <ExternalLink className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (!isConnected) {
     return (
