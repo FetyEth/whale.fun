@@ -486,7 +486,7 @@ const CreatePage: FC = () => {
           description: formData.description || "Token created via Whale.fun",
           website: formData.website,
           telegram: formData.telegram,
-          twitter: formData.twitter
+          twitter: formData.twitter,
         }),
         logoUrl:
           formData.logoUrl ||
@@ -511,7 +511,7 @@ const CreatePage: FC = () => {
             description: formData.description || "Token created via Whale.fun",
             website: formData.website,
             telegram: formData.telegram,
-            twitter: formData.twitter
+            twitter: formData.twitter,
           }),
           formData.logoUrl ||
             formData.logoPreview ||
@@ -796,83 +796,94 @@ const CreatePage: FC = () => {
                                 </label>
                               </div>
 
-                            {formData.logoFile && (
-                              <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-black/5 text-gray-700">
-                                    <FileText className="w-5 h-5" />
-                                  </span>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{formData.logoFile.name}</p>
-                                    <p className="text-xs text-gray-500 truncate">
-                                      {(formData.logoFile.size / (1024 * 1024)).toFixed(2)}MB
-                                      {" "}| {uploadingLogo ? "Uploading..." : uploadStatus || (formData.logoUrl ? "Uploaded Successfully" : "Pending")}
-                                    </p>
+                              {formData.logoFile && (
+                                <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-black/5 text-gray-700">
+                                      <FileText className="w-5 h-5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {formData.logoFile.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 truncate">
+                                        {(
+                                          formData.logoFile.size /
+                                          (1024 * 1024)
+                                        ).toFixed(2)}
+                                        MB |{" "}
+                                        {uploadingLogo
+                                          ? "Uploading..."
+                                          : uploadStatus ||
+                                            (formData.logoUrl
+                                              ? "Uploaded Successfully"
+                                              : "Pending")}
+                                      </p>
+                                    </div>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={removeLogo}
+                                    className="inline-flex items-center justify-center rounded-xl border border-gray-200 p-2 text-gray-600 hover:bg-black/5 hover:text-red-600"
+                                    aria-label="Remove file"
+                                  >
+                                    <Trash2 className="w-5 h-5" />
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={removeLogo}
-                                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 p-2 text-gray-600 hover:bg-black/5 hover:text-red-600"
-                                  aria-label="Remove file"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </div>
-                            )}
-                            <InputField
-                              label="Token Name"
-                              id="tokenName"
-                              placeholder="Your Token"
-                              value={formData.tokenName}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Token Symbol"
-                              id="tokenSymbol"
-                              placeholder="$ YOURCOIN"
-                              value={formData.tokenSymbol}
-                              onChange={handleChange}
-                            />
-                          </div>
-                        )}
+                              )}
+                              <InputField
+                                label="Token Name"
+                                id="tokenName"
+                                placeholder="Your Token"
+                                value={formData.tokenName}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Token Symbol"
+                                id="tokenSymbol"
+                                placeholder="$ YOURCOIN"
+                                value={formData.tokenSymbol}
+                                onChange={handleChange}
+                              />
+                            </div>
+                          )}
 
-                        {/** Step 2 (Supply & Fees) removed; values are hardcoded via defaults in formData */}
+                          {/** Step 2 (Supply & Fees) removed; values are hardcoded via defaults in formData */}
 
-                        {currentStep === 2 && (
-                          <div className="space-y-6">
-                            <InputField
-                              label="Description"
-                              id="description"
-                              placeholder="What's the thesis, utility, or story?"
-                              value={formData.description}
-                              onChange={handleChange}
-                              isTextArea
-                              maxLength={280}
-                              infoText="max 280 chars"
-                            />
-                            <InputField
-                              label="Website URL (optional)"
-                              id="website"
-                              placeholder="https://..."
-                              value={formData.website}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Telegram (optional)"
-                              id="telegram"
-                              placeholder="@yourchannel"
-                              value={formData.telegram}
-                              onChange={handleChange}
-                            />
-                            <InputField
-                              label="Twitter/X (optional)"
-                              id="twitter"
-                              placeholder="@handle"
-                              value={formData.twitter}
-                              onChange={handleChange}
-                            />
-                            {/* <InputField
+                          {currentStep === 2 && (
+                            <div className="space-y-6">
+                              <InputField
+                                label="Description"
+                                id="description"
+                                placeholder="What's the thesis, utility, or story?"
+                                value={formData.description}
+                                onChange={handleChange}
+                                isTextArea
+                                maxLength={280}
+                                infoText="max 280 chars"
+                              />
+                              <InputField
+                                label="Website URL (optional)"
+                                id="website"
+                                placeholder="https://..."
+                                value={formData.website}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Telegram (optional)"
+                                id="telegram"
+                                placeholder="@yourchannel"
+                                value={formData.telegram}
+                                onChange={handleChange}
+                              />
+                              <InputField
+                                label="Twitter/X (optional)"
+                                id="twitter"
+                                placeholder="@handle"
+                                value={formData.twitter}
+                                onChange={handleChange}
+                              />
+                              {/* <InputField
                               label="Logo URL (optional)"
                               id="logoUrl"
                               placeholder="https://example.com/logo.png"
@@ -880,8 +891,8 @@ const CreatePage: FC = () => {
                               onChange={handleChange}
                               infoText="Direct link to your token logo image"
                             /> */}
-                          </div>
-                        )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-4 mt-6">

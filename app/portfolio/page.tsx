@@ -384,7 +384,7 @@ export default function PortfolioPage() {
   const TokenCard = ({ token }: { token: TokenPortfolioItem }) => {
     // Parse the combined description to extract metadata
     const tokenMetadata = parseTokenMetadata(token.description);
-    
+
     return (
       <Card className="bg-gray-50 border-gray-200 hover:bg-gray-100 transition-all duration-200">
         <CardHeader className="pb-3">
@@ -404,7 +404,9 @@ export default function PortfolioPage() {
                 </div>
               )}
               <div>
-                <CardTitle className="text-black text-lg">{token.name}</CardTitle>
+                <CardTitle className="text-black text-lg">
+                  {token.name}
+                </CardTitle>
                 <p className="text-gray-600 text-sm">{token.symbol}</p>
               </div>
             </div>
@@ -419,19 +421,23 @@ export default function PortfolioPage() {
             {tokenMetadata.description && (
               <div className="mb-3 p-2 bg-gray-100 rounded">
                 <p className="text-xs text-gray-600 mb-1">Description</p>
-                <p className="text-sm text-gray-800">{tokenMetadata.description}</p>
+                <p className="text-sm text-gray-800">
+                  {tokenMetadata.description}
+                </p>
               </div>
             )}
-            
+
             {/* Display social links if available */}
-            {(tokenMetadata.website || tokenMetadata.telegram || tokenMetadata.twitter) && (
+            {(tokenMetadata.website ||
+              tokenMetadata.telegram ||
+              tokenMetadata.twitter) && (
               <div className="mb-3 p-2 bg-gray-100 rounded">
                 <p className="text-xs text-gray-600 mb-2">Links</p>
                 <div className="flex gap-2">
                   {tokenMetadata.website && (
-                    <a 
-                      href={tokenMetadata.website} 
-                      target="_blank" 
+                    <a
+                      href={tokenMetadata.website}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
                     >
@@ -439,9 +445,13 @@ export default function PortfolioPage() {
                     </a>
                   )}
                   {tokenMetadata.telegram && (
-                    <a 
-                      href={tokenMetadata.telegram.startsWith('@') ? `https://t.me/${tokenMetadata.telegram.slice(1)}` : tokenMetadata.telegram} 
-                      target="_blank" 
+                    <a
+                      href={
+                        tokenMetadata.telegram.startsWith("@")
+                          ? `https://t.me/${tokenMetadata.telegram.slice(1)}`
+                          : tokenMetadata.telegram
+                      }
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
                     >
@@ -449,9 +459,15 @@ export default function PortfolioPage() {
                     </a>
                   )}
                   {tokenMetadata.twitter && (
-                    <a 
-                      href={tokenMetadata.twitter.startsWith('@') ? `https://twitter.com/${tokenMetadata.twitter.slice(1)}` : tokenMetadata.twitter} 
-                      target="_blank" 
+                    <a
+                      href={
+                        tokenMetadata.twitter.startsWith("@")
+                          ? `https://twitter.com/${tokenMetadata.twitter.slice(
+                              1
+                            )}`
+                          : tokenMetadata.twitter
+                      }
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
                     >
@@ -461,7 +477,7 @@ export default function PortfolioPage() {
                 </div>
               </div>
             )}
-            
+
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Balance</span>
               <span className="text-black font-medium">

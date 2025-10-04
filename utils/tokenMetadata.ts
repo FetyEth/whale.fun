@@ -15,14 +15,14 @@ export function combineTokenMetadata(metadata: TokenMetadata): string {
     description: metadata.description || "",
     website: metadata.website || "",
     telegram: metadata.telegram || "",
-    twitter: metadata.twitter || ""
+    twitter: metadata.twitter || "",
   };
-  
+
   // Only include non-empty fields to keep the string clean
   const filtered = Object.fromEntries(
     Object.entries(combined).filter(([_, value]) => value.trim() !== "")
   );
-  
+
   return JSON.stringify(filtered);
 }
 
@@ -33,12 +33,12 @@ export function parseTokenMetadata(combinedDescription: string): TokenMetadata {
   try {
     // Try to parse as JSON first
     const parsed = JSON.parse(combinedDescription);
-    
+
     return {
       description: parsed.description || "",
       website: parsed.website || "",
       telegram: parsed.telegram || "",
-      twitter: parsed.twitter || ""
+      twitter: parsed.twitter || "",
     };
   } catch (error) {
     // If not valid JSON, treat the entire string as description
@@ -46,7 +46,7 @@ export function parseTokenMetadata(combinedDescription: string): TokenMetadata {
       description: combinedDescription || "",
       website: "",
       telegram: "",
-      twitter: ""
+      twitter: "",
     };
   }
 }
@@ -71,6 +71,6 @@ export function getTokenSocialLinks(combinedDescription: string): {
   return {
     website: metadata.website,
     telegram: metadata.telegram,
-    twitter: metadata.twitter
+    twitter: metadata.twitter,
   };
 }
