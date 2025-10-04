@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import Link from "next/link";
+import { formatNumber, formatCurrency } from "@/utils/formatters";
 
 const TokenStat = ({
   name,
@@ -831,7 +832,7 @@ const TradePage = () => {
 
       // Do not set userBalance here to avoid racing with wagmi's useBalance which is reactive and accurate
       // setUserBalance(formatEther(ethBalance));
-      // Store token balance as bigint and format it like portfolio page
+      // Store token balance as bigint and format it properly
       const tokenBalanceBigInt = tokenBalance as bigint;
       setUserTokenBalanceRaw(tokenBalanceBigInt);
       setUserTokenBalance(tokenBalanceBigInt.toLocaleString());
@@ -2174,7 +2175,7 @@ const TradePage = () => {
                             if (label === "Max") {
                               const maxAmount =
                                 tradeMode === "Buy"
-                                  ? (parseFloat(userBalance) * 0.95).toFixed(4)
+                                  ? (parseFloat(userBalance) * 0.95).toString()
                                   : formatEther(userTokenBalanceRaw);
                               setAmount(maxAmount);
                             } else {
@@ -2183,7 +2184,7 @@ const TradePage = () => {
                                 tradeMode === "Buy"
                                   ? parseFloat(userBalance)
                                   : Number(formatEther(userTokenBalanceRaw));
-                              setAmount((base * pct).toFixed(4));
+                              setAmount((base * pct).toString());
                             }
                           }}
                           className="hover:text-white"
@@ -2217,7 +2218,9 @@ const TradePage = () => {
                             <span>You&apos;ll receive:</span>
                             <span className="text-white font-medium">
                               {buyQuote.tokensReceived
-                                ? formatEther(buyQuote.tokensReceived)
+                                ? formatNumber(
+                                    Number(formatEther(buyQuote.tokensReceived))
+                                  )
                                 : "Calculating..."}{" "}
                               {tokenData?.symbol}
                             </span>
@@ -2247,7 +2250,10 @@ const TradePage = () => {
                           <div className="flex justify-between text-white/60">
                             <span>You&apos;ll receive:</span>
                             <span className="text-white font-medium">
-                              {formatEther(sellQuote.proceeds)} ETH
+                              {formatCurrency(
+                                Number(formatEther(sellQuote.proceeds)),
+                                { currency: "ETH" }
+                              )}
                             </span>
                           </div>
                           <div className="flex justify-between text-white/60">
@@ -2543,7 +2549,7 @@ const TradePage = () => {
                       className="opacity-70"
                     />
                     <div className="text-base font-medium">
-                      {Number(tokenData.holderCount).toLocaleString()}
+                      {formatNumber(Number(tokenData.holderCount))}
                     </div>
                   </div>
                 </div>
