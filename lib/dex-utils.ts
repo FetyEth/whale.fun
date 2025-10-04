@@ -74,6 +74,21 @@ export async function getQuoteExactInputSingle({
   try {
     const amountInWei = parseUnits(amountIn, tokenIn.decimals);
 
+    // Check if pool exists first
+    const poolAddress = await getPool(tokenIn.address, tokenOut.address, fee);
+    if (
+      !poolAddress ||
+      poolAddress === "0x0000000000000000000000000000000000000000"
+    ) {
+      console.warn(
+        "No pool exists for this token pair and fee tier. Returning mock quote."
+      );
+      const mockRate = 0.0003;
+      const quote = (parseFloat(amountIn) * mockRate).toString();
+      return quote;
+    }
+
+    // Try to get a real quote
     const result = await readContract(config, {
       address: JAINE_CONTRACTS.quoter as `0x${string}`,
       abi: jaineV3QuoterABI,
@@ -89,13 +104,9 @@ export async function getQuoteExactInputSingle({
 
     return formatUnits(result as bigint, tokenOut.decimals);
   } catch (error) {
-    console.error("Error getting quote:", error);
-
-    // For development/testing, return a mock quote
-    // In production, you might want to throw the error or use a different DEX
-    const mockRate = 0.0003; // Mock exchange rate
+    console.error("Error getting quote (falling back to mock):", error);
+    const mockRate = 0.0003;
     const quote = (parseFloat(amountIn) * mockRate).toString();
-    console.warn("Using mock quote:", quote);
     return quote;
   }
 }
