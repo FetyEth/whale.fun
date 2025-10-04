@@ -10,13 +10,34 @@ interface TokenGridProps {
 
 const TokenGrid = ({ tokens }: TokenGridProps) => {
   // Convert TokenData to the format expected by TokenCard
+  const DEFAULT_IMG =
+    'https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um';
+
+  const toHttpImage = (url?: string): string => {
+    if (!url || !url.trim()) return DEFAULT_IMG;
+    const trimmed = url.trim();
+    if (trimmed.startsWith('ipfs://')) {
+      return `https://ipfs.io/ipfs/${trimmed.slice(7)}`;
+    }
+    if (trimmed.startsWith('ipfs/')) {
+      return `https://ipfs.io/${trimmed}`;
+    }
+    // If it doesn't look like a normal URL or data URI, use default
+    if (
+      !/^https?:\/\//i.test(trimmed) &&
+      !/^data:image\//i.test(trimmed) &&
+      !/^\//.test(trimmed)
+    ) {
+      return DEFAULT_IMG;
+    }
+    return trimmed;
+  };
+
   const formattedTokens = tokens.map((token) => ({
     id: token.id,
     name: token.name,
     symbol: token.symbol,
-    image:
-      token.logoUrl ||
-      'https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um',
+    image: toHttpImage(token.logoUrl),
     priceChange: token.priceChange,
     priceValue: token.priceValue,
     currentPrice: tokenDataService.formatCurrentPrice(token.currentPrice),
