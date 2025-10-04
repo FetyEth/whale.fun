@@ -1,0 +1,97 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      { "name": "_factory", "type": "address", "internalType": "address" },
+      { "name": "_WETH9", "type": "address", "internalType": "address" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "WETH9",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "factory",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "jaineV3SwapCallback",
+    "type": "function",
+    "inputs": [
+      { "name": "amount0Delta", "type": "int256", "internalType": "int256" },
+      { "name": "amount1Delta", "type": "int256", "internalType": "int256" },
+      { "name": "path", "type": "bytes", "internalType": "bytes" }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "name": "quoteExactInput",
+    "type": "function",
+    "inputs": [
+      { "name": "path", "type": "bytes", "internalType": "bytes" },
+      { "name": "amountIn", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "amountOut", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "quoteExactInputSingle",
+    "type": "function",
+    "inputs": [
+      { "name": "tokenIn", "type": "address", "internalType": "address" },
+      { "name": "tokenOut", "type": "address", "internalType": "address" },
+      { "name": "fee", "type": "uint24", "internalType": "uint24" },
+      { "name": "amountIn", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "sqrtPriceLimitX96",
+        "type": "uint160",
+        "internalType": "uint160"
+      }
+    ],
+    "outputs": [
+      { "name": "amountOut", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "quoteExactOutput",
+    "type": "function",
+    "inputs": [
+      { "name": "path", "type": "bytes", "internalType": "bytes" },
+      { "name": "amountOut", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "amountIn", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "quoteExactOutputSingle",
+    "type": "function",
+    "inputs": [
+      { "name": "tokenIn", "type": "address", "internalType": "address" },
+      { "name": "tokenOut", "type": "address", "internalType": "address" },
+      { "name": "fee", "type": "uint24", "internalType": "uint24" },
+      { "name": "amountOut", "type": "uint256", "internalType": "uint256" },
+      {
+        "name": "sqrtPriceLimitX96",
+        "type": "uint160",
+        "internalType": "uint160"
+      }
+    ],
+    "outputs": [
+      { "name": "amountIn", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "nonpayable"
+  }
+]

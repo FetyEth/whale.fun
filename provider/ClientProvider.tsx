@@ -33,7 +33,7 @@ const zeroGNetwork = {
   testnet: true,
 } as const;
 
-const config = getDefaultConfig({
+export const config = getDefaultConfig({
   appName: "Whale.fun",
   projectId: "YOUR_PROJECT_ID",
   chains: [zeroGNetwork],
