@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
+import { getBlockchainConnection } from "@/utils/Blockchain";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  formatNumber,
+  formatCurrency,
+  formatTokenBalance,
+} from "@/utils/formatters";
 import Image from "next/image";
 import { parseTokenMetadata, getTokenDescription } from "@/utils/tokenMetadata";
 
@@ -482,14 +488,6 @@ export default function PortfolioPage() {
     }
   }, [isConnected, address, loadPortfolioData]);
 
-  const formatCurrency = (value: bigint) => {
-    return `${parseFloat(formatEther(value)).toFixed(4)} ETH`;
-  };
-
-  const formatNumber = (value: bigint) => {
-    return value.toLocaleString();
-  };
-
   const TokenCard = ({ token }: { token: TokenPortfolioItem }) => {
     // Parse the combined description to extract metadata
     const tokenMetadata = parseTokenMetadata(token.description);
@@ -596,32 +594,41 @@ export default function PortfolioPage() {
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Current Price</span>
               <span className="text-black font-medium">
-                {formatCurrency(token.stats.currentPrice)}
+                {formatCurrency(Number(formatEther(token.stats.currentPrice)), {
+                  currency: "ETH",
+                })}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Value</span>
               <span className="text-green-600 font-medium">
-                {formatCurrency(token.currentValue)}
+                {formatCurrency(Number(formatEther(token.currentValue)), {
+                  currency: "ETH",
+                })}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Market Cap</span>
               <span className="text-black font-medium">
-                {formatCurrency(token.stats.marketCap)}
+                {formatCurrency(Number(formatEther(token.stats.marketCap)), {
+                  currency: "ETH",
+                })}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Holders</span>
               <span className="text-black font-medium">
-                {formatNumber(token.stats.holderCount)}
+                {formatNumber(Number(token.stats.holderCount))}
               </span>
             </div>
             {token.creator === address && (
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Fees Earned</span>
                 <span className="text-green-600 font-medium">
-                  {formatCurrency(token.stats.creatorFees)}
+                  {formatCurrency(
+                    Number(formatEther(token.stats.creatorFees)),
+                    { currency: "ETH" }
+                  )}
                 </span>
               </div>
             )}
