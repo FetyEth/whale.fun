@@ -14,7 +14,9 @@ const TokenGrid = ({ tokens }: TokenGridProps) => {
     id: token.id,
     name: token.name,
     symbol: token.symbol,
-    image: token.logoUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0Y1RjVGNSIvPgo8dGV4dCB4PSIyNCIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2QjcyODAiPktJVFRPPC90ZXh0Pgo8L3N2Zz4K',
+    image:
+      token.logoUrl ||
+      'https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um',
     priceChange: token.priceChange,
     priceValue: token.priceValue,
     currentPrice: tokenDataService.formatCurrentPrice(token.currentPrice),

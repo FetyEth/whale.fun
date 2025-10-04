@@ -491,7 +491,7 @@ const CreatePage: FC = () => {
         logoUrl:
           formData.logoUrl ||
           formData.logoPreview ||
-          "https://example.com/logo.png",
+          "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um",
         value: totalCost.toString(),
       });
 
@@ -515,7 +515,7 @@ const CreatePage: FC = () => {
           }),
           formData.logoUrl ||
             formData.logoPreview ||
-            "https://example.com/logo.png",
+            "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um",
         ],
         value: totalCost,
         chain: chainConfig.chain,

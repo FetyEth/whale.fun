@@ -23,7 +23,15 @@ const TokenInfoCard: React.FC<TokenInfoCardProps> = ({ tokenData }) => {
   return (
     <div className="bg-gray-900 text-white rounded-2xl p-4 space-y-4">
       <div className="relative aspect-square w-full rounded-lg overflow-hidden">
-        <Image src={tokenData.logoUrl} alt={tokenData.name} layout="fill" objectFit="cover" />
+        <Image
+          src={
+            tokenData.logoUrl ||
+            "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+          }
+          alt={tokenData.name}
+          layout="fill"
+          objectFit="cover"
+        />
       </div>
 
       <div className="space-y-2">
