@@ -108,8 +108,8 @@ export default function PortfolioPage() {
         console.warn(`Wrong network detected. Expected 16602, got ${chainId}`);
         try {
           await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x40da' }], // 16602 in hex
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x40da" }], // 16602 in hex
           });
           console.log("Switched to 0G Testnet");
         } catch (switchError) {
@@ -186,7 +186,9 @@ export default function PortfolioPage() {
 
       // If we couldn't get tokens from factory, try to scan for common token patterns
       if (allTokenAddresses.length === 0) {
-        console.log("No tokens found from factory, using fallback token detection...");
+        console.log(
+          "No tokens found from factory, using fallback token detection..."
+        );
         // For now, we'll use an empty array, but you could add logic here to:
         // 1. Check known token addresses from your app's database
         // 2. Scan recent blockchain events for token creations by this user
@@ -387,26 +389,54 @@ export default function PortfolioPage() {
       );
 
       // Filter tokens created by the user using the addresses from getCreatorTokens
-      const createdTokensData = allTokensData.filter(
-        (token) => createdTokenAddresses.includes(token.address)
+      const createdTokensData = allTokensData.filter((token) =>
+        createdTokenAddresses.includes(token.address)
       );
 
       // If no created tokens found from factory but we have tokens with high balance,
       // also check by reading creator field from contract as fallback
       let fallbackCreatedTokens: TokenPortfolioItem[] = [];
       if (createdTokensData.length === 0 && allTokensData.length > 0) {
-        console.log("No created tokens found from factory, checking by creator field...");
+        console.log(
+          "No created tokens found from factory, checking by creator field..."
+        );
         fallbackCreatedTokens = allTokensData.filter(
           (token) => token.creator === address
         );
-        console.log("Fallback created tokens:", fallbackCreatedTokens.map(t => ({ address: t.address, name: t.name })));
+        console.log(
+          "Fallback created tokens:",
+          fallbackCreatedTokens.map((t) => ({
+            address: t.address,
+            name: t.name,
+          }))
+        );
       }
 
-      const finalCreatedTokens = createdTokensData.length > 0 ? createdTokensData : fallbackCreatedTokens;
+      const finalCreatedTokens =
+        createdTokensData.length > 0
+          ? createdTokensData
+          : fallbackCreatedTokens;
 
-      console.log("All tokens data:", allTokensData.map(t => ({ address: t.address, name: t.name, creator: t.creator })));
-      console.log("Final created tokens data:", finalCreatedTokens.map(t => ({ address: t.address, name: t.name })));
-      console.log("Tokens with balance:", tokensWithBalance.map(t => ({ address: t.address, name: t.name, balance: t.balance.toString() })));
+      console.log(
+        "All tokens data:",
+        allTokensData.map((t) => ({
+          address: t.address,
+          name: t.name,
+          creator: t.creator,
+        }))
+      );
+      console.log(
+        "Final created tokens data:",
+        finalCreatedTokens.map((t) => ({ address: t.address, name: t.name }))
+      );
+      console.log(
+        "Tokens with balance:",
+        tokensWithBalance.map((t) => ({
+          address: t.address,
+          name: t.name,
+          balance: t.balance.toString(),
+        }))
+      );
 
       // Calculate portfolio statistics
       const totalValue = tokensWithBalance.reduce(
