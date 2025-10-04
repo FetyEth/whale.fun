@@ -7,7 +7,6 @@ import { parseEther, formatEther } from "ethers";
 import {
   getBlockchainConnection,
   validateNetwork,
-  switchNetwork,
   SUPPORTED_NETWORKS,
 } from "@/utils/Blockchain";
 import { combineTokenMetadata } from "@/utils/tokenMetadata";
