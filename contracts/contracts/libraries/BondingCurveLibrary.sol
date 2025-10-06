@@ -51,15 +51,67 @@ library BondingCurveLibrary {
         require(curve.currentSupply + tokenAmount <= curve.totalSupply, "Exceeds total supply");
         require(tokenAmount > 0, "Token amount must be greater than 0");
         
-        // Get start price
-        uint256 startPrice = getCurrentPrice(curve);
+        // Whale.fun Optimal Hybrid Approach
+        // Phase 1: Exponential (first 20% - early bird rewards)
+        // Phase 2: Linear (remaining 80% - fair community pricing)
         
-        // Calculate end price (temporarily update supply)
-        CurveConfig memory tempCurve = curve;
-        tempCurve.currentSupply = curve.currentSupply + tokenAmount;
-        uint256 endPrice = getCurrentPrice(tempCurve);
+        uint256 totalCost = 0;
+        uint256 remainingTokens = tokenAmount;
+        uint256 currentSupply = curve.currentSupply;
         
-        // Use average price for cost calculation (good approximation, low gas)
+        // Process exponential phase if applicable
+        if (currentSupply < curve.exponentialPhase && remainingTokens > 0) {
+            uint256 exponentialTokens = curve.exponentialPhase - currentSupply;
+            if (exponentialTokens > remainingTokens) {
+                exponentialTokens = remainingTokens;
+            }
+            
+            // Calculate cost for exponential phase
+            uint256 exponentialCost = _calculateExponentialCost(curve, currentSupply, exponentialTokens);
+            totalCost += exponentialCost;
+            remainingTokens -= exponentialTokens;
+            currentSupply += exponentialTokens;
+        }
+        
+        // Process linear phase if applicable
+        if (remainingTokens > 0) {
+            uint256 linearCost = _calculateLinearCost(curve, currentSupply, remainingTokens);
+            totalCost += linearCost;
+        }
+        
+        return totalCost;
+    }
+    
+    function _calculateExponentialCost(CurveConfig memory curve, uint256 startSupply, uint256 tokenAmount) 
+        private pure returns (uint256) 
+    {
+        // Exponential phase: price = basePrice * (1.5)^progress
+        uint256 startProgress = (startSupply * PRECISION) / curve.exponentialPhase;
+        uint256 endProgress = ((startSupply + tokenAmount) * PRECISION) / curve.exponentialPhase;
+        
+        uint256 startPrice = (curve.basePrice * _simplePow(15e17, startProgress)) / PRECISION; // 1.5x growth
+        uint256 endPrice = (curve.basePrice * _simplePow(15e17, endProgress)) / PRECISION;
+        
+        // Use average price for cost calculation
+        uint256 averagePrice = (startPrice + endPrice) / 2;
+        return (averagePrice * tokenAmount) / PRECISION;
+    }
+    
+    function _calculateLinearCost(CurveConfig memory curve, uint256 startSupply, uint256 tokenAmount) 
+        private pure returns (uint256) 
+    {
+        // Linear phase: price increases linearly from transitionPrice to finalPrice
+        uint256 linearStart = startSupply - curve.exponentialPhase;
+        uint256 maxLinearSupply = curve.totalSupply - curve.exponentialPhase;
+        
+        uint256 startProgress = (linearStart * PRECISION) / maxLinearSupply;
+        uint256 endProgress = ((linearStart + tokenAmount) * PRECISION) / maxLinearSupply;
+        
+        uint256 priceRange = curve.finalPrice - curve.transitionPrice;
+        uint256 startPrice = curve.transitionPrice + (priceRange * startProgress) / PRECISION;
+        uint256 endPrice = curve.transitionPrice + (priceRange * endProgress) / PRECISION;
+        
+        // Use average price for cost calculation
         uint256 averagePrice = (startPrice + endPrice) / 2;
         return (averagePrice * tokenAmount) / PRECISION;
     }

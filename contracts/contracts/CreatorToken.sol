@@ -22,6 +22,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     address public immutable creator;
     address public immutable factory;
     address public immutable whaleToken;
+    address public immutable protocolTreasury;
     uint256 public immutable tokenLaunchTime;
     
     // MAINNET: AMM reserves for x*y=k
@@ -53,9 +54,16 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     
     // Security and liquidity
     uint256 public liquidityLockPeriod;
-    bool public override isLiquidityLocked;
     uint256 public totalFeeCollected;
     uint256 public creatorFeePercent;
+    bool public isLiquidityLocked;
+    
+    // Streaming integration
+    bool public isStreamingLive;
+    uint256 public streamStartTime;
+    uint256 public streamEndTime;
+    string public streamRoomId; // Huddle01 room ID
+    uint256 public constant STREAMING_BONUS = 15; // 15% bonus during streams
     
     // Advanced metrics for graduation and transparency
     mapping(address => uint256) public holderBalances;
@@ -103,6 +111,11 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     event MEVAttemptBlocked(address indexed user, string reason, uint256 timestamp);
     event PriceImpactWarning(address indexed user, uint256 impact, uint256 timestamp);
     
+    // Streaming Events
+    event StreamStarted(address indexed creator, string roomId, uint256 timestamp);
+    event StreamEnded(address indexed creator, string roomId, uint256 timestamp);
+    event StreamingBonusApplied(address indexed buyer, uint256 bonusAmount, uint256 timestamp);
+    
     // FIXED: Add comprehensive security events
     event PriceUpdate(uint256 oldPrice, uint256 newPrice, uint256 timestamp);
     event LargeTrade(address indexed trader, uint256 amount, uint256 price, string tradeType);
@@ -115,6 +128,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     event TopTraderUpdated(address indexed trader, uint256 totalVolume, uint256 rank);
     event SuspiciousTraderFlagged(address indexed trader, string reason);
     event HolderMilestone(uint256 holderCount, uint256 timestamp);
+    event CreatorFeesWithdrawn(address indexed creator, uint256 amount, uint256 timestamp);
     
     // Modifiers
     modifier mevProtected(uint256 amount) {
@@ -148,6 +162,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         uint256 targetMarketCap,
         address _creator,
         address _whaleToken,
+        address _protocolTreasury,
         uint256 /* _creatorFeePercent */,
         string memory _description,
         string memory _logoUrl,
@@ -157,6 +172,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         creator = _creator;
         factory = msg.sender;
         whaleToken = _whaleToken;
+        protocolTreasury = _protocolTreasury;
         totalSupply_ = _totalSupply;
         creatorFeePercent = 0; // No creator fee for mainnet AMM flow
         description = _description;
@@ -173,6 +189,10 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         
         // Mint total supply to this contract for bonding curve
         _mint(address(this), _totalSupply);
+        
+        // Initialize AMM reserves - CRITICAL FIX
+        tokenReserve = _totalSupply; // All tokens start in the reserve
+        ethReserve = 0; // No ETH initially
         
         // Initialize price tracking
         priceHistory.push(currentPrice);
@@ -207,9 +227,19 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         // SECURITY: Check for rapid trading (potential bot/manipulation)
         _checkRapidTrading(msg.sender);
         
-        // Calculate 0.3% fee in ETH
+        // Calculate 0.3% fee in ETH with 50/50 split
         uint256 fee = (ethIn * TRADING_FEE) / FEE_DENOMINATOR;
+        uint256 protocolFee = fee / 2;
+        uint256 creatorFee = fee - protocolFee;
         uint256 ethAfterFee = ethIn - fee;
+        
+        // Distribute fees immediately (50/50 split)
+        if (protocolFee > 0) {
+            payable(protocolTreasury).transfer(protocolFee);
+        }
+        if (creatorFee > 0) {
+            payable(creator).transfer(creatorFee);
+        }
         
         // AMM calculation: x * y = k
         // tokensOut = tokenReserve - (ethReserve * tokenReserve) / (ethReserve + ethAfterFee)
@@ -244,7 +274,11 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         
         // Update price from new reserves
         uint256 oldPrice = currentPrice;
-        currentPrice = (ethReserve * 1e18) / tokenReserve;
+        if (tokenReserve > 0) {
+            currentPrice = (ethReserve * 1e18) / tokenReserve;
+        } else {
+            currentPrice = 0; // No tokens left, price is 0
+        }
         marketCap = totalSold * currentPrice / 1e18;
         
         // MAINNET: Record trade and update metrics
@@ -372,9 +406,19 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         uint256 ethOut = ethReserve - 
             (ethReserve * tokenReserve) / (tokenReserve + tokenAmount);
         
-        // Calculate 0.3% fee in ETH
+        // Calculate 0.3% fee in ETH with 50/50 split
         uint256 fee = (ethOut * TRADING_FEE) / FEE_DENOMINATOR;
+        uint256 protocolFee = fee / 2;
+        uint256 creatorFee = fee - protocolFee;
         uint256 ethAfterFee = ethOut - fee;
+        
+        // Distribute fees immediately (50/50 split)
+        if (protocolFee > 0) {
+            payable(protocolTreasury).transfer(protocolFee);
+        }
+        if (creatorFee > 0) {
+            payable(creator).transfer(creatorFee);
+        }
         
         require(ethAfterFee >= minEthOut, "Insufficient output amount");
         require(ethAfterFee <= ethReserve, "Insufficient ETH liquidity");
@@ -399,7 +443,11 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         
         // Update price from new reserves
         uint256 oldPrice = currentPrice;
-        currentPrice = (ethReserve * 1e18) / tokenReserve;
+        if (tokenReserve > 0) {
+            currentPrice = (ethReserve * 1e18) / tokenReserve;
+        } else {
+            currentPrice = 0; // No tokens left, price is 0
+        }
         marketCap = totalSold * currentPrice / 1e18;
         
         // MAINNET: Record trade and update metrics
@@ -635,7 +683,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         return string(buffer);
     }
     
-    function claimCreatorFees() external override {
+    function withdrawCreatorFees() external nonReentrant {
         require(msg.sender == creator, "Only creator");
         require(totalFeeCollected > 0, "No fees");
         
@@ -644,19 +692,63 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         
         payable(creator).transfer(feeAmount);
         
-        emit CreatorFeeClaimed(creator, feeAmount);
+        emit CreatorFeesWithdrawn(creator, feeAmount, block.timestamp);
         emit CreatorAction(creator, "fee_claimed", feeAmount); // FIXED: Additional logging
+    }
+    
+    function claimCreatorFees() external override nonReentrant {
+        require(msg.sender == creator, "Only creator");
+        require(totalFeeCollected > 0, "No fees");
+        
+        uint256 feeAmount = totalFeeCollected;
+        totalFeeCollected = 0;
+        
+        payable(creator).transfer(feeAmount);
+        
+        emit CreatorFeesWithdrawn(creator, feeAmount, block.timestamp);
+        emit CreatorAction(creator, "fee_claimed", feeAmount);
     }
     
     function lockLiquidity(uint256 lockPeriod) external override {
         require(msg.sender == creator, "Only creator");
         require(!isLiquidityLocked, "Already locked");
-        require(lockPeriod >= 7 days, "Min 7 days");
         
         liquidityLockPeriod = lockPeriod;
         isLiquidityLocked = true;
         
         emit LiquidityLocked(lockPeriod);
+    }
+    
+    // Streaming Integration Functions
+    function startStream(string memory roomId) external {
+        require(msg.sender == creator, "Only creator can start stream");
+        require(!isStreamingLive, "Stream already live");
+        require(holderCount >= 5, "Need at least 5 holders to stream");
+        
+        isStreamingLive = true;
+        streamStartTime = block.timestamp;
+        streamRoomId = roomId;
+        
+        emit StreamStarted(creator, roomId, block.timestamp);
+    }
+    
+    function endStream() external {
+        require(msg.sender == creator, "Only creator can end stream");
+        require(isStreamingLive, "No active stream");
+        
+        isStreamingLive = false;
+        streamEndTime = block.timestamp;
+        
+        emit StreamEnded(creator, streamRoomId, block.timestamp);
+    }
+    
+    function getStreamingPrice(uint256 tokenAmount) external view returns (uint256) {
+        // Use bonding curve library to calculate base cost
+        uint256 basePrice = BondingCurveLibrary.calculateBuyCost(curveConfig, tokenAmount);
+        if (isStreamingLive) {
+            return basePrice * (100 + STREAMING_BONUS) / 100; // 15% bonus
+        }
+        return basePrice;
     }
     
     function getTokenStats() external view override returns (

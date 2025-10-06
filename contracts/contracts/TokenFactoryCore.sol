@@ -23,6 +23,7 @@ contract TokenFactoryCore is
     address public devProfileManager;
     address public graduationManager;
     address public creatorTokenFactory;
+    address public protocolTreasury;
     
     address[] public allTokens;
     mapping(address => address[]) public creatorTokens;
@@ -43,7 +44,8 @@ contract TokenFactoryCore is
         address _whaleToken,
         address _devProfileManager,
         address _graduationManager,
-        address _creatorTokenFactory
+        address _creatorTokenFactory,
+        address _protocolTreasury
     ) public initializer {
         __ReentrancyGuard_init();
         __Ownable_init(msg.sender);
@@ -53,6 +55,7 @@ contract TokenFactoryCore is
         devProfileManager = _devProfileManager;
         graduationManager = _graduationManager;
         creatorTokenFactory = _creatorTokenFactory;
+        protocolTreasury = _protocolTreasury;
         maxTokensPerCreator = 10;
     }
 
@@ -79,8 +82,8 @@ contract TokenFactoryCore is
         // Deploy new CreatorToken via factory
         (bool success, bytes memory result) = creatorTokenFactory.call(
             abi.encodeWithSignature(
-                "deployToken(string,string,uint256,uint256,address,address,uint256,string,string,uint256,uint256)",
-                name, symbol, totalSupply, initialPrice, msg.sender, whaleToken, 0, description, logoUrl, 0, 0
+                "deployToken(string,string,uint256,uint256,address,address,address,uint256,string,string,uint256,uint256)",
+                name, symbol, totalSupply, initialPrice, msg.sender, whaleToken, protocolTreasury, 0, description, logoUrl, 0, 0
             )
         );
         require(success, "F2");
@@ -122,6 +125,10 @@ contract TokenFactoryCore is
         return IDevProfileManager(devProfileManager).getTokenCreator(token);
     }
     
+    function updateCreatorTokenFactory(address newFactory) external onlyOwner {
+        require(newFactory != address(0), "Invalid factory address");
+        creatorTokenFactory = newFactory;
+    }
     
     function withdrawFees() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
