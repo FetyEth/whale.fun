@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./interfaces/IWhaleToken.sol";
+// Interface removed - functionality integrated directly
 import "./libraries/MEVProtectionLibrary.sol";
 
 /**
@@ -14,7 +14,7 @@ import "./libraries/MEVProtectionLibrary.sol";
  * @dev The native platform token for whale.fun - StreamLaunch platform
  * Features: Governance, Staking, Revenue Sharing, Cross-chain compatibility, MEV Protection
  */
-contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, IWhaleToken {
+contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable {
     using MEVProtectionLibrary for MEVProtectionLibrary.MEVConfig;
     using MEVProtectionLibrary for MEVProtectionLibrary.RateLimit;
     
@@ -45,6 +45,10 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
     
     // Additional events not in interface
     event BridgeAuthorized(address indexed bridge, bool authorized);
+    event Staked(address indexed user, uint256 amount, uint256 timestamp);
+    event Unstaked(address indexed user, uint256 amount, uint256 rewards);
+    event RewardsClaimed(address indexed user, uint256 amount);
+    event FeeDistributed(uint256 amount, uint256 timestamp);
     
     // Staking parameters
     uint256 public constant MIN_STAKE_DURATION = 7 days;
@@ -326,7 +330,7 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
     /**
      * @dev Simple vote function for interface compatibility
      */
-    function vote(bytes32 proposalId, bool support) external override {
+    function vote(bytes32 proposalId, bool support) external {
         // Convert bytes32 to uint256 for internal use
         uint256 id = uint256(proposalId);
         VoteChoice choice = support ? VoteChoice.FOR : VoteChoice.AGAINST;

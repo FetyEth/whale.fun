@@ -10,17 +10,24 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200, // Higher runs generally reduce runtime gas (slightly larger bytecode)
+        runs: 1, // Minimum runs for maximum size reduction
+        details: {
+          yul: true,
+          yulDetails: {
+            stackAllocation: true,
+            optimizerSteps: "dhfoDgvulfnTUtnIf[xa[r]scLMcCTUtTOntnfDIulLculVcul [j]Tpeulxa[rul]xa[r]cLgvifCTUca[r]LSsTFOtfDnca[r]Iulc]jmul[jul] VcTOcul jmul"
+          }
+        }
       },
       metadata: {
-        bytecodeHash: "none",
+        bytecodeHash: "none", // Remove metadata hash to save bytes
+        appendCBOR: false     // Remove CBOR metadata
       },
       outputSelection: {
         "*": {
           "*": ["evm.bytecode", "evm.deployedBytecode", "abi"],
         },
       },
-      // Additional size optimizations
       viaIR: true, // Enable IR for better optimization
     },
   },

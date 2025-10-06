@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/IStreamLaunch.sol";
-import "./interfaces/IWhaleToken.sol";
+import "./interfaces/ICreatorToken.sol";
+// IWhaleToken interface removed - functionality integrated directly
 import "./libraries/BondingCurveLibrary.sol";
 import "./libraries/MEVProtectionLibrary.sol";
 import "./libraries/SecurityLibrary.sol";
@@ -14,7 +14,7 @@ import "./libraries/SecurityLibrary.sol";
  * @dev Enhanced creator token with dynamic bonding curves and MEV protection
  */
 contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
-    using BondingCurveLibrary for BondingCurveLibrary.CurveParams;
+    // Removed complex bonding curve - using hybrid approach
     using MEVProtectionLibrary for MEVProtectionLibrary.MEVConfig;
     using SecurityLibrary for SecurityLibrary.RiskMetrics;
     
@@ -24,6 +24,13 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     address public immutable whaleToken;
     uint256 public immutable tokenLaunchTime;
     
+    // MAINNET: AMM reserves for x*y=k
+    uint256 public ethReserve;    // ETH in the pool
+    uint256 public tokenReserve; // Tokens in the pool
+    uint256 public constant TRADING_FEE = 30; // 0.3% in basis points
+    uint256 public constant FEE_DENOMINATOR = 10000;
+    uint256 public constant MAX_TRADE_PERCENT = 500; // 5% max trade size
+    
     // Token metadata
     string public override description;
     string public override logoUrl;
@@ -31,8 +38,8 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     string public override telegramUrl;
     string public override twitterUrl;
     
-    // Bonding curve configuration
-    BondingCurveLibrary.CurveParams public curveParams;
+    // Hybrid bonding curve configuration
+    BondingCurveLibrary.CurveConfig public curveConfig;
     uint256 public totalSupply_;
     uint256 public totalSold;
     uint256 public currentPrice;
@@ -50,7 +57,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     uint256 public totalFeeCollected;
     uint256 public creatorFeePercent;
     
-    // Advanced metrics
+    // Advanced metrics for graduation and transparency
     mapping(address => uint256) public holderBalances;
     uint256 public holderCount;
     uint256 public dailyVolume;
@@ -58,10 +65,56 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     uint256[] public priceHistory;
     uint256[] public timestampHistory;
     
+    // MAINNET: Enhanced tracking for holders, trades, and top traders
+    struct TradeInfo {
+        address trader;
+        uint256 amount;
+        uint256 ethValue;
+        uint256 timestamp;
+        bool isBuy;
+    }
+    
+    struct TopTrader {
+        address trader;
+        uint256 totalVolume;     // Total ETH volume traded
+        uint256 currentBalance;  // Current token balance
+        uint256 tradeCount;      // Number of trades
+        uint256 firstTradeTime; // When they first traded
+    }
+    
+    // Trade tracking
+    TradeInfo[] public allTrades;
+    mapping(address => uint256) public traderTotalVolume;
+    mapping(address => uint256) public traderTradeCount;
+    mapping(address => uint256) public traderFirstTrade;
+    
+    // Top traders (maintain top 10)
+    TopTrader[10] public topTraders;
+    uint256 public totalTrades;
+    uint256 public totalUniqueTraders;
+    
+    // Security: Track suspicious activity
+    mapping(address => bool) public flaggedTraders;
+    mapping(address => uint256) public rapidTradeCount;
+    mapping(address => uint256) public lastTradeBlock;
+    
     // Events
-    event BondingCurveUpdated(BondingCurveLibrary.CurveType newCurveType, uint256 timestamp);
+    event BondingCurveUpdated(uint8 newPhase, uint256 timestamp);
     event MEVAttemptBlocked(address indexed user, string reason, uint256 timestamp);
     event PriceImpactWarning(address indexed user, uint256 impact, uint256 timestamp);
+    
+    // FIXED: Add comprehensive security events
+    event PriceUpdate(uint256 oldPrice, uint256 newPrice, uint256 timestamp);
+    event LargeTrade(address indexed trader, uint256 amount, uint256 price, string tradeType);
+    event SuspiciousActivity(address indexed user, string activityType, uint256 severity);
+    event LiquidityChange(uint256 oldLiquidity, uint256 newLiquidity, int256 change);
+    event CreatorAction(address indexed creator, string action, uint256 value);
+    
+    // MAINNET: New tracking events
+    event TradeRecorded(address indexed trader, uint256 tokenAmount, uint256 ethValue, bool indexed isBuy, uint256 tradeId);
+    event TopTraderUpdated(address indexed trader, uint256 totalVolume, uint256 rank);
+    event SuspiciousTraderFlagged(address indexed trader, string reason);
+    event HolderMilestone(uint256 holderCount, uint256 timestamp);
     
     // Modifiers
     modifier mevProtected(uint256 amount) {
@@ -95,17 +148,17 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         uint256 targetMarketCap,
         address _creator,
         address _whaleToken,
-        uint256 _creatorFeePercent,
+        uint256 /* _creatorFeePercent */,
         string memory _description,
         string memory _logoUrl,
-        uint256 communitySize,
-        uint256 liquidityDepth
+        uint256 /* communitySize */,
+        uint256 /* liquidityDepth */
     ) ERC20(name, symbol) {
         creator = _creator;
         factory = msg.sender;
         whaleToken = _whaleToken;
         totalSupply_ = _totalSupply;
-        creatorFeePercent = _creatorFeePercent;
+        creatorFeePercent = 0; // No creator fee for mainnet AMM flow
         description = _description;
         logoUrl = _logoUrl;
         tokenLaunchTime = block.timestamp;
@@ -114,9 +167,9 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         // Initialize MEV protection
         mevConfig = MEVProtectionLibrary.getDefaultMEVConfig();
         
-        // Simple initial price calculation: targetMarketCap / totalSupply / 100 (start at 1% of target)
-        currentPrice = targetMarketCap / (_totalSupply * 100);
-        if (currentPrice < 1e12) currentPrice = 1e12; // Minimum price 0.000001 ETH
+        // Initialize hybrid bonding curve
+        curveConfig = BondingCurveLibrary.initializeCurve(_totalSupply, targetMarketCap);
+        currentPrice = BondingCurveLibrary.getCurrentPrice(curveConfig);
         
         // Mint total supply to this contract for bonding curve
         _mint(address(this), _totalSupply);
@@ -141,13 +194,79 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         emit MEVProtectionLibrary.TransactionCommitted(msg.sender, commitHash, block.timestamp);
     }
     
-    function buyTokens(uint256 tokenAmount) 
+    function buyTokens(uint256 minTokensOut) 
         external 
         payable 
         override
         nonReentrant 
     {
-        _executeBuyTokens(msg.sender, tokenAmount, msg.value);
+        require(msg.value > 0, "Must send ETH");
+        
+        uint256 ethIn = msg.value;
+        
+        // SECURITY: Check for rapid trading (potential bot/manipulation)
+        _checkRapidTrading(msg.sender);
+        
+        // Calculate 0.3% fee in ETH
+        uint256 fee = (ethIn * TRADING_FEE) / FEE_DENOMINATOR;
+        uint256 ethAfterFee = ethIn - fee;
+        
+        // AMM calculation: x * y = k
+        // tokensOut = tokenReserve - (ethReserve * tokenReserve) / (ethReserve + ethAfterFee)
+        uint256 tokensOut = tokenReserve - 
+            (ethReserve * tokenReserve) / (ethReserve + ethAfterFee);
+        
+        require(tokensOut >= minTokensOut, "Insufficient output amount");
+        require(tokensOut <= tokenReserve, "Insufficient token liquidity");
+        
+        // SECURITY: Check for whale manipulation
+        if (tokensOut > totalSupply_ / 20) { // More than 5% of supply
+            emit SuspiciousActivity(msg.sender, "large_buy_whale_alert", 3);
+        }
+        
+        // Update reserves
+        ethReserve += ethAfterFee;
+        tokenReserve -= tokensOut;
+        
+        // Update tracking
+        bool wasNewHolder = (holderBalances[msg.sender] == 0);
+        totalSold += tokensOut;
+        totalFeeCollected += fee;
+        
+        if (wasNewHolder) {
+            holderCount++;
+            // Emit milestone events
+            if (holderCount % 10 == 0) {
+                emit HolderMilestone(holderCount, block.timestamp);
+            }
+        }
+        holderBalances[msg.sender] += tokensOut;
+        
+        // Update price from new reserves
+        uint256 oldPrice = currentPrice;
+        currentPrice = (ethReserve * 1e18) / tokenReserve;
+        marketCap = totalSold * currentPrice / 1e18;
+        
+        // MAINNET: Record trade and update metrics
+        _recordTrade(msg.sender, tokensOut, ethIn, true);
+        _updateTopTraders(msg.sender, ethIn);
+        
+        _updateDailyVolume(ethIn);
+        _updatePriceHistory();
+        
+        // Transfer tokens to buyer
+        _transfer(address(this), msg.sender, tokensOut);
+        
+        // Emit events
+        if (currentPrice != oldPrice) {
+            emit PriceUpdate(oldPrice, currentPrice, block.timestamp);
+        }
+        
+        if (ethIn > 1 ether) {
+            emit LargeTrade(msg.sender, tokensOut, currentPrice, "buy");
+        }
+        
+        emit TokenPurchased(msg.sender, tokensOut, currentPrice, ethIn);
     }
     
     function buyTokensWithCommit(
@@ -181,15 +300,35 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
             ))
         );
         
-        // Simple fixed price calculation instead of complex bonding curve
-        uint256 cost = tokenAmount * currentPrice / 1e18;
+        // FIXED: Add minimum purchase to prevent manipulation
+        require(tokenAmount >= 1e15, "Minimum purchase amount"); // Minimum purchase to prevent manipulation
+        
+        // Use hybrid bonding curve for cost calculation with streaming bonus
+        uint256 cost = BondingCurveLibrary.calculateBuyCost(curveConfig, tokenAmount);
+        
+        // Check for whale alert
+        uint8 whaleLevel = BondingCurveLibrary.getWhaleAlertLevel(ethSent);
+        if (whaleLevel > 0) {
+            string[4] memory whaleTypes = ["", "Small Whale", "Big Whale", "MEGA WHALE"];
+            emit LargeTrade(buyer, tokenAmount, currentPrice, whaleTypes[whaleLevel]);
+        }
+        
         require(ethSent >= cost, "Insufficient ETH sent");
+        
+        // FIXED: Implement slippage protection
+        uint256 maxSlippage = cost * 105 / 100; // 5% max slippage
+        require(ethSent <= maxSlippage, "Excessive slippage");
         
         uint256 fee = (cost * creatorFeePercent) / 10000;
         
+        // FIXED: Add minimum time between purchases to prevent MEV
+        require(block.timestamp >= lastTransactionBlock[buyer] + 1, "Rate limited");
+        lastTransactionBlock[buyer] = block.timestamp;
+        
         totalSold += tokenAmount;
-        // Simple price increase: 0.1% per token sold
-        currentPrice = currentPrice + (currentPrice / 1000);
+        curveConfig.currentSupply = totalSold;
+        // Update price using hybrid bonding curve
+        currentPrice = BondingCurveLibrary.getCurrentPrice(curveConfig);
         marketCap = totalSold * currentPrice / 1e18;
         totalFeeCollected += fee;
         
@@ -216,7 +355,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         emit TokenPurchased(buyer, tokenAmount, currentPrice, cost);
     }
     
-    function sellTokens(uint256 tokenAmount) 
+    function sellTokens(uint256 tokenAmount, uint256 minEthOut) 
         external 
         override
         nonReentrant 
@@ -225,15 +364,32 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         require(tokenAmount > 0, "Invalid amount");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
         
-        uint256 salePrice = BondingCurveLibrary.calculateSellProceeds(totalSold, tokenAmount, curveParams);
-        uint256 fee = (salePrice * creatorFeePercent) / 10000;
-        uint256 netPrice = salePrice - fee;
+        // SECURITY: Check for rapid trading
+        _checkRapidTrading(msg.sender);
         
-        require(address(this).balance >= netPrice, "Insufficient contract balance");
+        // AMM calculation: x * y = k
+        // ethOut = ethReserve - (ethReserve * tokenReserve) / (tokenReserve + tokenAmount)
+        uint256 ethOut = ethReserve - 
+            (ethReserve * tokenReserve) / (tokenReserve + tokenAmount);
         
+        // Calculate 0.3% fee in ETH
+        uint256 fee = (ethOut * TRADING_FEE) / FEE_DENOMINATOR;
+        uint256 ethAfterFee = ethOut - fee;
+        
+        require(ethAfterFee >= minEthOut, "Insufficient output amount");
+        require(ethAfterFee <= ethReserve, "Insufficient ETH liquidity");
+        
+        // SECURITY: Check for large sells (potential dump)
+        if (tokenAmount > totalSupply_ / 10) { // More than 10% of supply
+            emit SuspiciousActivity(msg.sender, "large_sell_dump_alert", 3);
+        }
+        
+        // Update reserves
+        ethReserve -= ethOut;
+        tokenReserve += tokenAmount;
+        
+        // Update tracking
         totalSold -= tokenAmount;
-        currentPrice = BondingCurveLibrary.calculatePrice(totalSold, curveParams);
-        marketCap = totalSold * currentPrice / 1e18;
         totalFeeCollected += fee;
         
         holderBalances[msg.sender] -= tokenAmount;
@@ -241,33 +397,218 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
             holderCount--;
         }
         
-        _updateDailyVolume(salePrice);
+        // Update price from new reserves
+        uint256 oldPrice = currentPrice;
+        currentPrice = (ethReserve * 1e18) / tokenReserve;
+        marketCap = totalSold * currentPrice / 1e18;
         
-        if (priceHistory.length >= 100) {
-            _shiftArray(priceHistory);
-            _shiftArray(timestampHistory);
-        }
-        priceHistory.push(currentPrice);
-        timestampHistory.push(block.timestamp);
+        // MAINNET: Record trade and update metrics
+        _recordTrade(msg.sender, tokenAmount, ethOut, false);
+        _updateTopTraders(msg.sender, ethOut);
         
+        _updateDailyVolume(ethOut);
+        _updatePriceHistory();
+        
+        // Transfer tokens from seller
         _transfer(msg.sender, address(this), tokenAmount);
-        payable(msg.sender).transfer(netPrice);
         
-        emit TokenSold(msg.sender, tokenAmount, currentPrice, netPrice);
+        // Send ETH to seller
+        payable(msg.sender).transfer(ethAfterFee);
+        
+        // Emit events
+        if (currentPrice != oldPrice) {
+            emit PriceUpdate(oldPrice, currentPrice, block.timestamp);
+        }
+        
+        if (ethOut > 1 ether) {
+            emit LargeTrade(msg.sender, tokenAmount, currentPrice, "sell");
+        }
+        
+        emit TokenSold(msg.sender, tokenAmount, currentPrice, ethAfterFee);
     }
     
     function calculateBuyCost(uint256 tokenAmount) external view override returns (uint256) {
-        // Simple calculation: tokenAmount * currentPrice / 1e18
-        return tokenAmount * currentPrice / 1e18;
+        if (tokenAmount >= tokenReserve) return type(uint256).max;
+        
+        // Calculate ETH needed using AMM formula
+        uint256 ethNeeded = (ethReserve * tokenAmount) / (tokenReserve - tokenAmount);
+        
+        // Add 0.3% fee
+        uint256 fee = (ethNeeded * TRADING_FEE) / FEE_DENOMINATOR;
+        return ethNeeded + fee;
     }
     
     function calculateSellPrice(uint256 tokenAmount) external view override returns (uint256) {
-        // Simple calculation: tokenAmount * currentPrice * 0.95 / 1e18 (5% slippage for selling)
-        return tokenAmount * currentPrice * 95 / (1e18 * 100);
+        if (tokenAmount == 0) return 0;
+        
+        // Calculate ETH received using AMM formula
+        uint256 ethOut = ethReserve - 
+            (ethReserve * tokenReserve) / (tokenReserve + tokenAmount);
+        
+        // Subtract 0.3% fee
+        uint256 fee = (ethOut * TRADING_FEE) / FEE_DENOMINATOR;
+        return ethOut - fee;
     }
     
     function getCurrentPrice() external view override returns (uint256) {
         return currentPrice;
+    }
+    
+    /**
+     * @dev Get current price with streaming bonus if creator is live
+     * @param isStreaming Whether creator is currently streaming
+     * @return price Current price with potential streaming bonus
+     */
+    function getStreamingPrice(bool isStreaming) external view returns (uint256) {
+        return BondingCurveLibrary.getStreamingPrice(curveConfig, isStreaming);
+    }
+    
+    // MAINNET: Enhanced tracking functions
+    function _recordTrade(address trader, uint256 tokenAmount, uint256 ethValue, bool isBuy) internal {
+        // Record the trade
+        allTrades.push(TradeInfo({
+            trader: trader,
+            amount: tokenAmount,
+            ethValue: ethValue,
+            timestamp: block.timestamp,
+            isBuy: isBuy
+        }));
+        
+        // Update trader stats
+        if (traderTradeCount[trader] == 0) {
+            totalUniqueTraders++;
+            traderFirstTrade[trader] = block.timestamp;
+        }
+        
+        traderTradeCount[trader]++;
+        traderTotalVolume[trader] += ethValue;
+        totalTrades++;
+        
+        emit TradeRecorded(trader, tokenAmount, ethValue, isBuy, allTrades.length - 1);
+    }
+    
+    function _updateTopTraders(address trader, uint256 /* ethValue */) internal {
+        uint256 traderVolume = traderTotalVolume[trader];
+        
+        // Find trader in top traders array
+        int256 currentRank = -1;
+        for (uint256 i = 0; i < 10; i++) {
+            if (topTraders[i].trader == trader) {
+                currentRank = int256(i);
+                break;
+            }
+        }
+        
+        // Update or add trader
+        if (currentRank >= 0) {
+            // Update existing trader
+            topTraders[uint256(currentRank)] = TopTrader({
+                trader: trader,
+                totalVolume: traderVolume,
+                currentBalance: balanceOf(trader),
+                tradeCount: traderTradeCount[trader],
+                firstTradeTime: traderFirstTrade[trader]
+            });
+        } else {
+            // Check if trader should be in top 10
+            uint256 lowestRank = 9;
+            for (uint256 i = 0; i < 10; i++) {
+                if (topTraders[i].trader == address(0) || 
+                    traderVolume > topTraders[i].totalVolume) {
+                    lowestRank = i;
+                    break;
+                }
+            }
+            
+            if (lowestRank < 10) {
+                // Shift traders down
+                for (uint256 i = 9; i > lowestRank; i--) {
+                    topTraders[i] = topTraders[i-1];
+                }
+                
+                // Insert new trader
+                topTraders[lowestRank] = TopTrader({
+                    trader: trader,
+                    totalVolume: traderVolume,
+                    currentBalance: balanceOf(trader),
+                    tradeCount: traderTradeCount[trader],
+                    firstTradeTime: traderFirstTrade[trader]
+                });
+                
+                emit TopTraderUpdated(trader, traderVolume, lowestRank + 1);
+            }
+        }
+    }
+    
+    function _checkRapidTrading(address trader) internal {
+        // Reset counter if different block
+        if (lastTradeBlock[trader] != block.number) {
+            rapidTradeCount[trader] = 0;
+            lastTradeBlock[trader] = block.number;
+        }
+        
+        rapidTradeCount[trader]++;
+        
+        // Flag suspicious rapid trading
+        if (rapidTradeCount[trader] > 3) {
+            flaggedTraders[trader] = true;
+            emit SuspiciousTraderFlagged(trader, "rapid_trading_same_block");
+        }
+        
+        // Additional MEV protection
+        require(rapidTradeCount[trader] <= 5, "Too many trades in same block");
+    }
+    
+    // MAINNET: Public view functions for analytics
+    function getHolderInfo() external view returns (uint256 count, uint256 avgBalance) {
+        if (holderCount == 0) return (0, 0);
+        return (holderCount, totalSold / holderCount);
+    }
+    
+    function getTradeInfo() external view returns (uint256 total, uint256 uniqueTraders, uint256 volume24h) {
+        uint256 volume24hValue = _getVolume24h();
+        return (totalTrades, totalUniqueTraders, volume24hValue);
+    }
+    
+    function getTopTrader(uint256 rank) external view returns (TopTrader memory) {
+        require(rank < 10, "Invalid rank");
+        return topTraders[rank];
+    }
+    
+    function getTopTraders() external view returns (TopTrader[10] memory) {
+        return topTraders;
+    }
+    
+    function getTradeHistory(uint256 limit) external view returns (TradeInfo[] memory) {
+        uint256 totalTradesCount = allTrades.length;
+        if (totalTradesCount == 0) {
+            return new TradeInfo[](0);
+        }
+        
+        uint256 actualLimit = limit > totalTradesCount ? totalTradesCount : limit;
+        TradeInfo[] memory recentTrades = new TradeInfo[](actualLimit);
+        
+        for (uint256 i = 0; i < actualLimit; i++) {
+            recentTrades[i] = allTrades[totalTradesCount - 1 - i];
+        }
+        
+        return recentTrades;
+    }
+    
+    function _getVolume24h() internal view returns (uint256) {
+        uint256 volume = 0;
+        uint256 cutoff = block.timestamp - 24 hours;
+        
+        for (int256 i = int256(allTrades.length) - 1; i >= 0; i--) {
+            if (allTrades[uint256(i)].timestamp < cutoff) break;
+            volume += allTrades[uint256(i)].ethValue;
+        }
+        
+        return volume;
+    }
+    
+    function isTraderFlagged(address trader) external view returns (bool) {
+        return flaggedTraders[trader];
     }
     
     function getTotalFeesCollected() external view override returns (uint256) {
@@ -304,6 +645,7 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
         payable(creator).transfer(feeAmount);
         
         emit CreatorFeeClaimed(creator, feeAmount);
+        emit CreatorAction(creator, "fee_claimed", feeAmount); // FIXED: Additional logging
     }
     
     function lockLiquidity(uint256 lockPeriod) external override {
@@ -363,18 +705,18 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
     }
     
     function updateBondingCurve(
-        BondingCurveLibrary.CurveType newCurveType,
-        uint256 newSteepness
+        uint256 newTargetMarketCap
     ) external {
         require(msg.sender == creator, "Only creator");
-        require(block.timestamp < tokenLaunchTime + 24 hours, "Window expired");
+        require(block.timestamp <= tokenLaunchTime + 24 hours, "Curve update period expired");
         
-        curveParams.curveType = newCurveType;
-        curveParams.steepness = newSteepness;
+        // Reinitialize curve with new target market cap
+        curveConfig = BondingCurveLibrary.initializeCurve(totalSupply_, newTargetMarketCap);
+        curveConfig.currentSupply = totalSold;
+        currentPrice = BondingCurveLibrary.getCurrentPrice(curveConfig);
         
-        currentPrice = BondingCurveLibrary.calculatePrice(totalSold, curveParams);
-        
-        emit BondingCurveUpdated(newCurveType, block.timestamp);
+        (, uint8 phase) = BondingCurveLibrary.getGraduationStatus(curveConfig);
+        emit BondingCurveUpdated(phase, block.timestamp);
     }
     
     // Internal helper functions
@@ -409,6 +751,17 @@ contract CreatorToken is ERC20, ReentrancyGuard, ICreatorToken {
             lastVolumeReset = block.timestamp;
         } else {
             dailyVolume += amount;
+        }
+    }
+    
+    function _updatePriceHistory() internal {
+        priceHistory.push(currentPrice);
+        timestampHistory.push(block.timestamp);
+        
+        // Keep only last 100 price points to avoid excessive gas costs
+        if (priceHistory.length > 100) {
+            _shiftArray(priceHistory);
+            _shiftArray(timestampHistory);
         }
     }
     
