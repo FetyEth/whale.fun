@@ -62,7 +62,7 @@ export interface CreatorStats {
 /**
  * TokenFactoryRoot contract deployment configuration
  */
-const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
+export const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
   name: "TokenFactoryRoot",
   abi: TokenFactoryRootABI,
   deployments: {

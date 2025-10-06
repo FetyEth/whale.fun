@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./interfaces/IWhaleToken.sol";
+// Interface removed - functionality integrated directly
 import "./libraries/MEVProtectionLibrary.sol";
 
 /**
@@ -14,7 +14,7 @@ import "./libraries/MEVProtectionLibrary.sol";
  * @dev The native platform token for whale.fun - StreamLaunch platform
  * Features: Governance, Staking, Revenue Sharing, Cross-chain compatibility, MEV Protection
  */
-contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, IWhaleToken {
+contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable {
     using MEVProtectionLibrary for MEVProtectionLibrary.MEVConfig;
     using MEVProtectionLibrary for MEVProtectionLibrary.RateLimit;
     
@@ -45,6 +45,10 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
     
     // Additional events not in interface
     event BridgeAuthorized(address indexed bridge, bool authorized);
+    event Staked(address indexed user, uint256 amount, uint256 timestamp);
+    event Unstaked(address indexed user, uint256 amount, uint256 rewards);
+    event RewardsClaimed(address indexed user, uint256 amount);
+    event FeeDistributed(uint256 amount, uint256 timestamp);
     
     // Staking parameters
     uint256 public constant MIN_STAKE_DURATION = 7 days;
@@ -287,82 +291,17 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
      * @dev Cast vote on a governance proposal with detailed choice
      */
     function voteDetailed(uint256 proposalId, VoteChoice choice) external {
-        require(votingPower[msg.sender] > 0, "No voting power");
-        require(proposalId <= proposalCount && proposalId > 0, "Invalid proposal ID");
-        
-        Proposal storage proposal = proposals[proposalId];
-        require(!proposal.votes[msg.sender].hasVoted, "Already voted");
-        require(block.timestamp >= proposal.startTime, "Voting not started");
-        require(block.timestamp <= proposal.endTime, "Voting period ended");
-        require(proposal.state == ProposalState.ACTIVE || proposal.state == ProposalState.PENDING, "Invalid proposal state");
-        
-        // Update proposal state to active if it was pending
-        if (proposal.state == ProposalState.PENDING) {
-            proposal.state = ProposalState.ACTIVE;
-        }
-        
-        uint256 weight = votingPower[msg.sender];
-        
-        // Record the vote
-        proposal.votes[msg.sender] = Vote({
-            hasVoted: true,
-            choice: choice,
-            weight: weight,
-            timestamp: block.timestamp
-        });
-        
-        // Update vote counts
-        if (choice == VoteChoice.FOR) {
-            proposal.votesFor += weight;
-        } else if (choice == VoteChoice.AGAINST) {
-            proposal.votesAgainst += weight;
-        } else {
-            proposal.votesAbstain += weight;
-        }
-        
-        emit VoteCast(msg.sender, proposalId, choice, weight);
+        _castVote(proposalId, choice);
     }
     
     /**
      * @dev Simple vote function for interface compatibility
      */
-    function vote(bytes32 proposalId, bool support) external override {
+    function vote(bytes32 proposalId, bool support) external {
         // Convert bytes32 to uint256 for internal use
         uint256 id = uint256(proposalId);
         VoteChoice choice = support ? VoteChoice.FOR : VoteChoice.AGAINST;
-        
-        require(votingPower[msg.sender] > 0, "No voting power");
-        require(id <= proposalCount && id > 0, "Invalid proposal ID");
-        
-        Proposal storage proposal = proposals[id];
-        require(!proposal.votes[msg.sender].hasVoted, "Already voted");
-        require(block.timestamp >= proposal.startTime, "Voting not started");
-        require(block.timestamp <= proposal.endTime, "Voting period ended");
-        require(proposal.state == ProposalState.ACTIVE || proposal.state == ProposalState.PENDING, "Invalid proposal state");
-        
-        // Update proposal state to active if it was pending
-        if (proposal.state == ProposalState.PENDING) {
-            proposal.state = ProposalState.ACTIVE;
-        }
-        
-        uint256 weight = votingPower[msg.sender];
-        proposal.votes[msg.sender] = Vote({
-            hasVoted: true,
-            choice: choice,
-            weight: weight,
-            timestamp: block.timestamp
-        });
-        
-        // Update vote counts
-        if (choice == VoteChoice.FOR) {
-            proposal.votesFor += weight;
-        } else if (choice == VoteChoice.AGAINST) {
-            proposal.votesAgainst += weight;
-        } else {
-            proposal.votesAbstain += weight;
-        }
-        
-        emit VoteCast(msg.sender, id, choice, weight);
+        _castVote(id, choice);
     }
     
     /**
@@ -425,6 +364,46 @@ contract WhaleToken is ERC20, ERC20Permit, ReentrancyGuard, Ownable, Pausable, I
      */
     function hasVoted(uint256 proposalId, address user) external view returns (bool) {
         return proposals[proposalId].votes[user].hasVoted;
+    }
+    
+    /**
+     * @dev Internal function to handle vote casting logic
+     */
+    function _castVote(uint256 proposalId, VoteChoice choice) internal {
+        require(votingPower[msg.sender] > 0, "No voting power");
+        require(proposalId <= proposalCount && proposalId > 0, "Invalid proposal ID");
+        
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.votes[msg.sender].hasVoted, "Already voted");
+        require(block.timestamp >= proposal.startTime, "Voting not started");
+        require(block.timestamp <= proposal.endTime, "Voting period ended");
+        require(proposal.state == ProposalState.ACTIVE || proposal.state == ProposalState.PENDING, "Invalid proposal state");
+        
+        // Update proposal state to active if it was pending
+        if (proposal.state == ProposalState.PENDING) {
+            proposal.state = ProposalState.ACTIVE;
+        }
+        
+        uint256 weight = votingPower[msg.sender];
+        
+        // Record the vote
+        proposal.votes[msg.sender] = Vote({
+            hasVoted: true,
+            choice: choice,
+            weight: weight,
+            timestamp: block.timestamp
+        });
+        
+        // Update vote counts
+        if (choice == VoteChoice.FOR) {
+            proposal.votesFor += weight;
+        } else if (choice == VoteChoice.AGAINST) {
+            proposal.votesAgainst += weight;
+        } else {
+            proposal.votesAbstain += weight;
+        }
+        
+        emit VoteCast(msg.sender, proposalId, choice, weight);
     }
     
     /**
