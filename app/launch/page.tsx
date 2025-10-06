@@ -12,7 +12,7 @@ import {
 import { combineTokenMetadata } from "@/utils/tokenMetadata";
 import Link from "next/link";
 import Image from "next/image";
-import { useAccount } from "wagmi";
+import { useAccount, useWalletClient, usePublicClient, useChainId } from "wagmi";
 import {
   ChevronLeft,
   UploadCloud,
@@ -278,6 +278,11 @@ const CreatePage: FC = () => {
     name: string;
   } | null>(null);
 
+  // Reuse initialized clients from Wagmi/RainbowKit provider
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+  const wagmiChainId = useChainId();
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -390,19 +395,9 @@ const CreatePage: FC = () => {
         throw contractError;
       }
 
-      // Direct Viem call - use wallet provider for signing
-      console.log("Making direct Viem call...");
-
-      const { createWalletClient, createPublicClient, http, custom } =
-        await import("viem");
-      const { zeroGGalileoTestnet } = await import("viem/chains");
-
-      // Create wallet client to get current chain dynamically
-      const tempWalletClient = createWalletClient({
-        transport: custom(window.ethereum),
-      });
-
-      const currentChainId = await tempWalletClient.getChainId();
+      // Use Wagmi-provided clients and chain
+      console.log("Making direct call via Wagmi clients...");
+      const currentChainId = wagmiChainId || chainId;
       console.log("Current chain ID:", currentChainId);
 
       // Map chain ID to chain object and contract address
@@ -446,20 +441,16 @@ const CreatePage: FC = () => {
         );
       }
 
-      // Use wallet provider for signing with dynamic chain
-      const walletClient = createWalletClient({
-        chain: chainConfig.chain,
-        transport: custom(window.ethereum),
-      });
-
-      // Get the connected wallet accounts
-      const accounts = await walletClient.getAddresses();
-      if (!accounts || accounts.length === 0) {
+      // Ensure we have a connected account and wallet client
+      if (!address) {
         throw new Error(
-          "No wallet accounts found. Please connect your wallet."
+          "No wallet account found. Please connect your wallet."
         );
       }
-      const account = accounts[0]; // Use the first connected account
+      if (!walletClient) {
+        throw new Error("Wallet client not available. Ensure your wallet is connected.");
+      }
+      const account = address as `0x${string}`; // Use the connected account from wagmi
 
       // Load contract ABI
       const TokenFactoryABI = (
@@ -494,7 +485,7 @@ const CreatePage: FC = () => {
         value: totalCost.toString(),
       });
 
-      // Direct contract call using Viem
+      // Direct contract call using Wagmi's wallet client (Viem WalletClient instance)
       const txHash = await walletClient.writeContract({
         account: account,
         address: contractAddress,
@@ -517,18 +508,15 @@ const CreatePage: FC = () => {
             "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um",
         ],
         value: totalCost,
-        chain: chainConfig.chain,
       });
 
       console.log("Transaction hash:", txHash);
 
-      // Wait for confirmation using public client with better error handling
-      const publicClient = createPublicClient({
-        chain: chainConfig.chain,
-        transport: http(),
-      });
-
       console.log("Waiting for transaction receipt...");
+
+      if (!publicClient) {
+        throw new Error("Public client not available. Please refresh and try again.");
+      }
 
       let receipt;
       let retryCount = 0;

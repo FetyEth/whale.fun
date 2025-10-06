@@ -32,6 +32,13 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
   const { address: userAddress, isConnected, chain } = useAccount();
   const [isQuickBuying, setIsQuickBuying] = useState(false);
   const [quickBuyError, setQuickBuyError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration flicker: consider connected only after mount and when address exists
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const isReady = mounted && !!userAddress; // treat as connected when address is present
 
   const handleCardClick = () => {
     if (token.isExternal) {
@@ -44,7 +51,7 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
   const handleQuickBuy = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!userAddress || !isConnected) {
+    if (!userAddress) {
       setQuickBuyError("Please connect your wallet");
       return;
     }
@@ -392,11 +399,11 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
         )}
         <button
           onClick={handleQuickBuy}
-          disabled={isQuickBuying || !isConnected}
+          disabled={isQuickBuying || !isReady}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition-all ${
             isQuickBuying
               ? "bg-gray-500 text-gray-300 cursor-not-allowed"
-              : !isConnected
+              : !isReady
               ? "bg-gray-600 text-gray-400 cursor-not-allowed"
               : theme.quickBuy
           }`}
@@ -406,7 +413,7 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               Buying...
             </>
-          ) : !isConnected ? (
+          ) : !isReady ? (
             "Connect Wallet"
           ) : (
             "+ Quick buy 0.01"
