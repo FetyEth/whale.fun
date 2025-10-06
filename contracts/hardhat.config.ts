@@ -1,6 +1,7 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem"; // side-effect import registers hre.viem
-import "@nomicfoundation/hardhat-ignition-viem"; // side-effect import registers ignition tasks
+import "@nomicfoundation/hardhat-ignition"; // ensure ignition tasks are registered
+import "@nomicfoundation/hardhat-ignition-viem"; // viem bindings for ignition
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -32,6 +33,12 @@ const config: HardhatUserConfig = {
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+    },
+    zeroGTestnet: {
+      type: "http",
+      url: process.env.ZERO_G_RPC ?? "",
+      chainId: 16602,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
 };

@@ -1,0 +1,12 @@
+{
+  "network": "zeroGTestnet",
+  "chainId": 16602,
+  "deployer": "0x95Cf028D5e86863570E300CAD14484Dc2068eB79",
+  "contracts": {
+    "WhaleToken": "0x03f1fde590755718cd4e1674704a62409e79ef5f",
+    "DexFactory": "0x76f96e2acbc39d7d9620a607ac099bb9687e2207",
+    "DexRouter": "0x2aa101937824aea2b88d8464e00cfa823573688a",
+    "DexStaking": "0x4b02E32b57C65352d9bBA68a110E2F80B208aFec"
+  },
+  "notes": "Pinned latest Factory/Router set and confirmed Staking from explorer."
+}
