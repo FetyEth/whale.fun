@@ -2,10 +2,22 @@
   "name": "contracts",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:all": "npx hardhat run scripts/deploy-all.ts",
+    "deploy:all:0g": "npx hardhat run scripts/deploy-all.ts --network zeroGTestnet",
+    "deploy:all:celo": "npx hardhat run scripts/deploy-all.ts --network celoAlfajores",
+    "deploy:all:polygon": "npx hardhat run scripts/deploy-all.ts --network polygonAmoy",
+    "upgrade": "npx hardhat run scripts/simple-upgrade.ts",
+    "ignition:deploy": "npx hardhat ignition deploy ignition/modules/WhaleFactoryDeploy.ts",
+    "ignition:verify": "npx hardhat ignition verify"
+  },
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.1",
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
     "@types/node": "^22.18.6",
+    "ethers": "^6.15.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.6",
     "typescript": "~5.8.0",

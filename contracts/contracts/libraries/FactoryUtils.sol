@@ -18,12 +18,12 @@ library FactoryUtils {
         string memory description,
         string memory logoUrl
     ) internal pure {
-        require(totalSupply >= 1000000 * 1e18 && totalSupply <= 1e27, "Supply");
-        require(targetMarketCap >= 1 ether && targetMarketCap <= 1000000 ether, "Cap");
-        require(bytes(name).length >= 2 && bytes(name).length <= 32, "Name");
-        require(bytes(symbol).length >= 2 && bytes(symbol).length <= 10, "Symbol");
-        require(bytes(description).length <= 500, "Desc");
-        require(bytes(logoUrl).length <= 200, "Logo");
+        require(totalSupply >= 1000000 * 1e18 && totalSupply <= 1e27, "S1");
+        require(targetMarketCap >= 1 ether && targetMarketCap <= 1000000 ether, "C1");
+        require(bytes(name).length >= 2 && bytes(name).length <= 32, "N1");
+        require(bytes(symbol).length >= 2 && bytes(symbol).length <= 10, "Y1");
+        require(bytes(description).length <= 500, "D1");
+        require(bytes(logoUrl).length <= 200, "L1");
     }
     
     /**
@@ -37,9 +37,9 @@ library FactoryUtils {
     ) internal view {
         require(
             block.timestamp >= lastTokenCreation[creator] + 1 hours,
-            "Rate"
+            "R1"
         );
-        require(creatorTokenCount[creator] < maxTokensPerCreator, "Max");
+        require(creatorTokenCount[creator] < maxTokensPerCreator, "M2");
     }
     
     /**

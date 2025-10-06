@@ -6,87 +6,59 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/ITokenFactory.sol";
-import "./CreatorToken.sol";
-import "./DevProfileManager.sol";
-import "./TokenGraduationManager.sol";
-import "./StreamingManager.sol";
-import "./GovernanceManager.sol";
-import "./libraries/FactoryUtils.sol";
-
-/**
- * @title TokenFactoryCore
- * @dev Core factory contract for creating and managing tokens with modular architecture
- */
+import "./interfaces/ICreatorToken.sol";
+import "./interfaces/IDevProfileManager.sol";
+import "./interfaces/ITokenGraduationManager.sol";
 contract TokenFactoryCore is 
-    Initializable, 
+    Initializable,
     ReentrancyGuardUpgradeable, 
-    OwnableUpgradeable, 
-    UUPSUpgradeable, 
+    OwnableUpgradeable,
+    UUPSUpgradeable,
     ITokenFactory {
     
-    using FactoryUtils for mapping(address => uint256);
     
-    event LaunchFeeUpdated(uint256 indexed oldFee, uint256 indexed newFee);
-    event PoolCreated(address indexed token, address indexed pool, bool indexed isSandbox);
-    event EmergencyPaused(address indexed admin);
-    event EmergencyUnpaused(address indexed admin);
+    uint256 public constant LAUNCH_FEE = 0.1 ether;
     
     address public whaleToken;
-    DevProfileManager public devProfileManager;
-    TokenGraduationManager public graduationManager;
-    StreamingManager public streamingManager;
-    GovernanceManager public governanceManager;
+    address public devProfileManager;
+    address public graduationManager;
+    address public creatorTokenFactory;
     
     address[] public allTokens;
     mapping(address => address[]) public creatorTokens;
     mapping(address => bool) public override isValidToken;
-    
-    uint256 public constant LAUNCH_FEE = 0.1 ether;
-    uint256 public maxTokensPerCreator = 10;
-    
-    uint256 public totalTokensCreated;
-    uint256 public totalFeesCollected;
-    
     mapping(address => uint256) public creatorTokenCount;
     mapping(address => uint256) public lastTokenCreation;
     
-    bool public emergencyPaused;
+    uint256 public totalTokensCreated;
+    uint256 public totalFeesCollected;
+    uint256 public maxTokensPerCreator;
         
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-    
+
     function initialize(
         address _whaleToken,
         address _devProfileManager,
         address _graduationManager,
-        address payable _streamingManager,
-        address _governanceManager
+        address _creatorTokenFactory
     ) public initializer {
         __ReentrancyGuard_init();
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         
         whaleToken = _whaleToken;
-        devProfileManager = DevProfileManager(_devProfileManager);
-        graduationManager = TokenGraduationManager(_graduationManager);
-        streamingManager = StreamingManager(_streamingManager);
-        governanceManager = GovernanceManager(_governanceManager);
-        
-        emergencyPaused = false;
+        devProfileManager = _devProfileManager;
+        graduationManager = _graduationManager;
+        creatorTokenFactory = _creatorTokenFactory;
+        maxTokensPerCreator = 10;
     }
-    
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
     
-    modifier whenNotEmergencyPaused() {
-        require(!emergencyPaused, "Paused");
-        _;
-    }
     
-    /**
-     * @dev Create a new token with basic parameters
-     */
     function createToken(
         string memory name,
         string memory symbol,
@@ -95,26 +67,34 @@ contract TokenFactoryCore is
         uint256 /* creatorFeePercent */,
         string memory description,
         string memory logoUrl
-    ) external payable whenNotEmergencyPaused override returns (address) {
-        require(msg.value >= LAUNCH_FEE, "Fee");
-        FactoryUtils.validateTokenParams(totalSupply, initialPrice, name, symbol, description, logoUrl);
-        FactoryUtils.checkRateLimit(lastTokenCreation, creatorTokenCount, msg.sender, maxTokensPerCreator);
+    ) external payable override returns (address) {
+        require(msg.value >= LAUNCH_FEE && totalSupply >= 1e24 && totalSupply <= 1e27, "F1");
+        require(initialPrice >= 1 ether && initialPrice <= 1e6 ether, "C1");
+        require(bytes(name).length >= 2 && bytes(name).length <= 32, "N1");
+        require(bytes(symbol).length >= 2 && bytes(symbol).length <= 10, "Y1");
+        require(bytes(description).length <= 500 && bytes(logoUrl).length <= 200, "D1");
+        require(block.timestamp >= lastTokenCreation[msg.sender] + 1 hours, "R1");
+        require(creatorTokenCount[msg.sender] < maxTokensPerCreator, "M2");
         
-        CreatorToken newToken = new CreatorToken(
-            name, symbol, totalSupply, initialPrice, msg.sender, whaleToken,
-            0, description, logoUrl, 0, 0
+        // Deploy new CreatorToken via factory
+        (bool success, bytes memory result) = creatorTokenFactory.call(
+            abi.encodeWithSignature(
+                "deployToken(string,string,uint256,uint256,address,address,uint256,string,string,uint256,uint256)",
+                name, symbol, totalSupply, initialPrice, msg.sender, whaleToken, 0, description, logoUrl, 0, 0
+            )
         );
+        require(success, "F2");
+        address tokenAddress = abi.decode(result, (address));
         
-        address tokenAddress = address(newToken);
         allTokens.push(tokenAddress);
         creatorTokens[msg.sender].push(tokenAddress);
         isValidToken[tokenAddress] = true;
         totalTokensCreated++;
-        FactoryUtils.updateCreatorTracking(creatorTokenCount, lastTokenCreation, msg.sender);
+        creatorTokenCount[msg.sender]++;
+        lastTokenCreation[msg.sender] = block.timestamp;
         
-        devProfileManager.trackCreator(msg.sender);
-        devProfileManager.updateDevProfile(msg.sender, tokenAddress);
-        graduationManager.initializeToken(tokenAddress);
+        IDevProfileManager(devProfileManager).trackCreator(msg.sender);
+        ITokenGraduationManager(graduationManager).initializeToken(tokenAddress);
         
         totalFeesCollected += LAUNCH_FEE;
         if (msg.value > LAUNCH_FEE) {
@@ -134,49 +114,14 @@ contract TokenFactoryCore is
         return allTokens;
     }
     
-    function getFactoryStats() external view override returns (
-        uint256 _totalTokensCreated,
-        uint256 _totalVolumeTraded,
-        uint256 _totalFeesCollected,
-        uint256 _launchFee
-    ) {
+    function getFactoryStats() external view override returns (uint256,uint256,uint256,uint256) {
         return (totalTokensCreated, 0, totalFeesCollected, LAUNCH_FEE);
     }
     
     function tokenToCreator(address token) external view override returns (address) {
-        return devProfileManager.getTokenCreator(token);
-    }
-      
-    function updateTokenMetrics(address token, uint256 holders, uint256 volume, uint256 trades) external {
-        require(isValidToken[token], "Token");
-        graduationManager.updateTokenMetrics(token, holders, volume, trades);
+        return IDevProfileManager(devProfileManager).getTokenCreator(token);
     }
     
-    function getTokenGraduationInfo(address token) external view returns (
-        TokenGraduationManager.TokenStatus status,
-        uint256 age,
-        uint256 holders,
-        uint256 volume,
-        uint256 trades,
-        bool canGraduateNext
-    ) {
-        return graduationManager.getTokenGraduationInfo(token);
-    }
-    
-    function emergencyPause() external onlyOwner {
-        emergencyPaused = true;
-        emit EmergencyPaused(msg.sender);
-    }
-    
-    function emergencyUnpause() external onlyOwner {
-        emergencyPaused = false;
-        emit EmergencyUnpaused(msg.sender);
-    }
-    
-    function setMaxTokensPerCreator(uint256 newMax) external onlyOwner {
-        require(newMax > 0 && newMax <= 20, "Max");
-        maxTokensPerCreator = newMax;
-    }
     
     function withdrawFees() external onlyOwner {
         payable(owner()).transfer(address(this).balance);

@@ -45,7 +45,8 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     },
     testnet: true,
     contracts: {
-      tokenFactory: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+      // Will be updated after deployment
+      tokenFactory: "",
     },
   },
 };
