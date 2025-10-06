@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useWalletClient, useChainId } from "wagmi";
 import { getBlockchainConnection } from "@/utils/Blockchain";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,11 @@ interface PortfolioStats {
 }
 
 export default function PortfolioPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const wagmiChainId = useChainId();
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [portfolioTokens, setPortfolioTokens] = useState<TokenPortfolioItem[]>(
     []
@@ -70,93 +74,19 @@ export default function PortfolioPage() {
   });
   const [activeTab, setActiveTab] = useState("holdings");
 
+  // Ensure client-side mount before deciding connection UI to avoid hydration flicker
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const loadPortfolioData = useCallback(async () => {
     if (!address) return;
 
     setLoading(true);
     try {
-      const { createWalletClient, createPublicClient, http, custom } =
-        await import("viem");
-
-      const walletClient = createWalletClient({
-        chain: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: {
-            decimals: 18,
-            name: "0G",
-            symbol: "0G",
-          },
-          rpcUrls: {
-            default: {
-              http: ["https://evmrpc-testnet.0g.ai"],
-            },
-            public: {
-              http: ["https://evmrpc-testnet.0g.ai"],
-            },
-          },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-        transport: custom(window.ethereum),
-      });
-      const chainId = await walletClient.getChainId();
-      console.log("Current chain ID:", chainId);
-
-      // Ensure we're on the correct network
-      if (chainId !== 16602) {
-        console.warn(`Wrong network detected. Expected 16602, got ${chainId}`);
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x40da" }], // 16602 in hex
-          });
-          console.log("Switched to 0G Testnet");
-        } catch (switchError) {
-          console.error("Failed to switch network:", switchError);
-          // Continue with current network but add warning
-        }
-      }
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: {
-            decimals: 18,
-            name: "0G",
-            symbol: "0G",
-          },
-          rpcUrls: {
-            default: {
-              http: ["https://evmrpc-testnet.0g.ai"],
-            },
-            public: {
-              http: ["https://evmrpc-testnet.0g.ai"],
-            },
-          },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-      };
-
-      const currentChain = chainMap[chainId];
-      if (!currentChain) {
-        throw new Error(`Unsupported chain ID: ${chainId}`);
-      }
+      if (!publicClient) throw new Error("Public client unavailable");
+      const chainId = wagmiChainId;
+      
 
       const factoryService = new TokenFactoryRootService();
 
@@ -164,9 +94,8 @@ export default function PortfolioPage() {
       let createdTokenAddresses: string[] = [];
       try {
         createdTokenAddresses = await factoryService.getCreatorTokens(address);
-        console.log("Successfully got created tokens:", createdTokenAddresses);
       } catch (error) {
-        console.error("Error getting created tokens:", error);
+        console.error("[Portfolio] Error getCreatorTokens:", error);
         createdTokenAddresses = [];
       }
 
@@ -174,9 +103,8 @@ export default function PortfolioPage() {
       let allTokenAddresses: string[] = [];
       try {
         allTokenAddresses = await factoryService.getAllTokens();
-        console.log("Successfully got all tokens:", allTokenAddresses);
       } catch (error) {
-        console.error("Error getting all tokens:", error);
+        console.error("[Portfolio] Error getAllTokens:", error);
         allTokenAddresses = [];
       }
 
@@ -184,17 +112,14 @@ export default function PortfolioPage() {
       let creatorStats;
       try {
         creatorStats = await factoryService.getCreatorStats(address);
-        console.log("Successfully got creator stats:", creatorStats);
       } catch (error) {
-        console.error("Error getting creator stats:", error);
+        console.error("[Portfolio] Error getCreatorStats:", error);
         creatorStats = null;
       }
 
       // If we couldn't get tokens from factory, try to scan for common token patterns
       if (allTokenAddresses.length === 0) {
-        console.log(
-          "No tokens found from factory, using fallback token detection..."
-        );
+        // No tokens found from factory; fallback paths can be implemented here
         // For now, we'll use an empty array, but you could add logic here to:
         // 1. Check known token addresses from your app's database
         // 2. Scan recent blockchain events for token creations by this user
@@ -203,14 +128,12 @@ export default function PortfolioPage() {
       }
 
       // Load token data for all tokens to check holdings
+      
       const allTokensData = await Promise.all(
         allTokenAddresses.map(async (tokenAddress, index) => {
           try {
-            // Create public client for reading contract data
-            const publicClient = createPublicClient({
-              chain: currentChain,
-              transport: http(),
-            });
+            // Use Wagmi public client for reading contract data
+            if (!publicClient) throw new Error("Public client unavailable");
 
             // Load CreatorToken ABI
             const CreatorTokenABI = (
@@ -240,6 +163,7 @@ export default function PortfolioPage() {
                 functionName: "decimals",
               }),
             ]);
+            
 
             // Try to get additional stats (may fail if methods don't exist)
             let stats;
@@ -298,7 +222,7 @@ export default function PortfolioPage() {
               };
             } catch (error) {
               console.warn(
-                `Could not load stats for token ${tokenAddress}:`,
+                `[Portfolio] Could not load stats for token ${tokenAddress}:`,
                 error
               );
               // Fallback stats
@@ -323,7 +247,7 @@ export default function PortfolioPage() {
               })) as bigint;
             } catch (error) {
               console.warn(
-                `Could not get balance for token ${tokenAddress}:`,
+                `[Portfolio] Could not get balance for token ${tokenAddress}:`,
                 error
               );
             }
@@ -361,10 +285,7 @@ export default function PortfolioPage() {
               currentValue,
             };
           } catch (error) {
-            console.error(
-              `Error loading token data for ${tokenAddress}:`,
-              error
-            );
+            console.error(`[Portfolio] Error loading token data for ${tokenAddress}:`, error);
             // Return minimal data if contract calls fail
             return {
               address: tokenAddress,
@@ -423,7 +344,9 @@ export default function PortfolioPage() {
           ? createdTokensData
           : fallbackCreatedTokens;
 
-      console.log(
+      /*
+      Debug: All tokens data
+      console.debug(
         "All tokens data:",
         allTokensData.map((t) => ({
           address: t.address,
@@ -431,11 +354,11 @@ export default function PortfolioPage() {
           creator: t.creator,
         }))
       );
-      console.log(
+      console.debug(
         "Final created tokens data:",
         finalCreatedTokens.map((t) => ({ address: t.address, name: t.name }))
       );
-      console.log(
+      console.debug(
         "Tokens with balance:",
         tokensWithBalance.map((t) => ({
           address: t.address,
@@ -443,6 +366,7 @@ export default function PortfolioPage() {
           balance: t.balance.toString(),
         }))
       );
+      */
 
       // Calculate portfolio statistics
       const totalValue = tokensWithBalance.reduce(
@@ -465,7 +389,7 @@ export default function PortfolioPage() {
         totalFees,
       });
     } catch (error) {
-      console.error("Error loading portfolio data:", error);
+      console.error("[Portfolio] Error loading portfolio data:", error);
 
       // Set empty state on error
       setCreatedTokens([]);
@@ -480,13 +404,13 @@ export default function PortfolioPage() {
     } finally {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, publicClient, wagmiChainId]);
 
   useEffect(() => {
-    if (isConnected && address) {
+    if (mounted && (isConnected || address)) {
       loadPortfolioData();
     }
-  }, [isConnected, address, loadPortfolioData]);
+  }, [mounted, isConnected, address, status, wagmiChainId, loadPortfolioData]);
 
   const TokenCard = ({ token }: { token: TokenPortfolioItem }) => {
     // Parse the combined description to extract metadata
@@ -649,7 +573,25 @@ export default function PortfolioPage() {
     );
   };
 
-  if (!isConnected) {
+  // Before hydration, avoid rendering wallet-dependent UI
+  if (!mounted) {
+    return (
+      <div>
+        <Header />
+        <div className="px-10 border w-full">
+          <div className="min-h-[90vh] flex flex-col justify-center items-center text-black bg-[url('/img/bg-vector.svg')] bg-contain bg-no-repeat border-l border-r border-transparent [border-image:linear-gradient(to_bottom,#ebe3e8,transparent)_1]">
+            <div className="text-center">
+              <h1 className="font-britisans text-4xl font-bold mb-4">Loading</h1>
+              <p className="text-gray-600 mb-8">Preparing your portfolio…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show connect screen only when mounted and truly not connected
+  if (mounted && (!isConnected && !address)) {
     return (
       <div>
         <Header />

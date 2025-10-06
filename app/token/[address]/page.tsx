@@ -27,7 +27,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useWalletClient, useChainId } from "wagmi";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
 import {
   Tooltip,
@@ -117,6 +117,9 @@ const TradePage = () => {
   );
   const [copied, setCopied] = useState(false);
   const account = useAccount();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const wagmiChainId = useChainId();
   console.log("chainId", account?.chain?.id);
   console.log("userbalance", userBalance);
   // Trading state
@@ -268,38 +271,7 @@ const TradePage = () => {
     if (!tokenAddress || !amount || parsedAmount <= 0) return;
 
     try {
-      const { createPublicClient, http } = await import("viem");
-      const { zeroGGalileoTestnet } = await import("viem/chains");
-
-      // Get current chain dynamically
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-      };
-
-      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
-
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
+      if (!publicClient) throw new Error("Public client unavailable");
 
       // ETH amount the user wants to spend
       // User enters ETH amount they want to spend (e.g., "0.1" means 0.1 ETH)
@@ -524,38 +496,7 @@ const TradePage = () => {
     }
 
     try {
-      const { createPublicClient, http } = await import("viem");
-      const { zeroGGalileoTestnet } = await import("viem/chains");
-
-      // Get current chain
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-      };
-
-      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
-
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
+      if (!publicClient) throw new Error("Public client unavailable");
 
       // Check if user has enough tokens to sell
       const userTokenBalanceBigInt = (await publicClient.readContract({
@@ -784,41 +725,7 @@ const TradePage = () => {
     if (!userAddress || !tokenAddress) return;
 
     try {
-      const { createWalletClient, createPublicClient, http } = await import(
-        "viem"
-      );
-      const { zeroGGalileoTestnet } = await import("viem/chains");
-
-      // Get current chain dynamically
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-      };
-
-      console.log("chainId", chainId);
-      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
-
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
+      if (!publicClient) throw new Error("Public client unavailable");
 
       const [ethBalance, tokenBalance] = await Promise.all([
         publicClient.getBalance({ address: userAddress as `0x${string}` }),
@@ -844,34 +751,7 @@ const TradePage = () => {
   const fetchChartData = async (chainId: number) => {
     try {
       setChartLoading(true);
-      const { createPublicClient, http } = await import("viem");
-      const { zeroGGalileoTestnet } = await import("viem/chains");
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
-            },
-          },
-          testnet: true,
-        },
-      };
-
-      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
-
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
+      if (!publicClient) throw new Error("Public client unavailable");
 
       // Get current block number
       const currentBlock = await publicClient.getBlockNumber();
@@ -1095,18 +975,9 @@ const TradePage = () => {
 
       const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
 
-      // Create wallet client without account (let it use the connected account)
-      const walletClient = createWalletClient({
-        chain: currentChain,
-        transport: custom((window as any).ethereum),
-      });
-
-      // Create public client for gas estimation and simulation
-      const { createPublicClient } = await import("viem");
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
+      // Reuse Wagmi clients
+      if (!walletClient) throw new Error("Wallet client unavailable");
+      if (!publicClient) throw new Error("Public client unavailable");
 
       // Parse amounts based on trade mode
       console.log("DEBUG: amount string:", amount);
@@ -1138,7 +1009,6 @@ const TradePage = () => {
           functionName: "buyTokens",
           args: [tokenAmount],
           value: buyQuote.cost,
-          chain: currentChain,
         });
       } else {
         // For selling, parse the amount as tokens
