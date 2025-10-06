@@ -19,6 +19,6 @@
 # Hardhat coverage reports
 /coverage
 bun.lock
-*.md
+
 
 .env
