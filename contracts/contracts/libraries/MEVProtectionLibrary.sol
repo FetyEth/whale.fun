@@ -484,31 +484,4 @@ library StreamingLibrary {
         return engagementScore > 100 ? 100 : engagementScore;
     }
     
-    /**
-     * @dev Process community voting for token parameters
-     * @param vote Current vote state
-     * @param votingPower Voter's voting power
-     * @param support True for support, false for against
-     * @return updated Updated vote state
-     */
-    function processCommunityVote(
-    CommunityVote memory vote,
-    address voter,
-    uint256 votingPower,
-    bool support
-    ) internal pure returns (CommunityVote memory updated) {
-        updated = vote;
-        
-        require(voter != address(0), "Invalid voter address");
-        
-        if (support) {
-            updated.votesFor += votingPower;
-        } else {
-            updated.votesAgainst += votingPower;
-        }
-        
-        updated.totalVoters += 1;
-        
-        return updated;
-    }
 }
