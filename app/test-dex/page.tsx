@@ -1,715 +1,833 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ethers } from "ethers";
-import {
-  getBlockchainConnection,
-  getContractInstance,
-  formatAddress,
-  SUPPORTED_NETWORKS,
-} from "@/utils/Blockchain";
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useAccount, usePublicClient, useWalletClient, useConnect, useDisconnect } from 'wagmi';
+import { parseUnits, formatUnits, Address } from 'viem';
+import { injected } from 'wagmi/connectors';
+import mainnetAddresses from '@/contracts/deployments/mainnet-addresses.json';
 
-// Admin wallet (will gate admin-only controls)
-const ADMIN_ADDRESS = "0x95Cf028D5e86863570E300CAD14484Dc2068eB79".toLowerCase();
+// Import contract addresses from mainnet-addresses.json
+const DEX_CONTRACTS = {
+  WETH: (mainnetAddresses as any).contracts.WETH,
+  DexFactory: (mainnetAddresses as any).contracts.DexFactory,
+  DexRouter: (mainnetAddresses as any).contracts.DexRouter,
+  QUOTER: (mainnetAddresses as any).contracts.QUOTER,
+  NFT: (mainnetAddresses as any).contracts.NFT,
+} as const;
 
-// ZeroG testnet chainId
-const CHAIN_ID = 16602;
-
-// Import deployed addresses JSON (source of truth)
-// Note: imported at runtime on client side to avoid SSR issues
-async function loadAddresses() {
-  const mod = await import("@/contracts/deployments/zeroGTestnet-addresses.json");
-  return mod as any;
-}
-
-// Minimal ABIs
-const ERC20_ABI = [
-  { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint8" }] },
-  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "string" }] },
-  { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "owner", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
-  { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
-  { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
-] as const;
-
-const FACTORY_ABI = [
-  { type: "function", name: "getPair", stateMutability: "view", inputs: [{ name: "tokenA", type: "address" }, { name: "tokenB", type: "address" }], outputs: [{ name: "pair", type: "address" }] },
-  { type: "function", name: "createPair", stateMutability: "nonpayable", inputs: [{ name: "tokenA", type: "address" }, { name: "tokenB", type: "address" }], outputs: [{ name: "pair", type: "address" }] },
-  { type: "function", name: "allPairsLength", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
-  { type: "function", name: "allPairs", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [{ name: "", type: "address" }] },
-] as const;
-
-const PAIR_ABI = [
-  { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
-  { type: "function", name: "token1", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
-  { type: "function", name: "getReserves", stateMutability: "view", inputs: [], outputs: [
-    { name: "reserve0", type: "uint112" },
-    { name: "reserve1", type: "uint112" },
-    { name: "blockTimestampLast", type: "uint32" }
-  ] },
-] as const;
-
-const ROUTER_ABI = [
-  { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+// Popular tokens on 0G Mainnet - From Jaine DEX
+const MAINNET_TOKENS = [
   {
-    type: "function",
-    name: "addLiquidity",
-    stateMutability: "nonpayable",
+    address: '0x564770837Ef8bbF077cFe54E5f6106538c815B22',
+    symbol: 'stgWETH',
+    name: 'Bridged WETH',
+    decimals: 18,
+    logo: '🟣',
+    image: '/tokens/stgeth.png',
+  },
+  {
+    address: '0x9FBBAFC2Ad79af2b57eD23C60DfF79eF5c2b0FB5',
+    symbol: 'stgUSDT',
+    name: 'Bridged stgUSDT',
+    decimals: 6,
+    logo: '💚',
+    image: '/tokens/stgusdt.png',
+  },
+  {
+    address: '0x8a2B28364102Bea189D99A475C494330Ef2bDD0B',
+    symbol: 'stgUSDC',
+    name: 'Bridged USDC (Stargate)',
+    decimals: 6,
+    logo: '💠',
+    image: '/tokens/stgusdc.png',
+  },
+  {
+    address: '0x1Cd0690fF9a693f5EF2dD976660a8dAFc81A109c',
+    symbol: 'W0G',
+    name: 'Wrapped 0G',
+    decimals: 18,
+    logo: '💎',
+    image: '/tokens/wa0gi.png',
+  },
+  {
+    address: '0x7bBC63D01CA42491c3E084C941c3E86e55951404',
+    symbol: 'st0G',
+    name: 'Gimo Staked 0G',
+    decimals: 18,
+    logo: '🔵',
+    image: '/tokens/stOG.svg',
+  },
+  {
+    address: '0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E',
+    symbol: 'USDC.e',
+    name: 'Bridged USDC',
+    decimals: 6,
+    logo: '💵',
+    image: '/tokens/USDCe.svg',
+  },
+  {
+    address: '0x161a128567BF0C005b58211757F7e46eed983F02',
+    symbol: 'wstETH',
+    name: 'Wrapped stETH',
+    decimals: 18,
+    logo: '⚗️',
+    image: '/tokens/wstETH.svg',
+  },
+  {
+    address: '0x59ef6F3943bBdFE2fB19565037Ac85071223E94C',
+    symbol: 'PAI',
+    name: 'Panda AI',
+    decimals: 18,
+    logo: '🐼',
+    image: '/tokens/PAI.svg',
+  },
+];
+
+// Factory ABI to get pool address
+const FACTORY_ABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'tokenA', type: 'address' },
+      { internalType: 'address', name: 'tokenB', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+    ],
+    name: 'getPool',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+// Pool ABI to get slot0 (current price)
+const POOL_ABI = [
+  {
+    inputs: [],
+    name: 'slot0',
+    outputs: [
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tick', type: 'int24' },
+      { internalType: 'uint16', name: 'observationIndex', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinality', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinalityNext', type: 'uint16' },
+      { internalType: 'uint8', name: 'feeProtocol', type: 'uint8' },
+      { internalType: 'bool', name: 'unlocked', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'liquidity',
+    outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+// Quoter ABI (from user-provided mainnet contract at 0xd008...be02)
+const QUOTER_ABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'tokenIn', type: 'address' },
+      { internalType: 'address', name: 'tokenOut', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+      { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
+      { internalType: 'uint160', name: 'sqrtPriceLimitX96', type: 'uint160' },
+    ],
+    name: 'quoteExactInputSingle',
+    outputs: [{ internalType: 'uint256', name: 'amountOut', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;
+
+// Router ABI for swap functions (struct-based params per mainnet router)
+const ROUTER_ABI = [
+  {
     inputs: [
       {
-        name: "params",
-        type: "tuple",
         components: [
-          { name: "tokenA", type: "address" },
-          { name: "tokenB", type: "address" },
-          { name: "amountADesired", type: "uint256" },
-          { name: "amountBDesired", type: "uint256" },
-          { name: "amountAMin", type: "uint256" },
-          { name: "amountBMin", type: "uint256" },
-          { name: "to", type: "address" },
-          { name: "deadline", type: "uint256" },
+          { internalType: 'address', name: 'tokenIn', type: 'address' },
+          { internalType: 'address', name: 'tokenOut', type: 'address' },
+          { internalType: 'uint24', name: 'fee', type: 'uint24' },
+          { internalType: 'address', name: 'recipient', type: 'address' },
+          { internalType: 'uint256', name: 'deadline', type: 'uint256' },
+          { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
+          { internalType: 'uint256', name: 'amountOutMinimum', type: 'uint256' },
+          { internalType: 'uint160', name: 'sqrtPriceLimitX96', type: 'uint160' },
         ],
+        internalType: 'struct ISwapRouter.ExactInputSingleParams',
+        name: 'params',
+        type: 'tuple',
       },
     ],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "swapExactTokensForTokens",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "amountIn", type: "uint256" },
-      { name: "amountOutMin", type: "uint256" },
-      { name: "path", type: "address[]" },
-      { name: "to", type: "address" },
-      { name: "deadline", type: "uint256" },
-    ],
-    outputs: [{ name: "amounts", type: "uint256[]" }],
+    name: 'exactInputSingle',
+    outputs: [{ internalType: 'uint256', name: 'amountOut', type: 'uint256' }],
+    stateMutability: 'payable',
+    type: 'function',
   },
 ] as const;
 
-function pow10Big(decimals: number) {
-  let result = BigInt(1);
-  const ten = BigInt(10);
-  for (let i = 0; i < decimals; i++) result *= ten;
-  return result;
+// ERC20 ABI for token operations
+const ERC20_ABI = [
+  {
+    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'spender', type: 'address' },
+      { internalType: 'uint256', name: 'amount', type: 'uint256' },
+    ],
+    name: 'approve',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'decimals',
+    outputs: [{ internalType: 'uint8', name: '', type: 'uint8' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'symbol',
+    outputs: [{ internalType: 'string', name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+interface Token {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logo: string; // emoji fallback
+  image?: string; // optional path under /public
 }
 
-function humanToWei(amount: string, decimals: number) {
-  const [i, fRaw] = amount.split(".");
-  const f = (fRaw || "").padEnd(decimals, "0").slice(0, decimals);
-  const bi = BigInt(i || "0");
-  const bf = BigInt(f || "0");
-  return bi * pow10Big(decimals) + bf;
-}
+// Small helper to render token icon with graceful fallback
+const TokenIcon: React.FC<{ token: Token; size?: number }> = ({ token, size = 24 }) => {
+  const [failed, setFailed] = useState(false);
+  if (token.image && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={token.image}
+        alt={token.symbol}
+        width={size}
+        height={size}
+        className="rounded-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return <span className="text-2xl leading-none">{token.logo}</span>;
+};
 
-export default function TestDexPage() {
-  const [account, setAccount] = useState<string>("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [addresses, setAddresses] = useState<any>(null);
-  const [status, setStatus] = useState<string>("");
-  const [busy, setBusy] = useState<boolean>(false);
+const TestDexPage = () => {
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
 
-  // form state
-  const [tokenA, setTokenA] = useState<string>("");
-  const [tokenB, setTokenB] = useState<string>("");
-  const [amountA, setAmountA] = useState<string>("0");
-  const [amountB, setAmountB] = useState<string>("0");
-  const [slippageBps, setSlippageBps] = useState<number>(300);
-  const [pairAddr, setPairAddr] = useState<string>("");
+  const [tokenIn, setTokenIn] = useState<Token | null>(MAINNET_TOKENS[0]);
+  const [tokenOut, setTokenOut] = useState<Token | null>(null);
+  const [amountIn, setAmountIn] = useState<string>('');
+  const [amountOut, setAmountOut] = useState<string>('');
+  const [slippage, setSlippage] = useState<string>('0.5');
+  const [loading, setLoading] = useState(false);
+  const [quoting, setQuoting] = useState(false);
+  const [txHash, setTxHash] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [showTokenInDropdown, setShowTokenInDropdown] = useState(false);
+  const [showTokenOutDropdown, setShowTokenOutDropdown] = useState(false);
+  const [balanceIn, setBalanceIn] = useState<string>('0');
+  const [balanceOut, setBalanceOut] = useState<string>('0');
+  const [customTokenAddress, setCustomTokenAddress] = useState<string>('');
+  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
+  const [detectedFee, setDetectedFee] = useState<700 | 500 | 3000 | 10000 | null>(null);
 
-  // swap form
-  const [swapInToken, setSwapInToken] = useState<string>("");
-  const [swapOutToken, setSwapOutToken] = useState<string>("");
-  const [swapAmountIn, setSwapAmountIn] = useState<string>("0");
-  const [minOutPct, setMinOutPct] = useState<number>(97); // 97% min out
-  const [pairs, setPairs] = useState<Array<{ pair: string; token0: string; token1: string }>>([]);
-  const [approveInfinite, setApproveInfinite] = useState<boolean>(false);
-  const [balances, setBalances] = useState<{ a?: string; b?: string }>({});
-  const [allowances, setAllowances] = useState<{ a?: string; b?: string }>({});
-  const [reserves, setReserves] = useState<{ r0?: string; r1?: string }>({});
-
-  const connect = useCallback(async () => {
-    try {
-      const { account, network } = await getBlockchainConnection();
-      if (Number(network.chainId) !== CHAIN_ID) {
-        setStatus(`Wrong network. Please switch to ${SUPPORTED_NETWORKS[CHAIN_ID].name}.`);
-        setAccount(account);
-      } else {
-        setAccount(account);
-        setStatus("Connected");
-      }
-      setIsAdmin(account?.toLowerCase() === ADMIN_ADDRESS);
-    } catch (e: any) {
-      setStatus(e.message || "Failed to connect");
-    }
-  }, []);
-
+  // Fetch token balances
   useEffect(() => {
-    loadAddresses().then(setAddresses).catch(() => setStatus("Failed to load addresses"));
-  }, []);
+    const fetchBalances = async () => {
+      if (!address || !publicClient || !isConnected) return;
 
-  const defaults = useMemo(() => {
-    if (!addresses) return { factory: "", router: "" };
-    return {
-      factory: addresses.contracts?.DexFactory || "",
-      router: addresses.contracts?.DexRouter || "",
-    };
-  }, [addresses]);
-
-  // Actions
-  const onCreatePair = useCallback(async () => {
-    try {
-      setStatus("Creating pair...");
-      if (!defaults.factory || !ethers.isAddress(defaults.factory)) {
-        setStatus("Factory address not configured. Check deployments JSON.");
-        return;
-      }
-      if (!ethers.isAddress(tokenA) || !ethers.isAddress(tokenB)) {
-        setStatus("Enter valid Token A and Token B addresses first.");
-        return;
-      }
-      const { contract } = await getContractInstance(defaults.factory, FACTORY_ABI, CHAIN_ID);
-      const tx = await contract.createPair(tokenA, tokenB);
-      const rc = await tx.wait();
-      setStatus(`Pair created in tx ${rc?.hash}`);
-    } catch (e: any) {
-      setStatus(e.message || "Failed createPair");
-    }
-  }, [defaults.factory, tokenA, tokenB]);
-
-  const onGetPair = useCallback(async () => {
-    try {
-      setStatus("Reading pair...");
-      if (!defaults.factory || !ethers.isAddress(defaults.factory)) {
-        setStatus("Factory address not configured. Check deployments JSON.");
-        return;
-      }
-      if (!ethers.isAddress(tokenA) || !ethers.isAddress(tokenB)) {
-        setStatus("Enter valid Token A and Token B addresses first.");
-        return;
-      }
-      const { contract } = await getContractInstance(defaults.factory, FACTORY_ABI, CHAIN_ID);
-      let p = await contract.getPair(tokenA, tokenB);
-      if (!p || p === ethers.ZeroAddress) {
-        // try reverse order
-        p = await contract.getPair(tokenB, tokenA);
-      }
-      if (!p || p === ethers.ZeroAddress) {
-        setPairAddr("");
-        setStatus("No pair found. Create it first.");
-      } else {
-        setPairAddr(p);
-        setStatus(`Pair: ${p}`);
-      }
-    } catch (e: any) {
-      setStatus(e.message || "Failed getPair");
-    }
-  }, [defaults.factory, tokenA, tokenB]);
-
-  const onAddLiquidity = useCallback(async () => {
-    try {
-      if (busy) return;
-      setBusy(true);
-      setStatus("Approving & adding liquidity...");
-      if (!defaults.router || !ethers.isAddress(defaults.router)) {
-        setStatus("Router address not configured. Check deployments JSON.");
-        return;
-      }
-      // Verify router wired to expected factory
-      const { contract: routerView } = await getContractInstance(defaults.router, ROUTER_ABI, CHAIN_ID);
-      const routerFactory: string = await routerView.factory();
-      if (!routerFactory || routerFactory.toLowerCase() !== (defaults.factory || "").toLowerCase()) {
-        setStatus(`Router.factory mismatch. Router points to ${routerFactory}, JSON has ${defaults.factory}.`);
-        return;
-      }
-      if (!ethers.isAddress(tokenA) || !ethers.isAddress(tokenB)) {
-        setStatus("Enter valid Token A and Token B addresses first.");
-        return;
-      }
-      // Prepare decimals
-      const ercA = await getContractInstance(tokenA, ERC20_ABI, CHAIN_ID);
-      const ercB = await getContractInstance(tokenB, ERC20_ABI, CHAIN_ID);
-      const decA = Number(await ercA.contract.decimals());
-      const decB = Number(await ercB.contract.decimals());
-      const amountADesired = humanToWei(amountA, decA);
-      const amountBDesired = humanToWei(amountB, decB);
-      if (amountADesired <= BigInt(0) || amountBDesired <= BigInt(0)) {
-        setStatus("Enter positive amounts for A and B.");
-        return;
-      }
-      // Determine mins based on reserves: if pool empty, set mins = 0 for first add
-      let amountAMin = (amountADesired * BigInt(10000 - slippageBps)) / BigInt(10000);
-      let amountBMin = (amountBDesired * BigInt(10000 - slippageBps)) / BigInt(10000);
       try {
-        const { contract: factory } = await getContractInstance(defaults.factory, FACTORY_ABI, CHAIN_ID);
-        const pairAddrLocal: string = await factory.getPair(tokenA, tokenB);
-        if (pairAddrLocal && pairAddrLocal !== ethers.ZeroAddress) {
-          const { contract: pair } = await getContractInstance(pairAddrLocal, PAIR_ABI, CHAIN_ID);
-          const [r0, r1] = await pair.getReserves();
-          const reserve0 = BigInt(r0.toString());
-          const reserve1 = BigInt(r1.toString());
-          if (reserve0 === BigInt(0) && reserve1 === BigInt(0)) {
-            amountAMin = BigInt(0);
-            amountBMin = BigInt(0);
+        if (tokenIn && tokenIn.address !== '0x0000000000000000000000000000000000000000') {
+          try {
+            const balance = await publicClient.readContract({
+              address: tokenIn.address as Address,
+              abi: ERC20_ABI,
+              functionName: 'balanceOf',
+              args: [address],
+            });
+            setBalanceIn(formatUnits(balance, tokenIn.decimals));
+          } catch (err) {
+            console.log('Token In balance fetch failed, setting to 0');
+            setBalanceIn('0');
+          }
+        } else if (tokenIn) {
+          const balance = await publicClient.getBalance({ address });
+          setBalanceIn(formatUnits(balance, 18));
+        }
+
+        if (tokenOut && tokenOut.address !== '0x0000000000000000000000000000000000000000') {
+          try {
+            const balance = await publicClient.readContract({
+              address: tokenOut.address as Address,
+              abi: ERC20_ABI,
+              functionName: 'balanceOf',
+              args: [address],
+            });
+            setBalanceOut(formatUnits(balance, tokenOut.decimals));
+          } catch (err) {
+            console.log('Token Out balance fetch failed, setting to 0');
+            setBalanceOut('0');
+          }
+        } else if (tokenOut) {
+          const balance = await publicClient.getBalance({ address });
+          setBalanceOut(formatUnits(balance, 18));
+        }
+      } catch (err) {
+        console.error('Error fetching balances:', err);
+      }
+    };
+
+    fetchBalances();
+  }, [address, publicClient, isConnected, tokenIn, tokenOut]);
+
+  // Get quote when amount changes (use on-chain Quoter)
+  useEffect(() => {
+    const getQuote = async () => {
+      if (!tokenIn || !tokenOut || !amountIn || !publicClient) {
+        setAmountOut('');
+        setDetectedFee(null);
+        return;
+      }
+
+      if (parseFloat(amountIn) <= 0) {
+        setAmountOut('');
+        setDetectedFee(null);
+        return;
+      }
+
+      try {
+        setQuoting(true);
+        setError('');
+        const amountInWei = parseUnits(amountIn, tokenIn.decimals);
+
+        // Try common fee tiers until one succeeds
+        const feeTiers: Array<500 | 3000 | 10000> = [500, 3000, 10000];
+        let found: { out: bigint; fee: 500 | 3000 | 10000 } | null = null;
+
+        for (const fee of feeTiers) {
+          try {
+            const quoted: bigint = await publicClient.readContract({
+              address: DEX_CONTRACTS.QUOTER as Address,
+              abi: QUOTER_ABI,
+              functionName: 'quoteExactInputSingle',
+              args: [
+                tokenIn.address as Address,
+                tokenOut.address as Address,
+                fee,
+                amountInWei,
+                BigInt(0),
+              ],
+            });
+            if (quoted && quoted > BigInt(0)) {
+              found = { out: quoted, fee };
+              break;
+            }
+          } catch (_) {
+            // try next fee tier
           }
         }
-      } catch (_) {
-        // ignore reserve read errors; fallback to slippage mins
+
+        if (!found) {
+          setDetectedFee(null);
+          setAmountOut('');
+          setError('No pool/liquidity found for this pair.');
+          return;
+        }
+
+        setDetectedFee(found.fee);
+        setAmountOut(formatUnits(found.out, tokenOut.decimals));
+      } catch (err: any) {
+        console.error('Quote error:', err);
+        setAmountOut('');
+        setDetectedFee(null);
+      } finally {
+        setQuoting(false);
+      }
+    };
+
+    const timeoutId = setTimeout(getQuote, 500);
+    return () => clearTimeout(timeoutId);
+  }, [amountIn, tokenIn, tokenOut, publicClient]);
+
+  const handleConnectWallet = () => {
+    connect({ connector: injected() });
+  };
+
+  const switchTokens = () => {
+    const temp = tokenIn;
+    setTokenIn(tokenOut);
+    setTokenOut(temp);
+    setAmountIn('');
+    setAmountOut('');
+  };
+
+  const handleSwap = async () => {
+    if (!isConnected || !address || !walletClient || !publicClient) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    if (!tokenIn || !tokenOut || !amountIn) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (!detectedFee) {
+      setError('No pool found for this pair/fee. Try a different direction or token.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setTxHash('');
+
+      const amountInWei = parseUnits(amountIn, tokenIn.decimals);
+
+      // Approve router to spend tokens (skip for native token)
+      if (tokenIn.address !== '0x0000000000000000000000000000000000000000') {
+        const approveTx = await walletClient.writeContract({
+          address: tokenIn.address as Address,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [DEX_CONTRACTS.DexRouter as Address, amountInWei],
+        });
+
+        await publicClient.waitForTransactionReceipt({ hash: approveTx });
       }
 
-      // Check balances
-      const meA: string = ercA.account;
-      const balA: bigint = await ercA.contract.balanceOf(meA);
-      const balB: bigint = await ercB.contract.balanceOf(meA);
-      if (balA < amountADesired) {
-        setStatus(`Insufficient Token A balance. Have ${balA.toString()}, need ${amountADesired.toString()}.`);
-        return;
-      }
-      if (balB < amountBDesired) {
-        setStatus(`Insufficient Token B balance. Have ${balB.toString()}, need ${amountBDesired.toString()}.`);
-        return;
-      }
+      // Calculate minimum amount out with slippage
+      const slippagePercent = parseFloat(slippage);
+      // If user provided expected output, use it with slippage
+      // Otherwise, set minAmountOut to 0 (accept any amount - risky but allows swap without quote)
+      const minAmountOut = amountOut && parseFloat(amountOut) > 0
+        ? parseUnits(
+            (parseFloat(amountOut) * (1 - slippagePercent / 100)).toFixed(6),
+            tokenOut.decimals
+          )
+        : BigInt(0);
 
-      // Approvals to Router
-      const { contract: ercAContract } = ercA;
-      const { contract: ercBContract } = ercB;
-      const MAX_UINT_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-      const approveAmountA = approveInfinite ? MAX_UINT_HEX : amountADesired.toString();
-      const approveA = await ercAContract.approve(
-        defaults.router,
-        approveAmountA,
-        { gasLimit: "200000" }
-      );
-      await approveA.wait();
-      const approveAmountB = approveInfinite ? MAX_UINT_HEX : amountBDesired.toString();
-      const approveB = await ercBContract.approve(
-        defaults.router,
-        approveAmountB,
-        { gasLimit: "200000" }
-      );
-      await approveB.wait();
+      // Execute swap
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 minutes
 
-      // Add liquidity
-      const { contract: router, account: me } = await getContractInstance(defaults.router, ROUTER_ABI, CHAIN_ID);
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24 hours
-      const params = {
-        tokenA,
-        tokenB,
-        amountADesired: amountADesired.toString(),
-        amountBDesired: amountBDesired.toString(),
-        amountAMin: amountAMin.toString(),
-        amountBMin: amountBMin.toString(),
-        to: me,
-        deadline,
-      };
-      // Lightweight prechecks (avoid staticCall on state-changing function)
-      if (Number(deadline) <= Math.floor(Date.now() / 1000)) {
-        setStatus("Deadline already expired");
-        return;
-      }
-      if (amountADesired <= BigInt(0) || amountBDesired <= BigInt(0)) {
-        setStatus("Amounts must be > 0");
-        return;
-      }
-      const tx = await router.addLiquidity(params, { gasLimit: "700000" });
-      const rc = await tx.wait();
-      setStatus(`Liquidity added in tx ${rc?.hash}`);
-    } catch (e: any) {
-      const msg = e?.reason || e?.shortMessage || e?.message || "Failed addLiquidity";
-      setStatus(msg);
+      const swapTx = await walletClient.writeContract({
+        address: DEX_CONTRACTS.DexRouter as Address,
+        abi: ROUTER_ABI,
+        functionName: 'exactInputSingle',
+        args: [
+          {
+            tokenIn: tokenIn.address as Address,
+            tokenOut: tokenOut.address as Address,
+            fee: detectedFee,
+            recipient: address as Address,
+            deadline,
+            amountIn: amountInWei,
+            amountOutMinimum: minAmountOut,
+            sqrtPriceLimitX96: BigInt(0),
+          },
+        ],
+        value: tokenIn.address === '0x0000000000000000000000000000000000000000' ? amountInWei : BigInt(0),
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: swapTx });
+      setTxHash(swapTx);
+      setError('');
+      setAmountIn('');
+      setAmountOut('');
+    } catch (err: any) {
+      console.error('Swap error:', err);
+      setError(err.message || 'Swap failed');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  }, [tokenA, tokenB, amountA, amountB, slippageBps, defaults.router, busy, defaults.factory, approveInfinite]);
-
-  const onListPairs = useCallback(async () => {
-    try {
-      setStatus("Loading pairs...");
-      if (!defaults.factory || !ethers.isAddress(defaults.factory)) {
-        setStatus("Factory address not configured. Check deployments JSON.");
-        return;
-      }
-      const { contract: factory } = await getContractInstance(defaults.factory, FACTORY_ABI, CHAIN_ID);
-      const len: bigint = await factory.allPairsLength();
-      const count = Number(len);
-      const items: Array<{ pair: string; token0: string; token1: string }> = [];
-      const max = Math.min(count, 50); // safety cap
-      for (let i = 0; i < max; i++) {
-        const addr: string = await factory.allPairs(i);
-        if (!addr || addr === ethers.ZeroAddress) continue;
-        const { contract: pair } = await getContractInstance(addr, PAIR_ABI, CHAIN_ID);
-        const t0: string = await pair.token0();
-        const t1: string = await pair.token1();
-        items.push({ pair: addr, token0: t0, token1: t1 });
-      }
-      setPairs(items);
-      setStatus(`Loaded ${items.length} pairs`);
-    } catch (e: any) {
-      setStatus(e.message || "Failed to load pairs");
-    }
-  }, [defaults.factory]);
-
-  const refreshBalancesAllowances = useCallback(async () => {
-    try {
-      setStatus("Refreshing balances & allowances...");
-      if (!ethers.isAddress(tokenA) || !ethers.isAddress(tokenB) || !defaults.router) {
-        setStatus("Set Token A/B and ensure Router is configured first.");
-        return;
-      }
-      const a = await getContractInstance(tokenA, ERC20_ABI, CHAIN_ID);
-      const b = await getContractInstance(tokenB, ERC20_ABI, CHAIN_ID);
-      const me = a.account as string;
-      const balA: bigint = await a.contract.balanceOf(me);
-      const balB: bigint = await b.contract.balanceOf(me);
-      const alwA: bigint = await a.contract.allowance(me, defaults.router);
-      const alwB: bigint = await b.contract.allowance(me, defaults.router);
-      setBalances({ a: balA.toString(), b: balB.toString() });
-      setAllowances({ a: alwA.toString(), b: alwB.toString() });
-      setStatus("Balances & allowances updated");
-    } catch (e: any) {
-      setStatus(e?.message || "Failed to refresh balances/allowances");
-    }
-  }, [tokenA, tokenB, defaults.router]);
-
-  const refreshReserves = useCallback(async () => {
-    try {
-      setStatus("Refreshing reserves...");
-      const { contract: factory } = await getContractInstance(defaults.factory, FACTORY_ABI, CHAIN_ID);
-      const pair = await factory.getPair(tokenA, tokenB);
-      if (!pair || pair === ethers.ZeroAddress) {
-        setReserves({ r0: "0", r1: "0" });
-        setStatus("No pair yet");
-        return;
-      }
-      const { contract } = await getContractInstance(pair, PAIR_ABI, CHAIN_ID);
-      const [r0, r1] = await contract.getReserves();
-      setReserves({ r0: r0.toString(), r1: r1.toString() });
-      setStatus("Reserves updated");
-    } catch (e: any) {
-      setStatus(e?.message || "Failed to refresh reserves");
-    }
-  }, [defaults.factory, tokenA, tokenB]);
-
-  const quickApprove = useCallback(async (which: 'A'|'B') => {
-    try {
-      setStatus(`Approving ${which} infinite...`);
-      const MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-      const c = which === 'A' ? await getContractInstance(tokenA, ERC20_ABI, CHAIN_ID) : await getContractInstance(tokenB, ERC20_ABI, CHAIN_ID);
-      const tx = await c.contract.approve(defaults.router, MAX, { gasLimit: "200000" });
-      await tx.wait();
-      setStatus(`${which} approved`);
-      refreshBalancesAllowances();
-    } catch (e: any) {
-      setStatus(e?.message || "Approve failed");
-    }
-  }, [tokenA, tokenB, defaults.router, refreshBalancesAllowances]);
-
-  const onSwap = useCallback(async () => {
-    try {
-      setStatus("Approving & swapping...");
-      if (!defaults.router || !ethers.isAddress(defaults.router)) {
-        setStatus("Router address not configured. Check deployments JSON.");
-        return;
-      }
-      // Verify router wired to expected factory
-      const { contract: routerView } = await getContractInstance(defaults.router, ROUTER_ABI, CHAIN_ID);
-      const routerFactory: string = await routerView.factory();
-      if (!routerFactory || routerFactory.toLowerCase() !== (defaults.factory || "").toLowerCase()) {
-        setStatus(`Router.factory mismatch. Router points to ${routerFactory}, JSON has ${defaults.factory}.`);
-        return;
-      }
-      if (!ethers.isAddress(swapInToken) || !ethers.isAddress(swapOutToken)) {
-        setStatus("Enter valid Token In and Token Out addresses first.");
-        return;
-      }
-      // decimals
-      const inErc = await getContractInstance(swapInToken, ERC20_ABI, CHAIN_ID);
-      const decIn = Number(await inErc.contract.decimals());
-      const amountIn = humanToWei(swapAmountIn, decIn);
-      const amountOutMin = (amountIn * BigInt(minOutPct)) / BigInt(100); // naive minOut
-
-      // approve
-      const MAX_UINT_HEX2 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-      const approveAmt = approveInfinite ? MAX_UINT_HEX2 : amountIn.toString();
-      const approve = await inErc.contract.approve(
-        defaults.router,
-        approveAmt,
-        { gasLimit: "200000" }
-      );
-      await approve.wait();
-
-      const { contract: router, account: me } = await getContractInstance(defaults.router, ROUTER_ABI, CHAIN_ID);
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24 hours
-      const path = [swapInToken, swapOutToken];
-      const tx = await router.swapExactTokensForTokens(
-        amountIn.toString(),
-        amountOutMin.toString(),
-        path,
-        me,
-        deadline,
-        { gasLimit: "700000" }
-      );
-      const rc = await tx.wait();
-      setStatus(`Swap done in tx ${rc?.hash}`);
-    } catch (e: any) {
-      setStatus(e.message || "Failed swap");
-    }
-  }, [swapInToken, swapOutToken, swapAmountIn, minOutPct, defaults.router, defaults.factory, approveInfinite]);
-
-  // Prefill tokens from addresses JSON if present
-  useEffect(() => {
-    if (!addresses) return;
-    // If you want defaults to your newly deployed tokens, set them here.
-    // setTokenA(addresses.contracts?.WethToken || "");
-    // setTokenB(addresses.contracts?.PandaAiToken || "");
-  }, [addresses]);
+  };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-2xl font-bold">Test DEX</h1>
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={connect}
-          className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Connect Wallet
-        </button>
-        <div className="text-sm text-gray-600">
-          {account ? `Connected: ${formatAddress(account)}` : "Not connected"}
-        </div>
-        <div className="text-xs text-gray-500">Router: {defaults.router || '-'} | Router.factory: {/* will be fetched on action */}</div>
-
-      {/* Balances & Allowances */}
-      <div className="space-y-3 border rounded p-4">
-        <h2 className="font-semibold">Balances & Allowances</h2>
-        <div className="flex items-center gap-3">
-          <button onClick={refreshBalancesAllowances} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-800">Refresh</button>
-          <span className="text-sm text-gray-600">Router: {defaults.router || "(not set)"}</span>
-        </div>
-        <div className="text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <div className="font-mono">Token A: {tokenA || '-'}</div>
-            <div>Balance: {balances.a ?? '-'}</div>
-            <div>Allowance → Router: {allowances.a ?? '-'}</div>
-            <button onClick={() => quickApprove('A')} className="mt-1 px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">Approve A ∞</button>
-          </div>
-          <div>
-            <div className="font-mono">Token B: {tokenB || '-'}</div>
-            <div>Balance: {balances.b ?? '-'}</div>
-            <div>Allowance → Router: {allowances.b ?? '-'}</div>
-            <button onClick={() => quickApprove('B')} className="mt-1 px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">Approve B ∞</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Reserves Panel */}
-      <div className="space-y-3 border rounded p-4">
-        <h2 className="font-semibold">Pair Reserves</h2>
-        <div className="flex items-center gap-3">
-          <button onClick={refreshReserves} className="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-800">Refresh</button>
-          <span className="text-sm text-gray-600">Factory: {defaults.factory || "(not set)"}</span>
-        </div>
-        <div className="text-sm">reserve0: {reserves.r0 ?? '-'} | reserve1: {reserves.r1 ?? '-'}</div>
-        <div className="text-xs text-gray-500">If both reserves are 0, first add sets mins to 0 automatically.</div>
-      </div>
-
-      {/* List Pairs (no input required) */}
-      <div className="space-y-4 border rounded p-4">
-        <h2 className="font-semibold">Existing Pairs</h2>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onListPairs}
-            className="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-800"
-          >
-            Load Pairs
-          </button>
-          <span className="text-sm text-gray-600">Factory: {defaults.factory || "(not set)"}</span>
-        </div>
-        {pairs.length > 0 ? (
-          <div className="space-y-2">
-            {pairs.map((p) => (
-              <div key={p.pair} className="text-sm border rounded p-2 flex items-center justify-between">
-                <div>
-                  <div>Pair: {p.pair}</div>
-                  <div className="text-gray-600">token0: {p.token0}</div>
-                  <div className="text-gray-600">token1: {p.token1}</div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-5xl font-bold text-white">
+              🐋 Jainedex DEX
+            </h1>
+            {isConnected ? (
+              <div className="flex items-center gap-3">
+                <div className="bg-green-500/20 border border-green-500 rounded-lg px-4 py-2">
+                  <p className="text-green-300 text-sm font-mono">
+                    {address?.slice(0, 6)}...{address?.slice(-4)}
+                  </p>
                 </div>
                 <button
-                  onClick={() => { setPairAddr(p.pair); setTokenA(p.token0); setTokenB(p.token1); setStatus(`Selected pair ${p.pair}`); }}
-                  className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => disconnect()}
+                  className="bg-red-500/20 border border-red-500 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition font-medium"
                 >
-                  Use
+                  Disconnect
                 </button>
               </div>
-            ))}
+            ) : (
+              <button
+                onClick={handleConnectWallet}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-bold transition shadow-lg"
+              >
+                Connect Wallet
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="text-xs text-gray-500">Click Load Pairs to fetch from Factory.</div>
-        )}
-      </div>
-        {isAdmin && (
-          <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-            Admin
-          </span>
-        )}
-      </div>
-
-      {status && (
-        <div className="text-sm p-3 rounded bg-gray-100 border border-gray-200">
-          {status}
-        </div>
-      )}
-
-      {/* Admin-only panel */}
-      {isAdmin && (
-        <div className="space-y-4 border rounded p-4">
-          <h2 className="font-semibold">Admin Panel</h2>
-          <p className="text-sm text-gray-600">
-            This section is only visible to the admin wallet {formatAddress(ADMIN_ADDRESS)}.
-          </p>
-          <p className="text-sm text-gray-600">
-            Future: set feeTo, set protocolFeeBps, emergency actions, etc.
+          <p className="text-gray-300 text-lg">
+            Decentralized Exchange on 0G Mainnet
           </p>
         </div>
-      )}
 
-      {/* Pair creation */}
-      <div className="space-y-4 border rounded p-4">
-        <h2 className="font-semibold">Create Pair</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token A address"
-            value={tokenA}
-            onChange={(e) => setTokenA(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token B address"
-            value={tokenB}
-            onChange={(e) => setTokenB(e.target.value)}
-          />
-        </div>
-        <button
-          onClick={onCreatePair}
-          disabled={busy}
-          className={`px-4 py-2 rounded text-white ${busy ? "bg-indigo-300" : "bg-indigo-600 hover:bg-indigo-700"}`}
-        >
-          Create Pair
-        </button>
-        <button
-          onClick={onGetPair}
-          disabled={busy}
-          className={`ml-3 px-4 py-2 rounded text-white ${busy ? "bg-gray-300" : "bg-gray-600 hover:bg-gray-700"}`}
-        >
-          Get Pair
-        </button>
-        {pairAddr && (
-          <div className="text-sm text-gray-700 mt-2">Pair: {pairAddr}</div>
-        )}
-      </div>
-
-      {/* Add Liquidity */}
-      <div className="space-y-4 border rounded p-4">
-        <h2 className="font-semibold">Add Liquidity</h2>
-        {pairAddr ? (
-          <div className="text-sm text-gray-700">Using Pair: {pairAddr}</div>
-        ) : (
-          <div className="text-xs text-gray-500">Tip: Click &quot;Get Pair&quot; above to fetch the pool before adding liquidity.</div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token A address"
-            value={tokenA}
-            onChange={(e) => setTokenA(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token B address"
-            value={tokenB}
-            onChange={(e) => setTokenB(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Amount A (human)"
-            value={amountA}
-            onChange={(e) => setAmountA(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Amount B (human)"
-            value={amountB}
-            onChange={(e) => setAmountB(e.target.value)}
-          />
-          <div className="col-span-1 md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-gray-600">Slippage (bps)</label>
-            <input
-              type="number"
-              className="border rounded px-3 py-2 w-32"
-              value={slippageBps}
-              onChange={(e) => setSlippageBps(Number(e.target.value))}
-            />
-            <label className="text-sm text-gray-600 ml-4 flex items-center gap-2">
-              <input type="checkbox" checked={approveInfinite} onChange={(e) => setApproveInfinite(e.target.checked)} />
-              Infinite approval
-            </label>
+        {/* Contract Info Card */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
+          <h2 className="text-xl font-semibold text-white mb-4">
+            📋 Contract Addresses
+          </h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Router:</span>
+              <code className="text-purple-300 bg-black/30 px-3 py-1 rounded">
+                {DEX_CONTRACTS.DexRouter.slice(0, 10)}...
+                {DEX_CONTRACTS.DexRouter.slice(-8)}
+              </code>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Factory:</span>
+              <code className="text-purple-300 bg-black/30 px-3 py-1 rounded">
+                {DEX_CONTRACTS.DexFactory.slice(0, 10)}...
+                {DEX_CONTRACTS.DexFactory.slice(-8)}
+              </code>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">WETH:</span>
+              <code className="text-purple-300 bg-black/30 px-3 py-1 rounded">
+                {DEX_CONTRACTS.WETH.slice(0, 10)}...
+                {DEX_CONTRACTS.WETH.slice(-8)}
+              </code>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300">Quoter:</span>
+              <code className="text-purple-300 bg-black/30 px-3 py-1 rounded">
+                {DEX_CONTRACTS.QUOTER.slice(0, 10)}...
+                {DEX_CONTRACTS.QUOTER.slice(-8)}
+              </code>
+            </div>
           </div>
         </div>
-        <button
-          onClick={onAddLiquidity}
-          disabled={busy}
-          className={`px-4 py-2 rounded text-white ${busy ? "bg-emerald-300" : "bg-emerald-600 hover:bg-emerald-700"}`}
-        >
-          Add Liquidity
-        </button>
-      </div>
 
-      {/* Swap */}
-      <div className="space-y-4 border rounded p-4">
-        <h2 className="font-semibold">Swap</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token In address"
-            value={swapInToken}
-            onChange={(e) => setSwapInToken(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Token Out address"
-            value={swapOutToken}
-            onChange={(e) => setSwapOutToken(e.target.value)}
-          />
-          <input
-            className="border rounded px-3 py-2"
-            placeholder="Amount In (human)"
-            value={swapAmountIn}
-            onChange={(e) => setSwapAmountIn(e.target.value)}
-          />
-          <div className="col-span-1 md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-gray-600">Min Out %</label>
-            <input
-              type="number"
-              className="border rounded px-3 py-2 w-32"
-              value={minOutPct}
-              onChange={(e) => setMinOutPct(Number(e.target.value))}
-            />
-            <label className="text-sm text-gray-600 ml-4 flex items-center gap-2">
-              <input type="checkbox" checked={approveInfinite} onChange={(e) => setApproveInfinite(e.target.checked)} />
-              Infinite approval
-            </label>
+        {/* Swap Card */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+          <h2 className="text-2xl font-bold text-white mb-6">Swap Tokens</h2>
+
+          {/* Token In */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-gray-300 font-medium">From</label>
+              {isConnected && tokenIn && (
+                <span className="text-gray-400 text-sm">
+                  Balance: {parseFloat(balanceIn).toFixed(4)} {tokenIn.symbol}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <div
+                onClick={() => setShowTokenInDropdown(!showTokenInDropdown)}
+                className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white cursor-pointer hover:border-purple-500 transition flex justify-between items-center"
+              >
+                {tokenIn ? (
+                  <div className="flex items-center gap-2">
+                    <TokenIcon token={tokenIn} size={24} />
+                    <div>
+                      <p className="font-bold">{tokenIn.symbol}</p>
+                      <p className="text-xs text-gray-400">{tokenIn.name}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-gray-500">Select token</span>
+                )}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {showTokenInDropdown && (
+                <div className="absolute z-10 w-full mt-2 bg-gray-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {MAINNET_TOKENS.map((token) => (
+                    <div
+                      key={token.address}
+                      onClick={() => {
+                        setTokenIn(token);
+                        setShowTokenInDropdown(false);
+                      }}
+                      className="px-4 py-3 hover:bg-purple-600/30 cursor-pointer transition flex items-center gap-2"
+                    >
+                      <TokenIcon token={token} size={20} />
+                      <div>
+                        <p className="font-bold text-white">{token.symbol}</p>
+                        <p className="text-xs text-gray-400">{token.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Amount In */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center">
+              <input
+                type="number"
+                placeholder="0.0"
+                value={amountIn}
+                onChange={(e) => setAmountIn(e.target.value)}
+                className="w-full px-4 py-4 bg-black/30 border border-white/20 rounded-lg text-white text-2xl placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
+              />
+              {isConnected && tokenIn && parseFloat(balanceIn) > 0 && (
+                <button
+                  onClick={() => setAmountIn(balanceIn)}
+                  className="ml-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition font-medium"
+                >
+                  MAX
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Swap Direction Icon */}
+          <div className="flex justify-center my-4">
+            <button
+              onClick={switchTokens}
+              className="bg-purple-600 rounded-full p-3 cursor-pointer hover:bg-purple-700 transition hover:scale-110"
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Token Out */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-gray-300 font-medium">To</label>
+              {isConnected && tokenOut && (
+                <span className="text-gray-400 text-sm">
+                  Balance: {parseFloat(balanceOut).toFixed(4)} {tokenOut.symbol}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <div
+                onClick={() => setShowTokenOutDropdown(!showTokenOutDropdown)}
+                className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white cursor-pointer hover:border-purple-500 transition flex justify-between items-center"
+              >
+                {tokenOut ? (
+                  <div className="flex items-center gap-2">
+                    <TokenIcon token={tokenOut} size={24} />
+                    <div>
+                      <p className="font-bold">{tokenOut.symbol}</p>
+                      <p className="text-xs text-gray-400">{tokenOut.name}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-gray-500">Select token</span>
+                )}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {showTokenOutDropdown && (
+                <div className="absolute z-10 w-full mt-2 bg-gray-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {MAINNET_TOKENS.filter(t => t.address !== tokenIn?.address).map((token) => (
+                    <div
+                      key={token.address}
+                      onClick={() => {
+                        setTokenOut(token);
+                        setShowTokenOutDropdown(false);
+                      }}
+                      className="px-4 py-3 hover:bg-purple-600/30 cursor-pointer transition flex items-center gap-2"
+                    >
+                      {token.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={token.image} alt={token.symbol} className="w-5 h-5 rounded-full" />
+                      ) : (
+                        <span className="text-2xl">{token.logo}</span>
+                      )}
+                      <div>
+                        <p className="font-bold text-white">{token.symbol}</p>
+                        <p className="text-xs text-gray-400">{token.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Expected Output */}
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2 font-medium">
+              You will receive (estimated)
+            </label>
+            <div className="px-4 py-4 bg-black/30 border border-white/20 rounded-lg">
+              {quoting ? (
+                <div className="flex items-center gap-2 text-gray-400">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Getting quote...</span>
+                </div>
+              ) : amountOut ? (
+                <div>
+                  <p className="text-white text-2xl font-bold">
+                    {parseFloat(amountOut).toFixed(6)} {tokenOut?.symbol}
+                  </p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    💡 Price includes 0.3% trading fee
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-xl">Enter amount to see quote</p>
+              )}
+            </div>
+          </div>
+
+          {/* Slippage */}
+          <div className="mb-6">
+            <label className="block text-gray-300 mb-2 font-medium">
+              Slippage Tolerance (%)
+            </label>
+            <div className="flex gap-2">
+              {['0.1', '0.5', '1.0'].map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setSlippage(value)}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    slippage === value
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-black/30 text-gray-300 hover:bg-black/50'
+                  }`}
+                >
+                  {value}%
+                </button>
+              ))}
+              <input
+                type="number"
+                value={slippage}
+                onChange={(e) => setSlippage(e.target.value)}
+                className="flex-1 px-4 py-2 bg-black/30 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500 transition"
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300">
+              {error}
+            </div>
+          )}
+
+          {/* Success Message */}
+          {txHash && (
+            <div className="mb-4 p-4 bg-green-500/20 border border-green-500 rounded-lg">
+              <p className="text-green-300 mb-2">Transaction successful!</p>
+              <a
+                href={`https://chainscan.0g.ai/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 underline text-sm break-all"
+              >
+                View on Explorer
+              </a>
+            </div>
+          )}
+
+          {/* Swap Button */}
+          <button
+            onClick={handleSwap}
+            disabled={loading || !isConnected}
+            className={`w-full py-4 rounded-lg font-bold text-lg transition ${
+              loading || !isConnected
+                ? 'bg-gray-600 cursor-not-allowed text-gray-400'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
+            }`}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg
+                  className="animate-spin h-5 w-5 mr-3"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Processing...
+              </span>
+            ) : !isConnected ? (
+              'Connect Wallet'
+            ) : (
+              'Swap'
+            )}
+          </button>
         </div>
-        <button
-          onClick={onSwap}
-          disabled={busy}
-          className={`px-4 py-2 rounded text-white ${busy ? "bg-purple-300" : "bg-purple-600 hover:bg-purple-700"}`}
-        >
-          Swap
-        </button>
+
+        {/* Info Footer */}
+        <div className="mt-6 text-center text-gray-400 text-sm">
+          <p>⚠️ Always verify token addresses before swapping</p>
+          <p className="mt-2">Network: 0G Mainnet (Chain ID: 16661)</p>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default TestDexPage;

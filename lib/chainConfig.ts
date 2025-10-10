@@ -49,6 +49,29 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
       tokenFactory: "",
     },
   },
+  16661: {
+    id: 16661,
+    name: "0G Mainnet",
+    network: "0g-mainnet",
+    nativeCurrency: {
+      decimals: 18,
+      name: "0G",
+      symbol: "0G",
+    },
+    rpcUrls: {
+      default: { http: ["https://evmrpc.0g.ai"] },
+      public: { http: ["https://evmrpc.0g.ai"] },
+    },
+    blockExplorers: {
+      default: {
+        name: "0G Chain Explorer",
+        url: "https://chainscan.0g.ai",
+      },
+    },
+    testnet: false,
+    contracts: {
+    },
+  },
 };
 
 export const getSupportedChains = (): Chain[] => {
@@ -80,5 +103,5 @@ export const isChainSupported = (chainId: number): boolean => {
 };
 
 export const getDefaultChain = (): ChainConfig => {
-  return SUPPORTED_CHAINS[16602];
+  return SUPPORTED_CHAINS[16661];
 };
