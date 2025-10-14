@@ -1,0 +1,49 @@
+{
+  "network": "amoy",
+  "chainId": 80002,
+  "timestamp": "2025-09-27T17:47:53.348Z",
+  "deployer": "0x941Bdd008abeD439b1CEe02090c0D7574C27d23F",
+  "contracts": {
+    "WhaleToken": {
+      "address": "0x5104296a49a5ebd235f3e7f3f0b883d8042edad4",
+      "transactionHash": "0x41aed892494fd00235058f804323e9f322b94bb9747d0811e62deef97d82c0b7",
+      "gasUsed": "3593111",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x41aed892494fd00235058f804323e9f322b94bb9747d0811e62deef97d82c0b7"
+    },
+    "TokenFactory": {
+      "address": "0x2e650ddc1f722ecfd9f6ba430b33960942000982",
+      "transactionHash": "0xae2d6e74cbcf323a74630219a5d99ee0a54cf5a3da92cef78f82ecb04756a7f5",
+      "gasUsed": "5359091",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xae2d6e74cbcf323a74630219a5d99ee0a54cf5a3da92cef78f82ecb04756a7f5"
+    },
+    "TradingEngine": {
+      "address": "0x4b80695ec24be0c06b0c4cd5dae3c8906506c94b",
+      "transactionHash": "0xec01587414f6f01c994fe0c647c4d227e192dc1a536d1d5bda4a6e51dd78187b",
+      "gasUsed": "1923105",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0xec01587414f6f01c994fe0c647c4d227e192dc1a536d1d5bda4a6e51dd78187b"
+    },
+    "BossBattleArena": {
+      "address": "0x895959bd3acf4db12a6638b8132f5c46ef16a701",
+      "transactionHash": "0x5d06fea2eb1cab23e701253477ab4f3ad14d28cd51ff8b634aa81724b6dc9660",
+      "gasUsed": "3361775",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x5d06fea2eb1cab23e701253477ab4f3ad14d28cd51ff8b634aa81724b6dc9660"
+    },
+    "TokenGraduation": {
+      "address": "0x79e46b252623fe3eaa31a195187525c23ebe37c4",
+      "transactionHash": "0x389adc73c6c9ce71efd60487077911ae067027c504e46fdc5dae7d37f057fc78",
+      "gasUsed": "1594097",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x389adc73c6c9ce71efd60487077911ae067027c504e46fdc5dae7d37f057fc78"
+    },
+    "TokenAnalytics": {
+      "address": "0x32dd3d0d0b7007463340d06ef89dfb7a7b5d432f",
+      "transactionHash": "0x6eaaf5f35ac66df674aa5a096ec955ec8bd26a057b8bb68a446cbdda55e96927",
+      "gasUsed": "808480",
+      "explorerUrl": "https://amoy.polygonscan.com/tx/0x6eaaf5f35ac66df674aa5a096ec955ec8bd26a057b8bb68a446cbdda55e96927"
+    }
+  },
+  "summary": {
+    "totalContracts": 6,
+    "totalGasUsed": "16639659",
+    "platformStatus": "FULLY DEPLOYED AND TESTED"
+  }
+}

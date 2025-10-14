@@ -6,11 +6,12 @@ pragma solidity ^0.8.20;
  * @dev Advanced MEV protection mechanisms for fair token trading
  */
 library MEVProtectionLibrary {
+    // MEV protection parameters
     struct MEVConfig {
-        uint256 maxSlippage;
-        uint256 priceImpactThreshold;
-        uint256 timeWindow;
-        uint256 maxTransactionSize;
+        uint256 maxSlippage;           // Maximum allowed slippage (e.g., 5% = 500 basis points)
+        uint256 priceImpactThreshold;  // Price impact threshold for large orders
+        uint256 timeWindow;            // Time window for rate limiting (seconds)
+        uint256 maxTransactionSize;    // Maximum transaction size per user per time window
         uint256 commitRevealDelay;     // Delay between commit and reveal phases
         bool sandwichProtectionEnabled; // Enable sandwich attack protection
         bool frontRunningProtectionEnabled; // Enable front-running protection
@@ -86,15 +87,9 @@ library MEVProtectionLibrary {
             userLimit.lastResetTime = block.timestamp;
         }
         
-        // FIXED: Much stricter limits
+        // Check volume and transaction count limits
         if (userLimit.totalVolume + amount > config.maxTransactionSize ||
-            userLimit.transactionCount >= 3) { // FIXED: Max 3 transactions per window instead of 10
-            return true;
-        }
-        
-        // FIXED: Add progressive penalties
-        if (userLimit.transactionCount >= 2) {
-            // Require longer delay for frequent traders
+            userLimit.transactionCount >= 10) { // Max 10 transactions per window
             return true;
         }
         
@@ -319,13 +314,8 @@ library MEVProtectionLibrary {
         uint256 gasPrice,
         uint256 avgGasPrice
     ) internal pure returns (bool isFrontRunning) {
-        // FIXED: Lower threshold for detection - 20% above average instead of 150%
-        if (gasPrice > avgGasPrice * 120 / 100) {
-            return true;
-        }
-        
-        // FIXED: Add absolute gas price threshold
-        if (gasPrice > 100 gwei) {
+        // Check for suspiciously high gas prices
+        if (gasPrice > avgGasPrice * MAX_GAS_PRICE_MULTIPLIER / 100) {
             return true;
         }
         
@@ -484,4 +474,32 @@ library StreamingLibrary {
         return engagementScore > 100 ? 100 : engagementScore;
     }
     
+    /**
+     * @dev Process community voting for token parameters
+     * @param vote Current vote state
+     * @param votingPower Voter's voting power
+     * @param support True for support, false for against
+     * @return updated Updated vote state
+     */
+    function processCommunityVote(
+    CommunityVote memory vote,
+    address voter,
+    uint256 votingPower,
+    bool support
+    ) internal pure returns (CommunityVote memory updated) {
+        updated = vote;
+        
+        // Use the voter parameter for validation or logging
+        require(voter != address(0), "Invalid voter address");
+        
+        if (support) {
+            updated.votesFor += votingPower;
+        } else {
+            updated.votesAgainst += votingPower;
+        }
+        
+        updated.totalVoters += 1;
+        
+        return updated;
+    }
 }
