@@ -12,7 +12,12 @@ import {
 import { combineTokenMetadata } from "@/utils/tokenMetadata";
 import Link from "next/link";
 import Image from "next/image";
-import { useAccount, useWalletClient, usePublicClient, useChainId } from "wagmi";
+import {
+  useAccount,
+  useWalletClient,
+  usePublicClient,
+  useChainId,
+} from "wagmi";
 import {
   ChevronLeft,
   UploadCloud,
@@ -344,7 +349,6 @@ const CreatePage: FC = () => {
     setSuccess(null);
 
     try {
-      // Check network connection and validate
       const connection = await getBlockchainConnection();
       const chainId = Number(connection.network.chainId);
 
@@ -359,18 +363,6 @@ const CreatePage: FC = () => {
           `Unsupported network (Chain ID: ${chainId}). Please switch to one of the supported networks: ${supportedNetworksList}`
         );
       }
-
-      // Check if contracts are deployed on this network
-      console.log("Checking contract deployment for network:", chainId);
-      console.log("Current network config:", currentNetwork);
-      console.log(
-        "Expected contract address for chain",
-        chainId,
-        ":",
-        chainId === 44787
-          ? "0x0bb4da9a543d0c8482843f49f80222f936310637"
-          : "not configured"
-      );
 
       try {
         console.log("Attempting to call getFactoryStats...");
@@ -443,12 +435,12 @@ const CreatePage: FC = () => {
 
       // Ensure we have a connected account and wallet client
       if (!address) {
-        throw new Error(
-          "No wallet account found. Please connect your wallet."
-        );
+        throw new Error("No wallet account found. Please connect your wallet.");
       }
       if (!walletClient) {
-        throw new Error("Wallet client not available. Ensure your wallet is connected.");
+        throw new Error(
+          "Wallet client not available. Ensure your wallet is connected."
+        );
       }
       const account = address as `0x${string}`; // Use the connected account from wagmi
 
@@ -515,7 +507,9 @@ const CreatePage: FC = () => {
       console.log("Waiting for transaction receipt...");
 
       if (!publicClient) {
-        throw new Error("Public client not available. Please refresh and try again.");
+        throw new Error(
+          "Public client not available. Please refresh and try again."
+        );
       }
 
       let receipt;
