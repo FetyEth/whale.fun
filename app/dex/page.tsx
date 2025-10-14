@@ -20,7 +20,6 @@ import {
 import { injected } from "wagmi/connectors";
 import mainnetAddresses from "@/contracts/deployments/mainnet-addresses.json";
 
-// Import contract addresses from mainnet-addresses.json
 const DEX_CONTRACTS = {
   WETH: (mainnetAddresses as any).contracts.WETH,
   DexFactory: (mainnetAddresses as any).contracts.DexFactory,
