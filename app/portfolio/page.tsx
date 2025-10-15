@@ -77,14 +77,17 @@ export default function PortfolioPage() {
       if (!publicClient) throw new Error("Public client unavailable");
 
       const factoryService = new TokenFactoryRootService();
-      
+
       // Use the current chain ID from wagmi
       const currentChainId = wagmiChainId || 16661; // Default to 0G Network
 
       // Get tokens created by user
       let createdTokenAddresses: string[] = [];
       try {
-        createdTokenAddresses = await factoryService.getCreatorTokens(address, currentChainId);
+        createdTokenAddresses = await factoryService.getCreatorTokens(
+          address,
+          currentChainId
+        );
       } catch (error) {
         console.error("[Portfolio] Error getCreatorTokens:", error);
         createdTokenAddresses = [];
@@ -102,7 +105,10 @@ export default function PortfolioPage() {
       // Get creator stats
       let creatorStats;
       try {
-        creatorStats = await factoryService.getCreatorStats(address, currentChainId);
+        creatorStats = await factoryService.getCreatorStats(
+          address,
+          currentChainId
+        );
       } catch (error) {
         console.error("[Portfolio] Error getCreatorStats:", error);
         creatorStats = null;
