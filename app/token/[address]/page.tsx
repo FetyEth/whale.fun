@@ -11,12 +11,10 @@ import { Copy, ArrowLeft, ExternalLink } from "lucide-react";
 import { FaGlobe, FaTelegramPlane } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import {
-  tokenDataViemService,
+  tokenDataService,
   type TokenData,
-} from "@/lib/services/TokenDataViemService";
-import { getBlockchainConnection } from "@/utils/Blockchain";
+} from "@/lib/services/TokenDataService";
 import { formatEther, parseEther } from "ethers";
-import tokenDataService from "@/lib/services/TokenDataService";
 import SimilarTokens from "@/components/trade/SimilarTokens";
 import StreamPlayer from "@/components/StreamPlayer";
 import {
@@ -248,8 +246,8 @@ const TradePage = () => {
     let timer: any;
     (async () => {
       try {
-        const connection = await getBlockchainConnection();
-        const chainId = Number(connection.network.chainId);
+        // Use default 0G Network chainId for read-only operations
+        const chainId = 16661;
         timer = setInterval(() => {
           fetchChartData(chainId);
         }, 30000); // refresh every 30s
@@ -706,13 +704,10 @@ const TradePage = () => {
         setError(null);
       }
 
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
+      // Use default 0G Network chainId for read-only operations
+      const chainId = 16661;
 
-      const data = await tokenDataViemService.getTokenData(
-        tokenAddress,
-        chainId
-      );
+      const data = await tokenDataService.getTokenData(tokenAddress, chainId);
       if (data) {
         setTokenData(data);
         await fetchChartData(chainId);
@@ -953,9 +948,8 @@ const TradePage = () => {
 
       const { formatEther } = await import("viem");
 
-      // Get current chain
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
+      // Get current chain - we know we're on 0G Network
+      const chainId = 16661;
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
@@ -1475,7 +1469,7 @@ const TradePage = () => {
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-lg leading-none font-semibold text-white">
-                        ${tokenData?.symbol}
+                        {tokenData?.name} (${tokenData?.symbol})
                       </span>
                     </div>
                     <span className="text-sm leading-none font-medium text-[#FFFFFF80]">

@@ -137,28 +137,56 @@ export default function PortfolioPage() {
               await import("@/config/abi/CreatorToken.json")
             ).default;
 
-            // Read basic token info from contract
+            // Create a safe contract reader function
+            const safeReadContract = async (
+              functionName: string,
+              fallbackValue: any,
+              args?: any[]
+            ) => {
+              try {
+                const result = await publicClient.readContract({
+                  address: tokenAddress as `0x${string}`,
+                  abi: CreatorTokenABI,
+                  functionName,
+                  ...(args && { args }),
+                });
+                // Check if result is empty or null
+                if (
+                  result === null ||
+                  result === undefined ||
+                  result === "0x" ||
+                  result === ""
+                ) {
+                  console.warn(
+                    `Function ${functionName} returned empty data for ${tokenAddress}, using fallback`
+                  );
+                  return fallbackValue;
+                }
+                return result;
+              } catch (error) {
+                console.warn(
+                  `Function ${functionName} failed for ${tokenAddress}:`,
+                  error
+                );
+                return fallbackValue;
+              }
+            };
+
+            // Read basic token info from contract with fallbacks
             const [name, symbol, totalSupply, decimals] = await Promise.all([
-              publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "name",
-              }),
-              publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "symbol",
-              }),
-              publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "totalSupply",
-              }),
-              publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "decimals",
-              }),
+              safeReadContract(
+                "name",
+                `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`
+              ),
+              safeReadContract(
+                "symbol",
+                `TKN${tokenAddress.slice(-4).toUpperCase()}`
+              ),
+              safeReadContract(
+                "totalSupply",
+                BigInt("1000000000000000000000000")
+              ),
+              safeReadContract("decimals", 18),
             ]);
 
             // Try to get additional stats (may fail if methods don't exist)
@@ -171,41 +199,11 @@ export default function PortfolioPage() {
                 totalSold,
                 creatorFees,
               ] = await Promise.all([
-                publicClient
-                  .readContract({
-                    address: tokenAddress as `0x${string}`,
-                    abi: CreatorTokenABI,
-                    functionName: "getCurrentPrice",
-                  })
-                  .catch(() => parseEther("0.001")), // Default price if method doesn't exist
-                publicClient
-                  .readContract({
-                    address: tokenAddress as `0x${string}`,
-                    abi: CreatorTokenABI,
-                    functionName: "marketCap",
-                  })
-                  .catch(() => BigInt(0)),
-                publicClient
-                  .readContract({
-                    address: tokenAddress as `0x${string}`,
-                    abi: CreatorTokenABI,
-                    functionName: "holderCount",
-                  })
-                  .catch(() => BigInt(1)),
-                publicClient
-                  .readContract({
-                    address: tokenAddress as `0x${string}`,
-                    abi: CreatorTokenABI,
-                    functionName: "totalSold",
-                  })
-                  .catch(() => BigInt(0)),
-                publicClient
-                  .readContract({
-                    address: tokenAddress as `0x${string}`,
-                    abi: CreatorTokenABI,
-                    functionName: "getTotalFeesCollected",
-                  })
-                  .catch(() => BigInt(0)),
+                safeReadContract("getCurrentPrice", parseEther("0.001")),
+                safeReadContract("marketCap", BigInt(0)),
+                safeReadContract("holderCount", BigInt(1)),
+                safeReadContract("totalSold", BigInt(0)),
+                safeReadContract("getTotalFeesCollected", BigInt(0)),
               ]);
 
               stats = {
@@ -233,37 +231,15 @@ export default function PortfolioPage() {
             }
 
             // Get user's balance
-            let balance = BigInt(0);
-            try {
-              balance = (await publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "balanceOf",
-                args: [address],
-              })) as bigint;
-            } catch (error) {
-              console.warn(
-                `[Portfolio] Could not get balance for token ${tokenAddress}:`,
-                error
-              );
-            }
+            const balance = await safeReadContract("balanceOf", BigInt(0), [
+              address,
+            ]);
 
             const currentValue =
               (balance * stats.currentPrice) / BigInt(10 ** 18);
 
-            let tokenCreator = address; // Default to current user
-            try {
-              tokenCreator = (await publicClient.readContract({
-                address: tokenAddress as `0x${string}`,
-                abi: CreatorTokenABI,
-                functionName: "creator",
-              })) as `0x${string}`;
-            } catch (error) {
-              console.warn(
-                `Could not get creator for token ${tokenAddress}:`,
-                error
-              );
-            }
+            // Get token creator
+            const tokenCreator = await safeReadContract("creator", address);
 
             return {
               address: tokenAddress,

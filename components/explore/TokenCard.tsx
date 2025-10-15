@@ -372,7 +372,8 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
         <div
           className={`text-xl font-extrabold tracking-tight truncate ${headingClass}`}
         >
-          ${token.symbol.toUpperCase()}
+          {token.name} <br />
+          (${token.symbol.toUpperCase()})
         </div>
         <div className={`mt-1 text-sm/5 ${textClass}`}>Market Cap</div>
         <div className="mt-1 flex items-baseline gap-2">

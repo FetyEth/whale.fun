@@ -47,9 +47,9 @@ function Header() {
       </Link>
       <div className="flex gap-x-8 text-lg font-instrument font-medium items-center">
         {navItems.map((item) => (
-          <a key={item.name} href={item.href} className="transition-colors">
+          <Link key={item.name} href={item.href} className="transition-colors">
             {item.name}
-          </a>
+          </Link>
         ))}
         <div className="relative" ref={menuRef}>
           <ConnectButton.Custom>
