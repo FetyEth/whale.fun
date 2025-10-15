@@ -99,11 +99,13 @@ export abstract class BaseContractService<T extends Contract = Contract> {
       if (!chainId) {
         // Default to 0G Network (16661) for read-only operations
         chainId = 16661;
-        
+
         // Try to get chainId from connected wallet if available, but don't require it
         try {
           if (typeof window !== "undefined" && window.ethereum) {
-            const { getBlockchainConnection } = await import("@/utils/Blockchain");
+            const { getBlockchainConnection } = await import(
+              "@/utils/Blockchain"
+            );
             const connection = await getBlockchainConnection();
             chainId = Number(connection.network.chainId);
           }
@@ -116,7 +118,7 @@ export abstract class BaseContractService<T extends Contract = Contract> {
       // Use direct RPC provider for read calls to avoid wallet issues
       const { ethers } = await import("ethers");
       const { SUPPORTED_NETWORKS } = await import("@/utils/Blockchain");
-      
+
       const networkConfig = SUPPORTED_NETWORKS[chainId!];
       if (!networkConfig) {
         throw new Error(`Network ${chainId} not supported`);
@@ -129,17 +131,24 @@ export abstract class BaseContractService<T extends Contract = Contract> {
 
       // Create direct RPC provider (not wallet provider)
       const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
-      const contract = new ethers.Contract(deployment.address, this.config.abi, provider);
+      const contract = new ethers.Contract(
+        deployment.address,
+        this.config.abi,
+        provider
+      );
 
       console.log(`Calling ${this.config.name}.${methodName} with args:`, args);
       console.log(`Contract address:`, deployment.address);
       console.log(`Using RPC:`, networkConfig.rpcUrl);
-      
+
       const result = await contract[methodName](...args);
       console.log(`${methodName} result:`, result);
       return result;
     } catch (error) {
-      console.error(`Contract call ${this.config.name}.${methodName} failed:`, error);
+      console.error(
+        `Contract call ${this.config.name}.${methodName} failed:`,
+        error
+      );
       throw new Error(
         `Failed to call ${this.config.name}.${methodName}: ${error}`
       );
@@ -158,7 +167,9 @@ export abstract class BaseContractService<T extends Contract = Contract> {
     try {
       // Get current network if not provided
       if (!chainId) {
-        const connection = await import("@/utils/Blockchain").then(m => m.getBlockchainConnection());
+        const connection = await import("@/utils/Blockchain").then((m) =>
+          m.getBlockchainConnection()
+        );
         chainId = Number((await connection).network.chainId);
       }
 
@@ -172,7 +183,10 @@ export abstract class BaseContractService<T extends Contract = Contract> {
       this.contractInstance = null;
       const contract = await this.getContract(chainId);
 
-      console.log(`Executing ${this.config.name}.${methodName} with args:`, args);
+      console.log(
+        `Executing ${this.config.name}.${methodName} with args:`,
+        args
+      );
       console.log(`Contract address:`, deployment.address);
       console.log(`Network:`, chainId);
 
@@ -183,15 +197,26 @@ export abstract class BaseContractService<T extends Contract = Contract> {
           // Use direct RPC provider for gas estimation (more reliable)
           const { ethers } = await import("ethers");
           const { SUPPORTED_NETWORKS } = await import("@/utils/Blockchain");
-          
+
           const networkConfig = SUPPORTED_NETWORKS[chainId!];
-          const directProvider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
-          const directContract = new ethers.Contract(deployment.address, this.config.abi, directProvider);
-          
-          options.gasLimit = await directContract[methodName].estimateGas(...args);
+          const directProvider = new ethers.JsonRpcProvider(
+            networkConfig.rpcUrl
+          );
+          const directContract = new ethers.Contract(
+            deployment.address,
+            this.config.abi,
+            directProvider
+          );
+
+          options.gasLimit = await directContract[methodName].estimateGas(
+            ...args
+          );
           console.log(`Estimated gas:`, options.gasLimit.toString());
         } catch (gasError) {
-          console.warn(`Direct gas estimation failed, trying with wallet provider:`, gasError);
+          console.warn(
+            `Direct gas estimation failed, trying with wallet provider:`,
+            gasError
+          );
           // Fallback to wallet provider estimation
           options.gasLimit = await estimateGas(contract, methodName, args);
           console.log(`Fallback estimated gas:`, options.gasLimit.toString());
@@ -202,7 +227,10 @@ export abstract class BaseContractService<T extends Contract = Contract> {
       console.log(`Transaction submitted:`, tx.hash);
       return tx;
     } catch (error) {
-      console.error(`Execute method ${this.config.name}.${methodName} failed:`, error);
+      console.error(
+        `Execute method ${this.config.name}.${methodName} failed:`,
+        error
+      );
       throw new Error(
         `Failed to execute ${this.config.name}.${methodName}: ${error}`
       );

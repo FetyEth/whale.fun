@@ -69,7 +69,7 @@ export const getReadOnlyProvider = (chainId: number = 16661) => {
   if (!networkConfig) {
     throw new Error(`Unsupported network (Chain ID: ${chainId})`);
   }
-  
+
   return new ethers.JsonRpcProvider(networkConfig.rpcUrl);
 };
 
