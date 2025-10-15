@@ -137,7 +137,7 @@ export default function PortfolioPage() {
               await import("@/config/abi/CreatorToken.json")
             ).default;
 
-            // Create a safe contract reader function
+            // Create a safe contract reader function with better error handling
             const safeReadContract = async (
               functionName: string,
               fallbackValue: any,
@@ -163,31 +163,50 @@ export default function PortfolioPage() {
                   return fallbackValue;
                 }
                 return result;
-              } catch (error) {
-                console.warn(
-                  `Function ${functionName} failed for ${tokenAddress}:`,
-                  error
-                );
+              } catch (error: any) {
+                // Handle specific contract errors
+                if (
+                  error.message?.includes("function") &&
+                  error.message?.includes("returned no data")
+                ) {
+                  console.warn(
+                    `Function ${functionName} not available for ${tokenAddress}, using fallback`
+                  );
+                } else if (error.message?.includes("Unsupported chain ID")) {
+                  console.warn(
+                    `Chain ID issue for ${functionName} on ${tokenAddress}, using fallback`
+                  );
+                } else {
+                  console.warn(
+                    `Function ${functionName} failed for ${tokenAddress}:`,
+                    error
+                  );
+                }
                 return fallbackValue;
               }
             };
 
             // Read basic token info from contract with fallbacks
-            const [name, symbol, totalSupply, decimals] = await Promise.all([
-              safeReadContract(
-                "name",
-                `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`
-              ),
-              safeReadContract(
-                "symbol",
-                `TKN${tokenAddress.slice(-4).toUpperCase()}`
-              ),
-              safeReadContract(
-                "totalSupply",
-                BigInt("1000000000000000000000000")
-              ),
-              safeReadContract("decimals", 18),
-            ]);
+            const [name, symbol, totalSupply, decimals, description, logoUrl] =
+              await Promise.all([
+                safeReadContract(
+                  "name",
+                  `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(
+                    -4
+                  )}`
+                ),
+                safeReadContract(
+                  "symbol",
+                  `TKN${tokenAddress.slice(-4).toUpperCase()}`
+                ),
+                safeReadContract(
+                  "totalSupply",
+                  BigInt("1000000000000000000000000")
+                ),
+                safeReadContract("decimals", 18),
+                safeReadContract("description", ""),
+                safeReadContract("logoUrl", ""),
+              ]);
 
             // Try to get additional stats (may fail if methods don't exist)
             let stats;
@@ -238,8 +257,23 @@ export default function PortfolioPage() {
             const currentValue =
               (balance * stats.currentPrice) / BigInt(10 ** 18);
 
-            // Get token creator
+            // Get token creator and launch time from TokenFactory
             const tokenCreator = await safeReadContract("creator", address);
+
+            // Try to get launch time from TokenFactory
+            let launchTime: bigint;
+            try {
+              launchTime = await factoryService.getTokenLaunchTime(
+                tokenAddress,
+                currentChainId
+              );
+            } catch (error) {
+              console.warn(
+                `Could not get launch time for ${tokenAddress}:`,
+                error
+              );
+              launchTime = BigInt(Date.now() - index * 86400000); // Fallback to approximate
+            }
 
             return {
               address: tokenAddress,
@@ -248,12 +282,13 @@ export default function PortfolioPage() {
               balance,
               stats,
               creator: tokenCreator,
-              launchTime: BigInt(Date.now() - index * 86400000), // Approximate
+              launchTime: launchTime,
               description:
-                tokenCreator === address
+                (description as string) ||
+                (tokenCreator === address
                   ? `Token ${name} created by you`
-                  : `Token ${name}`,
-              logoUrl: "",
+                  : `Token ${name}`),
+              logoUrl: (logoUrl as string) || "",
               currentValue,
             };
           } catch (error) {
