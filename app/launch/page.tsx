@@ -3,7 +3,7 @@ import Header from "@/components/layout/Header";
 import { useState, useEffect } from "react";
 import type { FC, ChangeEvent, FormEvent } from "react";
 import { tokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";
-import { parseEther, formatEther } from "ethers";
+import { parseEther } from "ethers";
 import {
   getBlockchainConnection,
   validateNetwork,
@@ -421,7 +421,7 @@ const CreatePage: FC = () => {
               },
               testnet: true,
             },
-            contractAddress: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+            contractAddress: "0x9Da032047eCaFE668360C3b290420E785bF46598",
           },
           // Add more chains as needed
         };

@@ -68,7 +68,7 @@ export const TOKEN_FACTORY_ROOT_CONFIG: ContractConfig = {
   deployments: {
     16602: {
       // 0G Testnet
-      address: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+      address: "0x9Da032047eCaFE668360C3b290420E785bF46598",
       deployedAt: 0,
       verified: false,
     },

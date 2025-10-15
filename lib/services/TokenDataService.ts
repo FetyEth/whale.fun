@@ -6,7 +6,6 @@ import {
   EXTERNAL_TOKENS,
   type ExternalTokenInfo,
 } from "./ExternalTokenService";
-import { zeroGGalileoTestnet } from "viem/chains";
 
 /**
  * Token data interface for explore page
@@ -117,35 +116,6 @@ export class TokenDataService {
           const connection = await getBlockchainConnection();
           chainId = Number(connection.network.chainId);
         }
-
-        // Map chainId to appropriate chain
-        const chainMap: Record<number, any> = {
-          16602: {
-            id: 16602,
-            name: "0G Testnet",
-            network: "0g-testnet",
-            nativeCurrency: {
-              decimals: 18,
-              name: "0G",
-              symbol: "0G",
-            },
-            rpcUrls: {
-              default: {
-                http: ["https://evmrpc-testnet.0g.ai"],
-              },
-              public: {
-                http: ["https://evmrpc-testnet.0g.ai"],
-              },
-            },
-            blockExplorers: {
-              default: {
-                name: "0G Explorer",
-                url: "https://chainscan.0g.ai",
-              },
-            },
-            testnet: true,
-          },
-        };
       } catch (error) {
         console.warn("Could not determine chain, using 0G Testnet:", error);
       }
