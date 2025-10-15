@@ -68,19 +68,19 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       const chainId = Number(connection.network.chainId);
 
       const chainMap: Record<number, any> = {
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
+        16661: {
+          id: 16661,
+          name: "0G Mainnet",
+          network: "0g-mainnet",
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
+              url: "https://chainscan.0g.ai",
             },
           },
-          testnet: true,
+          testnet: false,
         },
       };
 
@@ -126,19 +126,19 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
+        16661: {
+          id: 16661,
+          name: "0G Mainnet",
+          network: "0g-mainnet",
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
+              url: "https://chainscan.0g.ai",
             },
           },
-          testnet: true,
+          testnet: false,
         },
       };
 

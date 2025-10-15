@@ -27,7 +27,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAccount, useBalance, usePublicClient, useWalletClient, useChainId } from "wagmi";
+import {
+  useAccount,
+  useBalance,
+  usePublicClient,
+  useWalletClient,
+  useChainId,
+} from "wagmi";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
 import {
   Tooltip,
@@ -945,10 +951,7 @@ const TradePage = () => {
       setTradingLoading(true);
       setTradingError(null);
 
-      const { createWalletClient, http, custom, formatEther } = await import(
-        "viem"
-      );
-      const { zeroGGalileoTestnet } = await import("viem/chains");
+      const { formatEther } = await import("viem");
 
       // Get current chain
       const connection = await getBlockchainConnection();
@@ -956,24 +959,23 @@ const TradePage = () => {
 
       // Map chain ID to chain object
       const chainMap: Record<number, any> = {
-        31: zeroGGalileoTestnet,
-        16602: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
+        16661: {
+          id: 16661,
+          name: "0G Network",
+          network: "0g-network",
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
+              url: "https://chainscan.0g.ai",
             },
           },
-          testnet: true,
+          testnet: false,
         },
       };
 
-      const currentChain = chainMap[chainId] || zeroGGalileoTestnet;
+      const currentChain = chainMap[chainId];
 
       // Reuse Wagmi clients
       if (!walletClient) throw new Error("Wallet client unavailable");

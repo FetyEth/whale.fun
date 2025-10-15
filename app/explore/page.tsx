@@ -77,10 +77,10 @@ const ExplorePage = () => {
 
       console.log("Starting to fetch tokens...");
 
-      // Get current network
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
-      console.log("Current network chain ID:", chainId);
+      // For explore page, we don't need wallet connection
+      // Use default mainnet chain ID since this is public data
+      const chainId = 16661; // 0G Mainnet
+      console.log("Using chain ID:", chainId);
 
       // Fetch tokens data
       const tokensData = await tokenDataService.getAllTokensData(chainId);

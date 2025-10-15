@@ -95,10 +95,22 @@ export abstract class BaseContractService<T extends Contract = Contract> {
     chainId?: number
   ): Promise<R> {
     try {
-      // For read-only calls, try direct RPC first to avoid wallet provider issues
+      // For read-only calls, use default chainId if not provided to avoid wallet connection
       if (!chainId) {
-        const connection = await import("@/utils/Blockchain").then(m => m.getBlockchainConnection());
-        chainId = Number((await connection).network.chainId);
+        // Default to 0G Network (16661) for read-only operations
+        chainId = 16661;
+        
+        // Try to get chainId from connected wallet if available, but don't require it
+        try {
+          if (typeof window !== "undefined" && window.ethereum) {
+            const { getBlockchainConnection } = await import("@/utils/Blockchain");
+            const connection = await getBlockchainConnection();
+            chainId = Number(connection.network.chainId);
+          }
+        } catch (error) {
+          // Silently fall back to default chainId if wallet connection fails
+          console.log("No wallet connected, using default chainId:", chainId);
+        }
       }
 
       // Use direct RPC provider for read calls to avoid wallet issues

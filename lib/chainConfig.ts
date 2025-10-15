@@ -24,31 +24,6 @@ export interface ChainConfig {
 }
 
 export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
-  16602: {
-    id: 16602,
-    name: "0G Testnet Network",
-    network: "0g-testnet",
-    nativeCurrency: {
-      decimals: 18,
-      name: "0G",
-      symbol: "0G",
-    },
-    rpcUrls: {
-      default: { http: ["https://evmrpc-testnet.0g.ai"] },
-      public: { http: ["https://evmrpc-testnet.0g.ai"] },
-    },
-    blockExplorers: {
-      default: {
-        name: "0G Explorer",
-        url: "https://chainscan-galileo.0g.ai",
-      },
-    },
-    testnet: true,
-    contracts: {
-      // Will be updated after deployment
-      tokenFactory: "",
-    },
-  },
   16661: {
     id: 16661,
     name: "0G Mainnet",
@@ -69,8 +44,7 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
       },
     },
     testnet: false,
-    contracts: {
-    },
+    contracts: {},
   },
 };
 

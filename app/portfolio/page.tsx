@@ -1,36 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useBalance, usePublicClient, useWalletClient, useChainId } from "wagmi";
-import { getBlockchainConnection } from "@/utils/Blockchain";
+import { useAccount, usePublicClient, useChainId } from "wagmi";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";
-import {
-  CreatorTokenService,
-  TokenStats,
-} from "@/lib/services/CreatorTokenService";
+import { TokenStats } from "@/lib/services/CreatorTokenService";
 import { formatEther, parseEther } from "ethers";
 import {
   Loader2,
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Users,
   Clock,
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  formatNumber,
-  formatCurrency,
-  formatTokenBalance,
-} from "@/utils/formatters";
+import { formatNumber, formatCurrency } from "@/utils/formatters";
 import Image from "next/image";
-import { parseTokenMetadata, getTokenDescription } from "@/utils/tokenMetadata";
+import { parseTokenMetadata } from "@/utils/tokenMetadata";
+import { Badge } from "@/components/ui/badge";
 
 interface TokenPortfolioItem {
   address: string;
@@ -57,7 +48,6 @@ interface PortfolioStats {
 export default function PortfolioPage() {
   const { address, isConnected, status } = useAccount();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
   const wagmiChainId = useChainId();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -85,8 +75,6 @@ export default function PortfolioPage() {
     setLoading(true);
     try {
       if (!publicClient) throw new Error("Public client unavailable");
-      const chainId = wagmiChainId;
-      
 
       const factoryService = new TokenFactoryRootService();
 
@@ -128,7 +116,7 @@ export default function PortfolioPage() {
       }
 
       // Load token data for all tokens to check holdings
-      
+
       const allTokensData = await Promise.all(
         allTokenAddresses.map(async (tokenAddress, index) => {
           try {
@@ -163,7 +151,6 @@ export default function PortfolioPage() {
                 functionName: "decimals",
               }),
             ]);
-            
 
             // Try to get additional stats (may fail if methods don't exist)
             let stats;
@@ -285,7 +272,10 @@ export default function PortfolioPage() {
               currentValue,
             };
           } catch (error) {
-            console.error(`[Portfolio] Error loading token data for ${tokenAddress}:`, error);
+            console.error(
+              `[Portfolio] Error loading token data for ${tokenAddress}:`,
+              error
+            );
             // Return minimal data if contract calls fail
             return {
               address: tokenAddress,
@@ -581,7 +571,9 @@ export default function PortfolioPage() {
         <div className="px-10 border w-full">
           <div className="min-h-[90vh] flex flex-col justify-center items-center text-black bg-[url('/img/bg-vector.svg')] bg-contain bg-no-repeat border-l border-r border-transparent [border-image:linear-gradient(to_bottom,#ebe3e8,transparent)_1]">
             <div className="text-center">
-              <h1 className="font-britisans text-4xl font-bold mb-4">Loading</h1>
+              <h1 className="font-britisans text-4xl font-bold mb-4">
+                Loading
+              </h1>
               <p className="text-gray-600 mb-8">Preparing your portfolio…</p>
             </div>
           </div>
@@ -591,7 +583,7 @@ export default function PortfolioPage() {
   }
 
   // Show connect screen only when mounted and truly not connected
-  if (mounted && (!isConnected && !address)) {
+  if (mounted && !isConnected && !address) {
     return (
       <div>
         <Header />

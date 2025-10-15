@@ -51,15 +51,43 @@ export interface ContractInstance<T = Contract> {
  */
 export const SUPPORTED_NETWORKS: Record<number, NetworkConfig> = {
   // 0G Network
-  16602: {
-    chainId: 16602,
-    name: "0G Testnet Network",
+  16661: {
+    chainId: 16661,
+    name: "0G Network",
     rpcUrl:
-      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) ||
-      "https://evmrpc-testnet.0g.ai", // 0G testnet RPC
+      (process.env.NEXT_PUBLIC_0G_RPC_URL as string) || "https://evmrpc.0g.ai", // 0G mainnet RPC
     blockExplorerUrl: "https://chainscan.0g.ai",
     currencySymbol: "0G",
   },
+};
+
+/**
+ * Get read-only provider without wallet connection requirement
+ */
+export const getReadOnlyProvider = (chainId: number = 16661) => {
+  const networkConfig = SUPPORTED_NETWORKS[chainId];
+  if (!networkConfig) {
+    throw new Error(`Unsupported network (Chain ID: ${chainId})`);
+  }
+  
+  return new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+};
+
+/**
+ * Check if wallet is available and connected
+ */
+export const isWalletConnected = async (): Promise<boolean> => {
+  if (typeof window === "undefined" || !window.ethereum) {
+    return false;
+  }
+
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.listAccounts();
+    return accounts.length > 0;
+  } catch (error) {
+    return false;
+  }
 };
 
 /**

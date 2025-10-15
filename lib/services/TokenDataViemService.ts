@@ -45,31 +45,24 @@ export class TokenDataViemService {
 
     // Map chain ID to chain object and contract address
     const chainMap: Record<number, { chain: any; factoryAddress: string }> = {
-      16602: {
+      16661: {
         chain: {
-          id: 16602,
-          name: "0G Testnet",
-          network: "0g-testnet",
+          id: 16661,
+          name: "0G Mainnet",
+          network: "0g-mainnet",
           nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc-testnet.0g.ai"] } },
+          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
           blockExplorers: {
             default: {
               name: "0G Explorer",
-              url: "https://chainscan-galileo.0g.ai",
+              url: "https://chainscan.0g.ai",
             },
           },
-          testnet: true,
+          testnet: false,
         },
-        factoryAddress: "0xb17f589b3dd10a05d4ef4ed1bdbe4cee8ec2da25",
+        factoryAddress: "0x9Da032047eCaFE668360C3b290420E785bF46598",
       },
-      44787: {
-        chain: (await import("viem/chains")).celoAlfajores,
-        factoryAddress: "0x0bb4da9a543d0c8482843f49f80222f936310637",
-      },
-      80002: {
-        chain: (await import("viem/chains")).polygonAmoy,
-        factoryAddress: "0x2e650ddc1f722ecfd9f6ba430b33960942000982", // TokenFactory on Polygon Amoy
-      },
+
       // Add more chains as needed
     };
 

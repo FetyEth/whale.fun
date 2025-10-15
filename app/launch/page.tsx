@@ -395,11 +395,11 @@ const CreatePage: FC = () => {
       // Map chain ID to chain object and contract address
       const chainMap: Record<number, { chain: any; contractAddress: string }> =
         {
-          16602: {
+          16661: {
             chain: {
-              id: 16602,
-              name: "0G Testnet",
-              network: "0g-testnet",
+              id: 16661,
+              name: "0G Mainnet",
+              network: "0g-mainnet",
               nativeCurrency: {
                 decimals: 18,
                 name: "0G",
@@ -407,19 +407,19 @@ const CreatePage: FC = () => {
               },
               rpcUrls: {
                 default: {
-                  http: ["https://evmrpc-testnet.0g.ai"],
+                  http: ["https://evmrpc.0g.ai"],
                 },
                 public: {
-                  http: ["https://evmrpc-testnet.0g.ai"],
+                  http: ["https://evmrpc.0g.ai"],
                 },
               },
               blockExplorers: {
                 default: {
                   name: "0G Explorer",
-                  url: "https://chainscan-galileo.0g.ai",
+                  url: "https://chainscan.0g.ai",
                 },
               },
-              testnet: true,
+              testnet: false,
             },
             contractAddress: "0x9Da032047eCaFE668360C3b290420E785bF46598",
           },
