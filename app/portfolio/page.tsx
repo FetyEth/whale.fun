@@ -218,7 +218,24 @@ export default function PortfolioPage() {
                 totalSold,
                 creatorFees,
               ] = await Promise.all([
-                safeReadContract("getCurrentPrice", parseEther("0.001")),
+                // Try getCurrentPrice first, fallback to currentPrice
+                (async () => {
+                  try {
+                    return await safeReadContract(
+                      "getCurrentPrice",
+                      parseEther("0.001")
+                    );
+                  } catch (error) {
+                    console.warn(
+                      `[Portfolio] getCurrentPrice failed for ${tokenAddress}, trying currentPrice:`,
+                      error
+                    );
+                    return await safeReadContract(
+                      "currentPrice",
+                      parseEther("0.001")
+                    );
+                  }
+                })(),
                 safeReadContract("marketCap", BigInt(0)),
                 safeReadContract("holderCount", BigInt(1)),
                 safeReadContract("totalSold", BigInt(0)),
