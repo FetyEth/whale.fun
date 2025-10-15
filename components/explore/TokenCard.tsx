@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useWalletClient } from "wagmi";
 import { parseEther, formatEther } from "ethers";
 import { getBlockchainConnection } from "@/utils/Blockchain";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
@@ -30,6 +30,11 @@ interface TokenCardProps {
 const TokenCard = ({ token, index }: TokenCardProps) => {
   const router = useRouter();
   const { address: userAddress, isConnected, chain } = useAccount();
+  const { data: balance } = useBalance({
+    address: userAddress,
+    chainId: 16661, // 0G Mainnet
+  });
+  const { data: walletClient } = useWalletClient();
   const [isQuickBuying, setIsQuickBuying] = useState(false);
   const [quickBuyError, setQuickBuyError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -51,7 +56,7 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
   const handleQuickBuy = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!userAddress) {
+    if (!isConnected || !userAddress) {
       setQuickBuyError("Please connect your wallet");
       return;
     }
@@ -61,55 +66,93 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       return;
     }
 
-    // Check user's ETH balance before buying
-    try {
-      const { createPublicClient, http } = await import("viem");
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
+    // Check if we're on the right chain
+    if (!chain || chain.id !== 16661) {
+      // Try to switch to 0G Mainnet automatically
+      try {
+        if ((window as any).ethereum) {
+          await (window as any).ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x411D" }], // 16661 in hex
+          });
+          // Wait a bit for the chain switch to complete
+          await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const chainMap: Record<number, any> = {
-        16661: {
-          id: 16661,
-          name: "0G Mainnet",
-          network: "0g-mainnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan.0g.ai",
-            },
-          },
-          testnet: false,
-        },
-      };
+          // Verify the switch was successful
+          const currentChainId = await (window as any).ethereum.request({
+            method: "eth_chainId",
+          });
+          const chainIdDecimal = parseInt(currentChainId, 16);
 
-      const currentChain = chainMap[chainId];
-      if (!currentChain) {
-        throw new Error(`Unsupported chain ID: ${chainId}`);
+          if (chainIdDecimal !== 16661) {
+            setQuickBuyError(
+              "Network switch failed. Please manually switch to 0G Mainnet"
+            );
+            return;
+          }
+        } else {
+          setQuickBuyError("Please switch to 0G Mainnet in your wallet");
+          return;
+        }
+      } catch (switchError: any) {
+        // If the chain doesn't exist, try to add it
+        if (switchError.code === 4902) {
+          try {
+            await (window as any).ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x411D", // 16661 in hex
+                  chainName: "0G Mainnet",
+                  nativeCurrency: {
+                    name: "0G",
+                    symbol: "0G",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://evmrpc.0g.ai"],
+                  blockExplorerUrls: ["https://chainscan.0g.ai"],
+                },
+              ],
+            });
+            // Wait a bit for the chain addition to complete
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Verify the addition and switch was successful
+            const currentChainId = await (window as any).ethereum.request({
+              method: "eth_chainId",
+            });
+            const chainIdDecimal = parseInt(currentChainId, 16);
+
+            if (chainIdDecimal !== 16661) {
+              setQuickBuyError(
+                "Please manually switch to 0G Mainnet in your wallet"
+              );
+              return;
+            }
+          } catch (addError) {
+            console.error("Failed to add 0G Mainnet:", addError);
+            setQuickBuyError("Please manually add 0G Mainnet to your wallet");
+            return;
+          }
+        } else if (switchError.code === 4001) {
+          // User rejected the request
+          setQuickBuyError("Network switch cancelled by user");
+          return;
+        } else {
+          console.error("Failed to switch to 0G Mainnet:", switchError);
+          setQuickBuyError("Please switch to 0G Mainnet in your wallet");
+          return;
+        }
       }
+    }
 
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      });
-
-      const userBalance = await publicClient.getBalance({
-        address: userAddress as `0x${string}`,
-      });
-
-      const requiredAmount = parseEther("0.01");
-      if (userBalance < requiredAmount) {
-        setQuickBuyError(
-          `Insufficient balance. Need ${formatEther(
-            requiredAmount
-          )} ETH, have ${formatEther(userBalance)} ETH`
-        );
-        return;
-      }
-    } catch (balanceError) {
-      console.error("Balance check error:", balanceError);
-      setQuickBuyError("Could not verify balance. Please try again.");
+    // Check user's balance
+    const requiredAmount = parseEther("0.01");
+    if (!balance || balance.value < requiredAmount) {
+      const balanceETH = balance ? formatEther(balance.value) : "0";
+      setQuickBuyError(
+        `Insufficient balance. Need 0.01 ETH, have ${balanceETH} ETH`
+      );
       return;
     }
 
@@ -117,45 +160,33 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
     setQuickBuyError(null);
 
     try {
-      const { createWalletClient, createPublicClient, http, custom } =
-        await import("viem");
+      const { createPublicClient, http } = await import("viem");
 
-      // Get current chain
-      const connection = await getBlockchainConnection();
-      const chainId = Number(connection.network.chainId);
-
-      // Map chain ID to chain object
-      const chainMap: Record<number, any> = {
-        16661: {
-          id: 16661,
-          name: "0G Mainnet",
-          network: "0g-mainnet",
-          nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
-          rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
-          blockExplorers: {
-            default: {
-              name: "0G Explorer",
-              url: "https://chainscan.0g.ai",
-            },
-          },
-          testnet: false,
-        },
-      };
-
-      const currentChain = chainMap[chainId];
-      if (!currentChain) {
-        throw new Error(`Unsupported chain ID: ${chainId}`);
+      // Check if wallet client is available
+      if (!walletClient) {
+        throw new Error("Wallet client not available");
       }
+
+      // Define 0G Mainnet chain
+      const zeroGMainnet = {
+        id: 16661,
+        name: "0G Mainnet",
+        network: "0g-mainnet",
+        nativeCurrency: { decimals: 18, name: "0G", symbol: "0G" },
+        rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
+        blockExplorers: {
+          default: {
+            name: "0G Explorer",
+            url: "https://chainscan.0g.ai",
+          },
+        },
+        testnet: false,
+      };
 
       // Create clients
       const publicClient = createPublicClient({
-        chain: currentChain,
+        chain: zeroGMainnet,
         transport: http(),
-      });
-
-      const walletClient = createWalletClient({
-        chain: currentChain,
-        transport: custom((window as any).ethereum),
       });
 
       // Calculate buy amount for 0.01 ETH
@@ -163,11 +194,22 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
 
       // Since we don't have calculateTokensForETH, we'll estimate by trying different token amounts
       // Start with current price to get a rough estimate
-      const currentPrice = (await publicClient.readContract({
-        address: token.id as `0x${string}`,
-        abi: CreatorTokenABI,
-        functionName: "getCurrentPrice",
-      })) as bigint;
+      let currentPrice: bigint;
+      try {
+        currentPrice = (await publicClient.readContract({
+          address: token.id as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "getCurrentPrice",
+        })) as bigint;
+      } catch (error) {
+        // Fallback to currentPrice if getCurrentPrice doesn't exist
+        console.warn("getCurrentPrice failed, trying currentPrice:", error);
+        currentPrice = (await publicClient.readContract({
+          address: token.id as `0x${string}`,
+          abi: CreatorTokenABI,
+          functionName: "currentPrice",
+        })) as bigint;
+      }
 
       // Estimate tokens we can buy: ethAmount / currentPrice
       // Use a binary search approach to find the right amount
@@ -231,7 +273,6 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
         functionName: "buyTokens",
         args: [bestTokenAmount],
         value: bestCost,
-        chain: currentChain,
       });
 
       console.log("Quick buy transaction submitted:", txHash);
