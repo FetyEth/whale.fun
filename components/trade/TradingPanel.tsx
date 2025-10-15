@@ -64,7 +64,7 @@ const TradingPanel = ({
       setEstimatedCostWei(BigInt(0));
       setEstimatedProceedsWei(BigInt(0));
     }
-  }, [amount, tradeMode, updateEstimates]);
+  }, [amount, tradeMode]);
 
   const updateEstimates = useCallback(async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return;
