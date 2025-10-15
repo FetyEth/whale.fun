@@ -9,7 +9,6 @@ import {
   tokenDataService,
   type TokenData,
 } from "@/lib/services/TokenDataService";
-import { getBlockchainConnection } from "@/utils/Blockchain";
 
 const ExplorePage = () => {
   const [tokens, setTokens] = useState<TokenData[]>([]);

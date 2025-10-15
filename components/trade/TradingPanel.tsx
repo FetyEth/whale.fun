@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createCreatorTokenViemService } from "@/lib/services/CreatorTokenViemService";
@@ -64,9 +64,9 @@ const TradingPanel = ({
       setEstimatedCostWei(BigInt(0));
       setEstimatedProceedsWei(BigInt(0));
     }
-  }, [amount, tradeMode]);
+  }, [amount, tradeMode, updateEstimates]);
 
-  const updateEstimates = async () => {
+  const updateEstimates = useCallback(async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return;
 
     try {
@@ -92,10 +92,30 @@ const TradingPanel = ({
         // calculateSellPrice returns the proceeds in Wei (ETH)
         const proceedsInWei = await service.calculateSellPrice(tokenAmount);
         console.log("proceedsInWei:", proceedsInWei.toString());
-        const proceedsInEth = formatEther(proceedsInWei as unknown as bigint);
-        console.log("proceedsInEth:", proceedsInEth);
+
+        // Check if the contract returned a very small value (might be a pricing issue)
+        // If so, use current price as fallback
+        let finalProceedsInWei = proceedsInWei as unknown as bigint;
+
+        if (finalProceedsInWei < BigInt(1000000000000)) {
+          // Less than 0.000001 ETH
+          console.log(
+            "Contract sell price too low, using current price fallback"
+          );
+          const currentPrice = await service.getCurrentPrice();
+          console.log("currentPrice:", currentPrice.toString());
+
+          // Simple calculation: tokenAmount * currentPrice
+          // This gives a rough estimate based on current price
+          finalProceedsInWei =
+            (tokenAmount * currentPrice) / BigInt(10) ** BigInt(18);
+          console.log("fallback proceedsInWei:", finalProceedsInWei.toString());
+        }
+
+        const proceedsInEth = formatEther(finalProceedsInWei);
+        console.log("final proceedsInEth:", proceedsInEth);
         setEstimatedProceeds(proceedsInEth);
-        setEstimatedProceedsWei(proceedsInWei as unknown as bigint);
+        setEstimatedProceedsWei(finalProceedsInWei);
       }
     } catch (err) {
       console.error("Error calculating estimates:", err);
@@ -104,7 +124,7 @@ const TradingPanel = ({
       setEstimatedCostWei(BigInt(0));
       setEstimatedProceedsWei(BigInt(0));
     }
-  };
+  }, [amount, tradeMode, tokenAddress]);
 
   const handleTrade = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return;

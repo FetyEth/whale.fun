@@ -316,6 +316,26 @@ export class TokenDataService {
         }
       }
 
+      // Validate and potentially recalculate market cap
+      let finalMarketCap = marketCap as bigint;
+      const marketCapInEth = Number(finalMarketCap) / 1e18;
+
+      // If the contract marketCap seems unreasonably small (less than 0.001 ETH),
+      // calculate it ourselves: marketCap = totalSupply * currentPrice
+      if (marketCapInEth < 0.001) {
+        const totalSupplyNumber = Number(totalSupply) / 1e18; // Convert to actual token count
+        const currentPriceInEth = Number(currentPrice) / 1e18; // Convert to ETH
+        const calculatedMarketCapEth = totalSupplyNumber * currentPriceInEth;
+        finalMarketCap = BigInt(Math.floor(calculatedMarketCapEth * 1e18)); // Convert back to wei
+
+        console.log(`Recalculated market cap for ${tokenAddress}:`, {
+          contractMarketCap: marketCapInEth,
+          totalSupply: totalSupplyNumber,
+          currentPrice: currentPriceInEth,
+          calculatedMarketCap: calculatedMarketCapEth,
+        });
+      }
+
       const tokenData: TokenData = {
         id: tokenAddress,
         address: tokenAddress,
@@ -329,7 +349,7 @@ export class TokenDataService {
         creator: creator as string,
         launchTime: launchTime as bigint,
         currentPrice: currentPrice as bigint,
-        marketCap: marketCap as bigint,
+        marketCap: finalMarketCap,
         totalSupply: totalSupply as bigint,
         totalSold: totalSold as bigint,
         holderCount: holderCount as bigint,
@@ -358,8 +378,14 @@ export class TokenDataService {
       return `$${(marketCapNumber / 1e6).toFixed(1)}M`;
     } else if (marketCapNumber >= 1e3) {
       return `$${(marketCapNumber / 1e3).toFixed(1)}k`;
-    } else {
+    } else if (marketCapNumber >= 1) {
       return `$${marketCapNumber.toFixed(2)}`;
+    } else if (marketCapNumber >= 0.001) {
+      return `$${marketCapNumber.toFixed(4)}`;
+    } else if (marketCapNumber > 0) {
+      return `$${marketCapNumber.toFixed(6)}`;
+    } else {
+      return `$0.00`;
     }
   }
 

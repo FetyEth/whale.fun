@@ -110,6 +110,23 @@ const TradePage = () => {
   const router = useRouter();
   const tokenAddress = params?.address || "";
 
+  // Helper function to format numbers nicely
+  const formatNumber = (value: number): string => {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    } else if (value >= 1) {
+      return value.toFixed(2);
+    } else if (value >= 0.0001) {
+      return value.toFixed(4);
+    } else if (value > 0) {
+      return value.toExponential(2);
+    } else {
+      return "0";
+    }
+  };
+
   // State management
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -525,12 +542,16 @@ const TradePage = () => {
         setSellQuote({ proceeds: BigInt(0), priceImpact: 0 });
         return;
       }
+      const decimals = 17; // e.g., USDC, USDT
 
       console.log("Attempting sell calculation for:", {
         tokenAddress,
         tokenAmount: tokenAmountToSell.toString(),
         amount,
-        userBalance: userTokenBalanceBigInt.toString(),
+        userBalance: (
+          Number(userTokenBalanceBigInt) /
+          10 ** decimals
+        ).toString(),
       });
 
       // Try contract calculation first
@@ -2076,7 +2097,9 @@ const TradePage = () => {
                       <span className="text-white/90 font-medium">
                         {tradeMode === "Buy"
                           ? `${parseFloat(userBalance || "0").toFixed(4)} ETH`
-                          : `${userTokenBalance} ${tokenData?.symbol}`}
+                          : `${formatNumber(
+                              parseFloat(formatEther(userTokenBalanceRaw))
+                            )} ${tokenData?.symbol}`}
                       </span>
                     </div>
                   </div>
