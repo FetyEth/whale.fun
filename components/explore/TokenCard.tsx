@@ -3,7 +3,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useBalance, useWalletClient } from "wagmi";
 import { parseEther, formatEther } from "ethers";
-import { getBlockchainConnection } from "@/utils/Blockchain";
+import {
+  getBlockchainConnection,
+  switchNetwork,
+  getExplorerUrl,
+} from "@/utils/Blockchain";
 import CreatorTokenABI from "@/config/abi/CreatorToken.json";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -70,30 +74,9 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
     if (!chain || chain.id !== 16661) {
       // Try to switch to 0G Mainnet automatically
       try {
-        if ((window as any).ethereum) {
-          await (window as any).ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x411D" }], // 16661 in hex
-          });
-          // Wait a bit for the chain switch to complete
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Verify the switch was successful
-          const currentChainId = await (window as any).ethereum.request({
-            method: "eth_chainId",
-          });
-          const chainIdDecimal = parseInt(currentChainId, 16);
-
-          if (chainIdDecimal !== 16661) {
-            setQuickBuyError(
-              "Network switch failed. Please manually switch to 0G Mainnet"
-            );
-            return;
-          }
-        } else {
-          setQuickBuyError("Please switch to 0G Mainnet in your wallet");
-          return;
-        }
+        await switchNetwork(16661);
+        // Wait a bit for the chain switch to complete
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (switchError: any) {
         // If the chain doesn't exist, try to add it
         if (switchError.code === 4902) {
@@ -150,9 +133,11 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
     const requiredAmount = parseEther("0.01");
     if (!balance || balance.value < requiredAmount) {
       const balanceETH = balance ? formatEther(balance.value) : "0";
-      setQuickBuyError(
-        `Insufficient balance. Need 0.01 ETH, have ${balanceETH} ETH`
-      );
+      const errorMsg = `Insufficient balance. Need 0.01 ETH, have ${balanceETH} ETH`;
+      toast.error("Insufficient balance", {
+        description: errorMsg,
+      });
+      setQuickBuyError(errorMsg);
       return;
     }
 
@@ -278,10 +263,10 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       console.log("Quick buy transaction submitted:", txHash);
 
       // Show immediate success message since transaction was submitted
-      toast.success("Transaction submitted!", {
-        description: `Buying ${formatEther(bestTokenAmount)} ${
+      toast.success("Transaction submitted", {
+        description: `Purchase of ${formatEther(bestTokenAmount)} ${
           token.symbol
-        } for ${formatEther(bestCost)} ETH`,
+        } initiated`,
         duration: 3000,
       });
 
@@ -466,13 +451,15 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
       {/* Image on the right (vertically centered, fixed 146.2px square) */}
       <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[150px] w-[150px]">
         <div className="relative h-full w-full rounded-l-2xl overflow-hidden">
-          <img
+          <Image
             src={imgSrc}
             alt={token.name}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              if ((e.target as HTMLImageElement).src !== DEFAULT_IMG) {
-                (e.target as HTMLImageElement).src = DEFAULT_IMG;
+            width={150}
+            height={150}
+            onError={() => {
+              if (imgSrc !== DEFAULT_IMG) {
+                setImgSrc(DEFAULT_IMG);
               }
             }}
           />

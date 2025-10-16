@@ -205,6 +205,20 @@ export const switchNetwork = async (chainId: number): Promise<void> => {
 };
 
 /**
+ * Get explorer URL for transaction, address, or token
+ */
+export const getExplorerUrl = (
+  chainId: number,
+  hash: string,
+  type: "tx" | "address" | "token" = "tx"
+): string => {
+  const network = SUPPORTED_NETWORKS[chainId];
+  if (!network) return "";
+  const baseUrl = network.blockExplorerUrl.replace(/\/$/, "");
+  return `${baseUrl}/${type}/${hash}`;
+};
+
+/**
  * Format address for display (shows first 6 and last 4 characters)
  */
 export const formatAddress = (address: string): string => {

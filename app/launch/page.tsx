@@ -3,13 +3,15 @@ import Header from "@/components/layout/Header";
 import { useState, useEffect } from "react";
 import type { FC, ChangeEvent, FormEvent } from "react";
 import { tokenFactoryRootService } from "@/lib/services/TokenFactoryRootService";
-import { parseEther } from "ethers";
+import { parseEther, formatEther } from "ethers";
 import {
   getBlockchainConnection,
   validateNetwork,
   SUPPORTED_NETWORKS,
+  switchNetwork,
 } from "@/utils/Blockchain";
 import { combineTokenMetadata } from "@/utils/tokenMetadata";
+import { toast } from "sonner";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -355,13 +357,21 @@ const CreatePage: FC = () => {
       try {
         validateNetwork(chainId);
       } catch (networkError) {
-        const supportedNetworksList = Object.values(SUPPORTED_NETWORKS)
-          .map((network) => `${network.name} (${network.chainId})`)
-          .join(", ");
+        try {
+          await switchNetwork(16661);
+          // Re-check connection after switch
+          const connRetry = await getBlockchainConnection();
+          const retryChainId = Number(connRetry.network.chainId);
+          validateNetwork(retryChainId);
+        } catch (switchErr) {
+          const supportedNetworksList = Object.values(SUPPORTED_NETWORKS)
+            .map((network) => `${network.name} (${network.chainId})`)
+            .join(", ");
 
-        throw new Error(
-          `Unsupported network (Chain ID: ${chainId}). Please switch to one of the supported networks: ${supportedNetworksList}`
-        );
+          throw new Error(
+            `Unsupported network (Chain ID: ${chainId}). Please switch to one of the supported networks: ${supportedNetworksList}`
+          );
+        }
       }
 
       try {
@@ -477,6 +487,30 @@ const CreatePage: FC = () => {
         value: totalCost.toString(),
       });
 
+      // Check user's balance before attempting the write
+      try {
+        if (!publicClient) throw new Error("Public client not available");
+        const userBalance = await publicClient.getBalance({ address: account });
+        if (userBalance < totalCost) {
+          toast.error("Insufficient balance", {
+            description: `Need ${formatEther(totalCost)} ${
+              SUPPORTED_NETWORKS[currentChainId]?.currencySymbol || "ETH"
+            }, have ${formatEther(userBalance)}`,
+          });
+          setError(
+            `Insufficient balance. Need ${formatEther(totalCost)} ${
+              SUPPORTED_NETWORKS[currentChainId]?.currencySymbol || "ETH"
+            }, have ${formatEther(userBalance)}`
+          );
+          return;
+        }
+      } catch (balanceErr) {
+        console.warn(
+          "Could not verify balance before transaction:",
+          balanceErr
+        );
+      }
+
       // Direct contract call using Wagmi's wallet client (Viem WalletClient instance)
       const txHash = await walletClient.writeContract({
         account: account,
@@ -570,7 +604,7 @@ const CreatePage: FC = () => {
         }
 
         console.log("Extracted token contract address:", tokenContractAddress);
-        setSuccess(`Token created successfully! Transaction hash: ${txHash}`);
+        setSuccess(`Token created successfully!`);
         setCreatedTokenHash(txHash);
         setCreatedTokenAddress(tokenContractAddress);
         setIsTokenCreated(true);
@@ -617,11 +651,45 @@ const CreatePage: FC = () => {
     }
   };
 
-  // Load cost and check network when component mounts
+  // Check network, balance and load costs when component mounts or chain changes
   useEffect(() => {
-    loadCreationCost();
-    checkNetwork();
-  }, []);
+    const init = async () => {
+      await loadCreationCost();
+      await checkNetwork();
+
+      // If connected but wrong network, try to switch
+      if (address && wagmiChainId && wagmiChainId !== 16661) {
+        try {
+          await switchNetwork(16661);
+          toast.success("Network switched to 0G Network");
+        } catch (err) {
+          toast.error("Please switch network", {
+            description: "This app requires 0G Network to function properly",
+          });
+        }
+      }
+
+      // Check balance if connected
+      if (address && publicClient) {
+        try {
+          const cost = await tokenFactoryRootService.calculateCreationCost();
+          const balance = await publicClient.getBalance({ address });
+          if (balance < cost.total) {
+            toast.warning("Insufficient balance", {
+              description: `You need at least ${formatEther(cost.total)} ${
+                SUPPORTED_NETWORKS[16661]?.currencySymbol || "ETH"
+              } to create a token`,
+              duration: 5000,
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to check initial balance:", err);
+        }
+      }
+    };
+
+    init();
+  }, [address, wagmiChainId, publicClient]);
 
   // Success message component
   const TokenCreatedMessage = () => (
@@ -644,12 +712,7 @@ const CreatePage: FC = () => {
         <p className="text-sm text-gray-600">
           <strong>Token:</strong> {formData.tokenName} ({formData.tokenSymbol})
         </p>
-        {createdTokenHash && (
-          <p className="text-xs text-gray-500 mt-1">
-            <strong>TX Hash:</strong> {createdTokenHash.slice(0, 10)}...
-            {createdTokenHash.slice(-8)}
-          </p>
-        )}
+        {/* Transaction hash removed from UI display */}
       </div>
       <div className="flex items-center justify-center gap-4 mt-8">
         <Link
@@ -666,10 +729,11 @@ const CreatePage: FC = () => {
             if (createdTokenHash && currentNetwork) {
               const networkConfig = SUPPORTED_NETWORKS[currentNetwork.chainId];
               if (networkConfig) {
-                window.open(
-                  `https://chainscan-galileo.0g.ai/tx/${createdTokenHash}`,
-                  "_blank"
+                const explorerUrl = networkConfig.blockExplorerUrl.replace(
+                  /\/$/,
+                  ""
                 );
+                window.open(`${explorerUrl}/tx/${createdTokenHash}`, "_blank");
               }
             }
           }}

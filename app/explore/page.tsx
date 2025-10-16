@@ -5,10 +5,14 @@ import Header from "@/components/layout/Header";
 import SearchAndFilter from "@/components/explore/SearchAndFilter";
 import CreateTokenButton from "@/components/explore/CreateTokenButton";
 import TokenGrid from "@/components/explore/TokenGrid";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { toast } from "sonner";
+import { formatEther } from "ethers";
 import {
   tokenDataService,
   type TokenData,
 } from "@/lib/services/TokenDataService";
+import { switchNetwork, SUPPORTED_NETWORKS } from "@/utils/Blockchain";
 
 const ExplorePage = () => {
   const [tokens, setTokens] = useState<TokenData[]>([]);
@@ -17,9 +21,50 @@ const ExplorePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
 
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
+
   useEffect(() => {
     fetchTokens();
   }, []);
+
+  // Check network and balance when component mounts or when chain/address changes
+  useEffect(() => {
+    const checkNetworkAndBalance = async () => {
+      // Check and switch network if needed
+      if (address && chainId && chainId !== 16661) {
+        try {
+          await switchNetwork(16661);
+          toast.success("Network switched to 0G Network");
+        } catch (err) {
+          toast.error("Please switch network", {
+            description: "This app requires 0G Network to function properly",
+          });
+        }
+      }
+
+      // Check balance if connected
+      if (address && publicClient) {
+        try {
+          const minBalance = BigInt("10000000000000000"); // 0.01 ETH minimum for quick buy
+          const balance = await publicClient.getBalance({ address });
+          if (balance < minBalance) {
+            toast.warning("Low balance", {
+              description: `You need at least 0.01 ${
+                SUPPORTED_NETWORKS[16661]?.currencySymbol || "ETH"
+              } to perform quick buy actions`,
+              duration: 5000,
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to check initial balance:", err);
+        }
+      }
+    };
+
+    checkNetworkAndBalance();
+  }, [address, chainId, publicClient]);
 
   // Memoized filtered tokens for better performance
   const filteredTokens = useMemo(() => {
