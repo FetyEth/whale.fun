@@ -1480,7 +1480,7 @@ const TradePage = () => {
                         <AvatarImage
                           src={
                             tokenData?.logoUrl ||
-                            "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+                            "https://purple-voluntary-minnow-145.mypinata.cloud/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
                           }
                           alt={tokenData?.name}
                           className="h-6 w-6 rounded-full"
@@ -2024,7 +2024,7 @@ const TradePage = () => {
                       <AvatarImage
                         src={
                           tokenData?.logoUrl ||
-                          "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
+                          "https://purple-voluntary-minnow-145.mypinata.cloud/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um"
                         }
                         alt={tokenData?.name}
                       />

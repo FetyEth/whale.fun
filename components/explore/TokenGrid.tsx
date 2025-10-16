@@ -1,25 +1,28 @@
-"use client"
+"use client";
 
-import React from 'react'
-import TokenCard from './TokenCard'
-import { type TokenData, tokenDataService } from "@/lib/services/TokenDataService"
+import React from "react";
+import TokenCard from "./TokenCard";
+import {
+  type TokenData,
+  tokenDataService,
+} from "@/lib/services/TokenDataService";
 
 interface TokenGridProps {
-  tokens: TokenData[]
+  tokens: TokenData[];
 }
 
 const TokenGrid = ({ tokens }: TokenGridProps) => {
   // Convert TokenData to the format expected by TokenCard
   const DEFAULT_IMG =
-    'https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um';
+    "https://purple-voluntary-minnow-145.mypinata.cloud/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um";
 
   const toHttpImage = (url?: string): string => {
     if (!url || !url.trim()) return DEFAULT_IMG;
     const trimmed = url.trim();
-    if (trimmed.startsWith('ipfs://')) {
+    if (trimmed.startsWith("ipfs://")) {
       return `https://ipfs.io/ipfs/${trimmed.slice(7)}`;
     }
-    if (trimmed.startsWith('ipfs/')) {
+    if (trimmed.startsWith("ipfs/")) {
       return `https://ipfs.io/${trimmed}`;
     }
     // If it doesn't look like a normal URL or data URI, use default
@@ -44,8 +47,8 @@ const TokenGrid = ({ tokens }: TokenGridProps) => {
     marketCap: tokenDataService.formatMarketCap(token.marketCap),
     volume: `${tokenDataService.formatVolume(token.dailyVolume)} vol`,
     age: tokenDataService.formatLaunchTime(token.launchTime),
-    isLive: token.isLive
-  }))
+    isLive: token.isLive,
+  }));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative ">
@@ -53,7 +56,7 @@ const TokenGrid = ({ tokens }: TokenGridProps) => {
         <TokenCard key={token.id} token={token} index={idx} />
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default TokenGrid
+export default TokenGrid;

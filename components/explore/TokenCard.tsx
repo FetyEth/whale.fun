@@ -379,7 +379,7 @@ const TokenCard = ({ token, index }: TokenCardProps) => {
     : "text-green-200";
 
   const DEFAULT_IMG =
-    "https://ipfs.io/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um";
+    "https://purple-voluntary-minnow-145.mypinata.cloud/ipfs/bafkreiadbzvwwngz3kvk5ut75gdzlbpklxokyacpysotogltergnkhx7um";
 
   const [imgSrc, setImgSrc] = useState<string>(token.image || DEFAULT_IMG);
 

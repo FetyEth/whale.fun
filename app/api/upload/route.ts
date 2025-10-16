@@ -26,15 +26,18 @@ export async function POST(req: NextRequest) {
     const pinataForm = new FormData();
     pinataForm.append("file", file, (file as any).name || "upload.png");
 
-    const pinataRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${PINATA_JWT}`,
-      },
-      body: pinataForm as any,
-      // @ts-expect-error - fetch types for RequestInit don't include duplex
-      duplex: "half",
-    });
+    const pinataRes = await fetch(
+      "https://api.pinata.cloud/pinning/pinFileToIPFS",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PINATA_JWT}`,
+        },
+        body: pinataForm as any,
+        // @ts-expect-error - fetch types for RequestInit don't include duplex
+        duplex: "half",
+      }
+    );
 
     if (!pinataRes.ok) {
       const text = await pinataRes.text();
@@ -46,10 +49,13 @@ export async function POST(req: NextRequest) {
 
     const data = await pinataRes.json();
     const cid = data.IpfsHash || data.cid || data.Hash; // support various shapes
-    const url = `https://gateway.pinata.cloud/ipfs/${cid}`;
+    const url = `https://purple-voluntary-minnow-145.mypinata.cloud/ipfs/${cid}`;
 
     return NextResponse.json({ cid, url });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Upload error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Upload error" },
+      { status: 500 }
+    );
   }
 }
