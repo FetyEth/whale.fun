@@ -7,9 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Copy, ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  Copy,
+  ArrowLeft,
+  ExternalLink,
+  LineChart,
+  CandlestickChart,
+} from "lucide-react";
 import { FaGlobe, FaTelegramPlane } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import TradingViewChart from "@/components/TradingViewChart";
 import {
   tokenDataService,
   type TokenData,
@@ -167,8 +174,8 @@ const TradePage = () => {
     "5m" | "1h" | "24h" | "7d" | "30d" | "All"
   >("24h");
   const [showStatsTf, setShowStatsTf] = useState(false);
-  // Chart type toggle
-  const [chartType, setChartType] = useState<"line" | "candle">("line");
+  // Chart type toggle (candle chart by default)
+  const [chartType, setChartType] = useState<"line" | "candle">("candle");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   // Wallet connection
@@ -1641,7 +1648,7 @@ const TradePage = () => {
                 </div>
                 {/* Timeframe chips at the card bottom (outside inner panel) */}
                 <div className="mt-4 px-5 w-full flex items-center justify-between gap-3">
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center gap-2">
                     {(["5m", "1h", "24h", "7d", "30d", "All"] as const).map(
                       (timeframe) => (
                         <button
@@ -1655,36 +1662,45 @@ const TradePage = () => {
                           className={`${
                             chartTimeframe === timeframe
                               ? "bg-[#4B4B4B] text-white shadow-sm"
-                              : "text-gray-400"
-                          } px-3 py-1 rounded-full text-sm font-medium`}
+                              : "text-gray-400 hover:text-white hover:bg-[#3A3A3A]"
+                          } px-2.5 py-1 rounded-md text-xs font-medium transition-colors`}
                         >
                           {timeframe}
                         </button>
                       )
                     )}
                   </div>
+
                   {/* Chart type toggle */}
-                  <div className="flex bg-[#1F1F1F] rounded-full p-1 text-xs">
-                    <button
-                      onClick={() => setChartType("line")}
-                      className={`px-3 py-1 rounded-full font-medium ${
-                        chartType === "line"
-                          ? "bg-white text-black"
-                          : "text-white/70 hover:text-white"
-                      }`}
-                    >
-                      Line
-                    </button>
-                    <button
-                      onClick={() => setChartType("candle")}
-                      className={`px-3 py-1 rounded-full font-medium ${
-                        chartType === "candle"
-                          ? "bg-white text-black"
-                          : "text-white/70 hover:text-white"
-                      }`}
-                    >
-                      Candle
-                    </button>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-white/60 font-medium">
+                      {tokenData?.name || "Token"} / ETH •{" "}
+                      <span className="text-emerald-400">$0G</span>
+                    </div>
+                    <div className="flex bg-[#1F1F1F] rounded-full p-1 text-xs">
+                      <button
+                        onClick={() => setChartType("line")}
+                        className={`px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 ${
+                          chartType === "line"
+                            ? "bg-white text-black"
+                            : "text-white/70 hover:text-white"
+                        }`}
+                      >
+                        <LineChart size={12} />
+                        Line
+                      </button>
+                      <button
+                        onClick={() => setChartType("candle")}
+                        className={`px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 ${
+                          chartType === "candle"
+                            ? "bg-white text-black"
+                            : "text-white/70 hover:text-white"
+                        }`}
+                      >
+                        <CandlestickChart size={12} />
+                        Candle
+                      </button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -2277,7 +2293,7 @@ const TradePage = () => {
                   </h3>
                   {/* CA row */}
                   <div className="flex items-center gap-2 text-sm text-white/70">
-                    <span className="px-2 py-0.5">CA</span>
+                    <span className="px-2 py-0.5 font-medium">Address</span>
                     <span className="opacity-60">•</span>
                     <Avatar className="h-5 w-5">
                       <AvatarImage
@@ -2294,9 +2310,10 @@ const TradePage = () => {
                       {tokenAddress?.slice(0, 4)}...{tokenAddress?.slice(-4)}
                     </span>
                     <button
-                      onClick={() =>
-                        navigator.clipboard.writeText(tokenAddress || "")
-                      }
+                      onClick={() => {
+                        navigator.clipboard.writeText(tokenAddress || "");
+                        toast.success("Address copied to clipboard");
+                      }}
                       className="p-1 rounded-full cursor-pointer bg-white/10 hover:bg-white/15"
                       title="Copy address"
                     >
@@ -2310,15 +2327,19 @@ const TradePage = () => {
                         )
                       }
                       className="p-1 rounded-full cursor-pointer bg-white/10 hover:bg-white/15"
-                      title="Copy address"
+                      title="View on explorer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   {/* Description */}
-                  <p className="text-sm text-white/70 leading-6">
+                  <p className="text-sm text-white/70 leading-6 whitespace-pre-wrap">
                     {tokenData?.description ||
-                      "Launch and trade the hottest coins on OG."}
+                      `${
+                        tokenData?.name || "This token"
+                      } is available for trading on the 0G Network. ${
+                        tokenData?.symbol ? `$${tokenData.symbol}` : "It"
+                      } can be bought and sold directly on this platform.`}
                   </p>
                 </div>
 

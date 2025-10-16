@@ -449,7 +449,7 @@ export default function PortfolioPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {token.logoUrl ? (
-                <Image
+                <img
                   src={token.logoUrl}
                   alt={token.name}
                   width={40}
