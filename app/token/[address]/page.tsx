@@ -1088,7 +1088,7 @@ const TradePage = () => {
           console.log(
             "🏦 Contract ETH balance:",
             formatEther(contractBalance),
-            "ETH"
+            "0G"
           );
 
           // Check expected proceeds again
@@ -1106,7 +1106,7 @@ const TradePage = () => {
           console.log(
             "💰 Expected proceeds:",
             formatEther(expectedProceeds),
-            "ETH"
+            "0G"
           );
 
           // Verify user has enough tokens
@@ -2073,7 +2073,7 @@ const TradePage = () => {
                       <span className="inline-flex h-5 w-5 rounded-full bg-blue-500" />
                       <span className="font-semibold">
                         {tradeMode === "Buy"
-                          ? "ETH"
+                          ? "0G"
                           : tokenData?.symbol || "TOKEN"}
                       </span>
                       <span className="opacity-70">▾</span>
@@ -2169,7 +2169,7 @@ const TradePage = () => {
                             <span className="text-white font-medium">
                               {formatCurrency(
                                 Number(formatEther(sellQuote.proceeds)),
-                                { currency: "ETH" }
+                                { currency: "0G" }
                               )}
                             </span>
                           </div>
