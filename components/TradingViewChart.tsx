@@ -7,11 +7,11 @@ import React, { useEffect, useRef } from "react";
  * Enhanced for crypto trading view with professional trading UI
  * Usage: <TradingViewChart symbol="0GNETWORK:TOKEN_ETH" height={420} />
  */
-export default function TradingViewChart({ 
-  symbol = "BINANCE:ETHUSDT", 
-  height = 420, 
+export default function TradingViewChart({
+  symbol = "BINANCE:ETHUSDT",
+  height = 420,
   theme = "dark" as "light" | "dark",
-  interval = "60" // Default to 1h candles
+  interval = "60", // Default to 1h candles
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,7 +27,8 @@ export default function TradingViewChart({
     const script = document.createElement("script");
     script.type = "text/javascript";
     script.async = true;
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.src =
+      "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
 
     const config = {
       autosize: true,
@@ -49,12 +50,12 @@ export default function TradingViewChart({
       studies: [
         "Volume@tv-basicstudies",
         "VWAP@tv-basicstudies",
-        "MASimple@tv-basicstudies"
+        "MASimple@tv-basicstudies",
       ],
       show_popup_button: true,
       popup_width: "1000",
       popup_height: "650",
-      container_id: `tradingview_chart_${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`
+      container_id: `tradingview_chart_${symbol.replace(/[^a-zA-Z0-9]/g, "_")}`,
     } as const;
 
     script.innerHTML = JSON.stringify(config);
@@ -71,11 +72,11 @@ export default function TradingViewChart({
   return (
     <div className="w-full rounded-xl overflow-hidden" style={{ height }}>
       <div className="tradingview-widget-container" style={{ height: "100%" }}>
-        <div 
-          id={`tradingview_chart_${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`}
-          className="tradingview-widget-container__widget" 
-          ref={containerRef} 
-          style={{ height: "100%" }} 
+        <div
+          id={`tradingview_chart_${symbol.replace(/[^a-zA-Z0-9]/g, "_")}`}
+          className="tradingview-widget-container__widget"
+          ref={containerRef}
+          style={{ height: "100%" }}
         />
       </div>
     </div>
